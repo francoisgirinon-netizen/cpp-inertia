@@ -5,6 +5,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 namespace example {
@@ -27,6 +29,7 @@ void registerDashboard() {
     registerPage(
         {.path = "/dashboard", .component = "Dashboard"}, [](const ::drogon::HttpRequestPtr &) {
             static std::atomic<int> planResolutions{0};
+            static std::atomic<int> eventCount{0};
             return inertia::Props{
                 {"title", "Dashboard"},
                 {"metrics",
@@ -39,6 +42,22 @@ void registerDashboard() {
                                          {"Ada signed in", "Alan placed an order"}))};
                                  },
                                  "activity")},
+                // defer().rescue(): when the resolver throws, the response still succeeds and lists
+                // the prop under rescuedProps; the client then shows <Deferred rescue>.
+                {"risky",
+                 inertia::defer(
+                     []() -> inertia::Prop { throw std::runtime_error("report is down"); }, "risky")
+                     .rescue()},
+                // defer().merge(): fetched after the first paint; every later reload of `events`
+                // appends to the list instead of replacing it.
+                {"events", inertia::defer(
+                               [] {
+                                   const int id = ++eventCount;
+                                   return inertia::Prop{inertia::Json::array(
+                                       {{{"id", id}, {"label", "Event " + std::to_string(id)}}})};
+                               },
+                               "events")
+                               .merge()},
                 {"plans", inertia::once([] {
                      return inertia::Prop{
                          inertia::Json{{"names", inertia::Json::array({"Free", "Pro"})},
