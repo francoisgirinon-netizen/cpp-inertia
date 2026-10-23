@@ -1,11 +1,13 @@
 #include "test_server.hpp"
 
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/inertia.hpp>
 
 #include <drogon/HttpAppFramework.h>
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace inertia::drogon_test {
@@ -14,12 +16,44 @@ void configureApp() {
     auto &app = ::drogon::app();
     app.enableSession(std::chrono::minutes(10));
 
+    Config config;
+    config.version = [] { return std::string("v1"); };
+    inertia::drogon::install(std::make_shared<Inertia>(std::move(config)));
+
     using Callback = std::function<void(const ::drogon::HttpResponsePtr &)>;
+    const auto registerPage = [&app](const std::string &path, const char *name,
+                                     std::function<Props()> propsFn) {
+        app.registerHandler(path,
+                            [component = std::string{name}, makeProps = std::move(propsFn)](
+                                const ::drogon::HttpRequestPtr &req, Callback &&done) {
+                                inertia::drogon::render(req, component, makeProps(),
+                                                        std::move(done));
+                            },
+                            {::drogon::Get});
+    };
     const auto text = [](std::string body) {
         auto res = ::drogon::HttpResponse::newHttpResponse();
         res->setBody(std::move(body));
         return res;
     };
+
+    registerPage("/page", "Page", [] { return Props{{"title", "Home"}, {"count", 1}}; });
+    registerPage("/throws", "Boom", []() -> Props {
+        return {{"ok", 1}, {"boom", []() -> Json { throw std::runtime_error("prop failed"); }}};
+    });
+    app.registerHandler("/external",
+                        [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
+                            std::move(done)(inertia::drogon::toDrogon(
+                                inertia::drogon::location(req, "https://example.com/away")));
+                        },
+                        {::drogon::Get});
+    app.registerHandler("/vary",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            auto res = text("ok");
+                            res->addHeader("Vary", "Accept-Encoding");
+                            std::move(done)(res);
+                        },
+                        {::drogon::Get});
 
     // PUT /session/put?v=<json> stores the JSON under "k".
     app.registerHandler("/session/put",

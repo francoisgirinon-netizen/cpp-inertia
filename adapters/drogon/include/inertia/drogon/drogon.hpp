@@ -71,4 +71,23 @@ class DrogonHttpClient final : public HttpClient {
     std::map<std::string, ::drogon::HttpClientPtr> clients_; // guarded by mutex_
 };
 
+// Wires an Inertia instance into the application; call once, before app().run().
+//  - pre-handling advice: Inertia::handleVersion (a version mismatch answers 409 here);
+//  - post-handling advice: Inertia::finalize on every response, including those short-circuited
+//    by the pre-handling advice.
+// The instance must be fully configured (shared props registered) before it is installed.
+void install(const std::shared_ptr<const Inertia> &inertia);
+
+// Renders a page for `req` with the installed Inertia and the request's Drogon session (so
+// app().enableSession() is required). `callback` receives exactly one response, possibly from
+// another thread when SSR is enabled. An exception thrown while resolving props is logged and
+// answered with a 500; the server keeps serving.
+void render(const ::drogon::HttpRequestPtr &req, std::string component, Props props,
+            std::function<void(const ::drogon::HttpResponsePtr &)> &&callback,
+            RenderOptions opts = {});
+
+// External redirect via the installed Inertia: 409 + X-Inertia-Location for Inertia requests,
+// else a 302.
+[[nodiscard]] Response location(const ::drogon::HttpRequestPtr &req, std::string_view url);
+
 } // namespace inertia::drogon
