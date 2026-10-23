@@ -64,6 +64,10 @@ if(INERTIA_BUILD_DROGON)
     add_subdirectory(adapters/drogon)
 endif()
 
+if(INERTIA_INSTALL)
+    include(cmake/InertiaInstall.cmake)
+endif()
+
 if(INERTIA_BUILD_EXAMPLES)
     add_subdirectory(examples/react-app/server)
 endif()
