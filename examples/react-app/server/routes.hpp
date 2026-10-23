@@ -8,5 +8,6 @@ void registerUsers();
 void registerDashboard();
 void registerFeed();
 void registerPosts();
+void registerHistory();
 
 } // namespace example
