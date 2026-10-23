@@ -7,6 +7,7 @@
 #include <inertia/ports/session_store.hpp>
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
+#include <inertia/ssr.hpp>
 
 #include <chrono>
 #include <functional>
@@ -36,6 +37,8 @@ struct Config {
     RootTemplate rootTemplate = defaultRootTemplate;
     // Set: first-visit HTML gets vite->tags() in RootContext::viteTags.
     std::shared_ptr<const Vite> vite;
+    // Enabled: first-visit HTML is rendered by the SSR server, falling back to client-side.
+    SsrConfig ssr;
     // Test hook: pins the time used for once-prop expiry. Empty -> system clock.
     std::function<std::chrono::system_clock::time_point()> clock;
 };
@@ -71,7 +74,7 @@ class Inertia {
 
   private:
     Config config_;
-    std::shared_ptr<HttpClient> http_;
+    SsrGateway ssr_;
     Props shared_;
     std::vector<std::function<Props(const RequestView &, SessionStore &)>> perRequest_;
 };

@@ -114,7 +114,7 @@ void emitMetadata(Json &page, const detail::Metadata &meta) {
 } // namespace
 
 Inertia::Inertia(Config config, std::shared_ptr<HttpClient> http)
-    : config_(std::move(config)), http_(std::move(http)) {}
+    : config_(std::move(config)), ssr_(config_.ssr, std::move(http), config_.vite) {}
 
 std::string Inertia::version() const { return config_.version ? config_.version() : std::string{}; }
 
@@ -198,15 +198,32 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
         res.setHeader(std::string(headers::kInertia), "true");
         res.setHeader("Content-Type", "application/json");
         res.body = dumpJson(page);
-    } else {
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        std::string viteTags = config_.vite ? config_.vite->tags() : std::string{};
-        res.body = config_.rootTemplate(RootContext{.page = page,
-                                                    .head = "",
-                                                    .body = inertiaBody(page, config_.rootId),
-                                                    .viteTags = std::move(viteTags)});
+        done(std::move(res));
+        return;
     }
-    done(std::move(res));
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    std::string viteTags = config_.vite ? config_.vite->tags() : std::string{};
+    // The callback may run after render() returns, so it owns a copy of the page.
+    std::function<void(std::optional<SsrResult>)> finish =
+        [this, owned = page, base = std::move(res), tags = std::move(viteTags),
+         cb = std::move(done)](std::optional<SsrResult> ssr) {
+            RootContext ctx{.page = owned, .head = "", .body = "", .viteTags = tags};
+            if (ssr) {
+                ctx.head = std::move(ssr->head);
+                ctx.body = std::move(ssr->body);
+            } else {
+                ctx.body = inertiaBody(owned, config_.rootId);
+            }
+            Response out = base;
+            out.body = config_.rootTemplate(ctx);
+            cb(std::move(out));
+        };
+    const std::string path = req.url().substr(0, req.url().find_first_of("?#"));
+    if (!ssr_.shouldRender(path)) {
+        finish(std::nullopt);
+        return;
+    }
+    ssr_.render(page, path, finish);
 }
 // NOLINTEND(performance-unnecessary-value-param)
 

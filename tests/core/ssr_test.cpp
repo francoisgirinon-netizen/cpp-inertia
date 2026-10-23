@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/fake/fake.hpp>
+#include <inertia/inertia.hpp>
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
@@ -126,4 +127,91 @@ TEST_CASE("health is true only for status OK", "[ssr][protocol:ssr.health]") {
     REQUIRE_FALSE(check(reply(500, R"({"status":"OK"})")));
     REQUIRE_FALSE(check(reply(200, "nope")));
     REQUIRE_FALSE(check(reply(0, "", "refused")));
+}
+
+namespace {
+
+struct RenderRig {
+    GatewayRig rig;
+
+    [[nodiscard]] Response get(const std::string &url, bool inertia = false) const {
+        Config cfg;
+        cfg.ssr = rig.ssr;
+        cfg.vite = std::make_shared<const Vite>(ViteConfig{}, rig.files);
+        const Inertia app(std::move(cfg), rig.http);
+        MemorySession session;
+        Response out;
+        bool called = false;
+        const auto req = inertia ? FakeRequest::inertia(url) : FakeRequest::get(url);
+        app.render(req, session, "Home", {}, [&](Response r) {
+            out = std::move(r);
+            called = true;
+        });
+        REQUIRE(called);
+        return out;
+    }
+};
+
+} // namespace
+
+TEST_CASE("SSR output replaces the script element and root div", "[ssr][protocol:ssr.render]") {
+    RenderRig r;
+    r.rig.http->replies.push_back(reply(200, kSsrReply));
+    const auto res = r.get("/home");
+    REQUIRE(r.rig.http->posts.size() == 1);
+    REQUIRE(r.rig.http->posts[0].first == "http://127.0.0.1:13714/render");
+    const auto sent = Json::parse(r.rig.http->posts[0].second);
+    REQUIRE(sent["component"] == "Home");
+    REQUIRE(sent["url"] == "/home");
+    REQUIRE(res.status == 200);
+    REQUIRE(res.body.find("<head><meta charset=\"utf-8\"><title>a</title>\n<meta x></head>") !=
+            std::string::npos);
+    REQUIRE(res.body.find(R"(<div id="app" data-server-rendered="true">x</div>)") !=
+            std::string::npos);
+    REQUIRE(res.body.find("data-page=") == std::string::npos);
+}
+
+TEST_CASE("SSR failures serve the client-side page with a 200", "[ssr][protocol:ssr.fallback]") {
+    RenderRig r;
+    SECTION("connection error") { r.rig.http->replies.push_back(reply(0, "", "refused")); }
+    SECTION("status 500") { r.rig.http->replies.push_back(reply(500, kSsrReply)); }
+    SECTION("invalid json") { r.rig.http->replies.push_back(reply(200, "not json")); }
+    const auto res = r.get("/home");
+    REQUIRE(r.rig.http->posts.size() == 1);
+    REQUIRE(res.status == 200);
+    REQUIRE(res.body.find("data-page=") != std::string::npos);
+}
+
+TEST_CASE("excluded paths are not server-rendered", "[ssr]") {
+    RenderRig r;
+    r.rig.ssr.exceptPaths = {"/admin*"};
+    r.rig.http->replies.push_back(reply(200, kSsrReply));
+    const auto res = r.get("/admin/x?tab=1");
+    REQUIRE(r.rig.http->posts.empty());
+    REQUIRE(res.body.find("data-page=") != std::string::npos);
+}
+
+TEST_CASE("the query string is ignored when matching excluded paths", "[ssr]") {
+    RenderRig r;
+    r.rig.ssr.exceptPaths = {"/exact"};
+    r.rig.http->replies.push_back(reply(200, kSsrReply));
+    (void)r.get("/exact?x=1");
+    REQUIRE(r.rig.http->posts.empty());
+}
+
+TEST_CASE("disabled SSR never posts", "[ssr]") {
+    RenderRig r;
+    r.rig.ssr.enabled = false;
+    r.rig.http->replies.push_back(reply(200, kSsrReply));
+    const auto res = r.get("/home");
+    REQUIRE(r.rig.http->posts.empty());
+    REQUIRE(res.body.find("data-page=") != std::string::npos);
+}
+
+TEST_CASE("Inertia requests never call SSR", "[ssr]") {
+    RenderRig r;
+    r.rig.http->replies.push_back(reply(200, kSsrReply));
+    const auto res = r.get("/home", true);
+    REQUIRE(r.rig.http->posts.empty());
+    REQUIRE(res.header("Content-Type") == "application/json");
 }
