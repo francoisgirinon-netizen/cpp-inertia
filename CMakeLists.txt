@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
+# No C++ modules here; without this CMake wants clang-scan-deps, which the toolchain lacks and
+# which makes every try_compile (FindThreads, needed by Drogon) fail.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 project(cpp_inertia VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -25,6 +28,9 @@ target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(inertia_core PRIVATE inertia_warnings)
 
 add_subdirectory(adapters/fake)
+if(INERTIA_BUILD_DROGON)
+    add_subdirectory(adapters/drogon)
+endif()
 
 if(INERTIA_BUILD_TESTS)
     enable_testing()
@@ -45,6 +51,9 @@ if(INERTIA_BUILD_TESTS)
     inertia_add_protocol_tests(inertia_core_tests)
 
     add_subdirectory(tests/conformance)
+    if(INERTIA_BUILD_DROGON)
+        add_subdirectory(tests/drogon)
+    endif()
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     # Deferred so that every test target registered in later subdirectories is included.
