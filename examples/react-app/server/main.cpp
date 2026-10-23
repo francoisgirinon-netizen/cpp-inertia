@@ -78,6 +78,7 @@ int main() {
     example::registerExternal();
     example::registerFragment();
     example::registerProps();
+    example::registerLogin();
 
     // Must come last: Inertia is immutable once installed.
     inertia::drogon::install(inertiaApp);

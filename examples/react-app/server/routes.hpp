@@ -12,5 +12,6 @@ void registerHistory();
 void registerExternal();
 void registerFragment();
 void registerProps();
+void registerLogin();
 
 } // namespace example
