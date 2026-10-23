@@ -27,11 +27,14 @@ class Vite {
     // Trimmed content of publicDir/hotFile without trailing slashes; nullopt when absent or blank.
     [[nodiscard]] std::optional<std::string> hotUrl() const;
 
-    // Dev tags when the hot file exists, else production tags; "" when neither is available.
+    // Dev tags when the hot file exists, else production tags from the manifest. A missing or
+    // malformed manifest yields "" and never throws.
     [[nodiscard]] std::string tags() const;
 
   private:
     [[nodiscard]] std::string devTags(const std::string &url) const;
+    [[nodiscard]] std::string prodTags() const;
+    [[nodiscard]] std::optional<std::string> manifestContent() const;
 
     ViteConfig cfg_;
     std::shared_ptr<const FileReader> files_;

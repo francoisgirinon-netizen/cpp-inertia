@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 using namespace inertia;
 
@@ -52,6 +53,71 @@ TEST_CASE("dev tags omit the refresh preamble when disabled", "[vite]") {
 
 TEST_CASE("no hot file and no manifest give empty tags without throwing", "[vite]") {
     const Vite vite(ViteConfig{}, makeFiles());
+    std::string tags;
+    REQUIRE_NOTHROW(tags = vite.tags());
+    REQUIRE(tags.empty());
+}
+
+namespace {
+
+constexpr std::string_view kManifestPath = "public/build/.vite/manifest.json";
+
+constexpr std::string_view kManifest = R"({
+  "src/app.tsx": {"file": "assets/app-1.js", "css": ["assets/app-1.css"], "imports": ["_vendor.js"]},
+  "_vendor.js": {"file": "assets/vendor-2.js", "css": ["assets/v.css"]}
+})";
+
+std::size_t countOf(const std::string &haystack, const std::string &needle) {
+    std::size_t count = 0;
+    for (auto pos = haystack.find(needle); pos != std::string::npos;
+         pos = haystack.find(needle, pos + needle.size())) {
+        ++count;
+    }
+    return count;
+}
+
+} // namespace
+
+TEST_CASE("prod tags come from the manifest with css, preloads and entry script", "[vite]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] = std::string(kManifest);
+    const Vite vite(ViteConfig{}, files);
+    const std::string expected =
+        R"V(<link rel="stylesheet" href="/build/assets/app-1.css">)V"
+        R"V(<link rel="stylesheet" href="/build/assets/v.css">)V"
+        R"V(<link rel="modulepreload" href="/build/assets/vendor-2.js">)V"
+        R"V(<script type="module" src="/build/assets/app-1.js"></script>)V";
+    REQUIRE(vite.tags() == expected);
+}
+
+TEST_CASE("prod tags visit shared imports once", "[vite]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] =
+        R"({"src/app.tsx": {"file": "a.js", "imports": ["_v.js"]},
+            "src/admin.tsx": {"file": "b.js", "imports": ["_v.js"]},
+            "_v.js": {"file": "v.js"}})";
+    ViteConfig cfg;
+    cfg.entries = {"src/app.tsx", "src/admin.tsx"};
+    const Vite vite(cfg, files);
+    const auto tags = vite.tags();
+    REQUIRE(countOf(tags, R"(href="/build/v.js")") == 1);
+    REQUIRE(countOf(tags, R"(src="/build/a.js")") == 1);
+    REQUIRE(countOf(tags, R"(src="/build/b.js")") == 1);
+}
+
+TEST_CASE("an entry missing from the manifest is skipped", "[vite]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] = std::string(kManifest);
+    ViteConfig cfg;
+    cfg.entries = {"src/unknown.tsx"};
+    const Vite vite(cfg, files);
+    REQUIRE(vite.tags().empty());
+}
+
+TEST_CASE("malformed manifest JSON is treated as missing and never throws", "[vite]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] = R"({"src/app.tsx": {"file":)";
+    const Vite vite(ViteConfig{}, files);
     std::string tags;
     REQUIRE_NOTHROW(tags = vite.tags());
     REQUIRE(tags.empty());
