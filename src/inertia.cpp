@@ -147,7 +147,12 @@ std::optional<Response> Inertia::handleVersion(const RequestView &req) const {
     return res;
 }
 
-void Inertia::finalize(const RequestView & /*req*/, Response &res) const {
+void Inertia::finalize(const RequestView &req, Response &res) const {
+    const auto method = req.method();
+    const bool seeOther = method == "PUT" || method == "PATCH" || method == "DELETE";
+    if (isInertia(req) && seeOther && res.status == 302) {
+        res.status = 303;
+    }
     auto items = headers::parseList(res.header(headers::kVary));
     const bool present = std::ranges::any_of(
         items, [](const auto &item) { return headers::iequals(item, headers::kInertia); });

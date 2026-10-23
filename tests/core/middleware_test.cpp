@@ -76,3 +76,34 @@ TEST_CASE("non-GET requests never get the version 409", "[middleware][protocol:v
         REQUIRE_FALSE(app.handleVersion(req).has_value());
     }
 }
+
+TEST_CASE("302 becomes 303 for Inertia PUT, PATCH and DELETE",
+          "[middleware][protocol:redirect.303]") {
+    const Inertia app{Config{}};
+    for (const char *verb : {"PUT", "PATCH", "DELETE"}) {
+        auto req = FakeRequest::inertia("/a");
+        req.verb = verb;
+        Response res = redirect("/done");
+        app.finalize(req, res);
+        REQUIRE(res.status == 303);
+        REQUIRE(res.header("Location").value_or("") == "/done");
+    }
+}
+
+TEST_CASE("302 stays 302 for Inertia POST", "[middleware][protocol:redirect.303]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a");
+    req.verb = "POST";
+    Response res = redirect("/done");
+    app.finalize(req, res);
+    REQUIRE(res.status == 302);
+}
+
+TEST_CASE("302 stays 302 for non-Inertia PUT", "[middleware][protocol:redirect.303]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::get("/a");
+    req.verb = "PUT";
+    Response res = redirect("/done");
+    app.finalize(req, res);
+    REQUIRE(res.status == 302);
+}

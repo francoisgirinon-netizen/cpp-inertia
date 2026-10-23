@@ -110,7 +110,7 @@ status = "done"
 id = "redirect.303"
 behavior = "Inertia 302 becomes 303 for PUT, PATCH and DELETE, but not for POST"
 source = "docs/inertia-protocol-v3.md#behaviors: 303"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "redirect.fragment"
