@@ -38,17 +38,9 @@ if(INERTIA_BUILD_TESTS)
     inertia_add_protocol_tests(inertia_core_tests)
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    get_property(_inertia_protocol_targets GLOBAL PROPERTY INERTIA_PROTOCOL_TEST_TARGETS)
-    set(_inertia_coverage_args --matrix ${CMAKE_CURRENT_SOURCE_DIR}/docs/protocol-coverage.toml)
-    foreach(_inertia_target IN LISTS _inertia_protocol_targets)
-        list(APPEND _inertia_coverage_args --tags-from $<TARGET_FILE:${_inertia_target}>)
-    endforeach()
-    if(INERTIA_COVERAGE_STRICT)
-        list(APPEND _inertia_coverage_args --strict)
-    endif()
-    add_test(NAME coverage_check
-             COMMAND Python3::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/tools/coverage_check.py
-                     ${_inertia_coverage_args})
+    # Deferred so that every test target registered in later subdirectories is included.
+    cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL inertia_register_coverage_check
+                   ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR})
 
     add_test(NAME core_has_no_drogon
              COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
