@@ -439,3 +439,161 @@ TEST_CASE("a deferred scroll prop emits no scrollProps until loaded",
     REQUIRE(loaded["scrollProps"].contains("f"));
     REQUIRE(loaded["props"]["f"]["data"] == Json::array({1, 2}));
 }
+
+// -- Version -------------------------------------------------------------------------------------
+
+TEST_CASE("a stale version on an Inertia GET gets 409 with the location to reload",
+          "[conformance][protocol:version.mismatch]") {
+    const auto res = send(inertiaRequest("/page?b=1", {{"X-Inertia-Version", "old"}}));
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").value_or("").ends_with("/page?b=1"));
+    REQUIRE(res.header("X-Inertia-Version") == "v1");
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+    REQUIRE(res.body.empty());
+}
+
+TEST_CASE("a matching version, or a first visit, never gets the version 409",
+          "[conformance][protocol:version.mismatch]") {
+    REQUIRE(send(inertiaRequest("/page")).status == 200);
+    REQUIRE(send(plainRequest("/page", "GET", {{"X-Inertia-Version", "old"}})).status == 200);
+}
+
+TEST_CASE("non-GET requests never get the version 409", "[conformance][protocol:version.non-get]") {
+    for (const char *verb : {"POST", "PUT", "PATCH", "DELETE"}) {
+        INFO(verb);
+        const auto res =
+            send(inertiaRequest("/update-redirect", {{"X-Inertia-Version", "old"}}, verb));
+        REQUIRE(res.status != 409);
+    }
+}
+
+// -- Redirects and empty responses ---------------------------------------------------------------
+
+TEST_CASE("302 becomes 303 for Inertia PUT, PATCH and DELETE but not POST",
+          "[conformance][protocol:redirect.303]") {
+    for (const char *verb : {"PUT", "PATCH", "DELETE"}) {
+        INFO(verb);
+        const auto res = send(inertiaRequest("/update-redirect", {}, verb));
+        REQUIRE(res.status == 303);
+        REQUIRE(res.header("Location") == "/page");
+    }
+    REQUIRE(send(inertiaRequest("/update-redirect", {}, "POST")).status == 302);
+}
+
+TEST_CASE("302 stays 302 for a non-Inertia PUT", "[conformance][protocol:redirect.303]") {
+    const auto res = send(plainRequest("/update-redirect", "PUT"));
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location") == "/page");
+}
+
+TEST_CASE("an Inertia redirect with a fragment becomes 409 with X-Inertia-Redirect",
+          "[conformance][protocol:redirect.fragment]") {
+    reset();
+    const auto res = send(inertiaRequest("/fragment", {}, "POST"));
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Redirect") == "/page#section");
+    REQUIRE_FALSE(res.header("Location").has_value());
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+    REQUIRE(res.body.empty());
+}
+
+TEST_CASE("a fragment redirect keeps its status for prefetch and non-Inertia requests",
+          "[conformance][protocol:redirect.fragment]") {
+    reset();
+    const auto prefetch = send(inertiaRequest("/fragment", {{"Purpose", "prefetch"}}, "POST"));
+    REQUIRE(prefetch.status == 302);
+    REQUIRE(prefetch.header("Location") == "/page#section");
+    const auto plain = send(plainRequest("/fragment", "POST"));
+    REQUIRE(plain.status == 302);
+    REQUIRE(plain.header("Location") == "/page#section");
+}
+
+TEST_CASE("an external location is a 409 for Inertia and a 302 otherwise",
+          "[conformance][protocol:redirect.external]") {
+    const auto inertia = send(inertiaRequest("/external"));
+    REQUIRE(inertia.status == 409);
+    REQUIRE(inertia.header("X-Inertia-Location") == "https://example.com/away");
+    REQUIRE_FALSE(inertia.header("X-Inertia").has_value());
+    REQUIRE(inertia.body.empty());
+
+    const auto plain = send(plainRequest("/external"));
+    REQUIRE(plain.status == 302);
+    REQUIRE(plain.header("Location") == "https://example.com/away");
+}
+
+TEST_CASE("an empty Inertia 200 redirects to the Referer, or to / without one",
+          "[conformance][protocol:response.empty]") {
+    const auto withReferer = send(inertiaRequest("/empty", {{"Referer", "http://localhost/prev"}}));
+    REQUIRE(withReferer.status == 302);
+    REQUIRE(withReferer.header("Location") == "http://localhost/prev");
+
+    const auto without = send(inertiaRequest("/empty"));
+    REQUIRE(without.status == 302);
+    REQUIRE(without.header("Location") == "/");
+}
+
+TEST_CASE("a body of \"0\" is not an empty response", "[conformance][protocol:response.empty]") {
+    const auto res = send(inertiaRequest("/zero"));
+    REQUIRE(res.status == 200);
+    REQUIRE(res.body == "0");
+}
+
+TEST_CASE("an empty non-Inertia 200 is left alone", "[conformance][protocol:response.empty]") {
+    REQUIRE(send(plainRequest("/empty")).status == 200);
+}
+
+// -- Session-backed state: errors, flash and history flags ---------------------------------------
+
+TEST_CASE("errors is an empty object without validation errors",
+          "[conformance][protocol:errors.empty]") {
+    reset();
+    const auto errors = visit("/form")["props"]["errors"];
+    REQUIRE(errors.is_object());
+    REQUIRE(errors.empty());
+}
+
+TEST_CASE("validation errors map to the first message and are consumed once",
+          "[conformance][protocol:errors.first-message]") {
+    reset();
+    const auto stored = send(inertiaRequest("/errors", {}, "POST"));
+    REQUIRE(stored.status == 302);
+    REQUIRE(stored.header("Location") == "/form");
+    REQUIRE(dumpJson(visit("/form")["props"]["errors"]) == R"({"name":"req"})");
+    REQUIRE(visit("/form")["props"]["errors"].empty());
+}
+
+TEST_CASE("validation errors are scoped by the error bag header",
+          "[conformance][protocol:errors.bag]") {
+    reset();
+    send(inertiaRequest("/errors", {}, "POST"));
+    const auto page = visit("/form", {{"X-Inertia-Error-Bag", "login"}});
+    REQUIRE(dumpJson(page["props"]["errors"]) == R"({"login":{"name":"req"}})");
+}
+
+TEST_CASE("flash data is emitted once and merged", "[conformance][protocol:page.flash]") {
+    reset();
+    REQUIRE_FALSE(visit("/form").contains("flash"));
+    send(inertiaRequest("/flash", {}, "POST"));
+    REQUIRE(dumpJson(visit("/form")["flash"]) == R"({"notice":"saved","n":2})");
+    REQUIRE_FALSE(visit("/form").contains("flash"));
+}
+
+TEST_CASE("clearHistory is emitted once", "[conformance][protocol:page.clear-history]") {
+    reset();
+    REQUIRE_FALSE(visit("/page").contains("clearHistory"));
+    send(inertiaRequest("/clear-history", {}, "POST"));
+    REQUIRE(visit("/page")["clearHistory"] == true);
+    REQUIRE_FALSE(visit("/page").contains("clearHistory"));
+}
+
+TEST_CASE("preserveFragment is emitted once", "[conformance][protocol:page.preserve-fragment]") {
+    reset();
+    REQUIRE_FALSE(visit("/page").contains("preserveFragment"));
+    send(inertiaRequest("/fragment", {}, "POST"));
+    REQUIRE(visit("/page")["preserveFragment"] == true);
+    REQUIRE_FALSE(visit("/page").contains("preserveFragment"));
+}
+
+TEST_CASE("an unknown route is a 404", "[conformance]") {
+    REQUIRE(send(plainRequest("/nowhere")).status == 404);
+}
