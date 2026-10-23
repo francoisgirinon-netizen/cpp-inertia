@@ -2,6 +2,7 @@
 #include <inertia/headers.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <initializer_list>
 #include <iterator>
@@ -120,7 +121,11 @@ class Walker {
             return walkable ? resolveObject(prop, path, false, false) : std::nullopt;
         }
         addMergeMetadata(prop, path);
-        if (prop.deferGroup() && !ctx_->partial) {
+        if (addOnceMetadata(prop, path)) {
+            return std::nullopt; // already cached by the client
+        }
+        const bool deferredNow = prop.deferGroup() && !ctx_->partial;
+        if (deferredNow) {
             addDeferred(prop, path);
             return std::nullopt;
         }
@@ -183,6 +188,26 @@ class Walker {
         for (const auto &match : spec->matchOn) {
             meta.matchPropsOn.push_back(joinPath({path, match.subPath, match.key}));
         }
+    }
+
+    // Records the onceProps entry. Returns true when the client already holds the prop: an
+    // Inertia full visit, not fresh, whose key is in X-Inertia-Except-Once-Props.
+    bool addOnceMetadata(const Prop &prop, const std::string &path) {
+        const auto &spec = prop.onceSpec();
+        if (!spec) {
+            return false;
+        }
+        const std::string key = spec->key.value_or(path);
+        Json expiresAt = nullptr;
+        if (spec->ttl) {
+            const auto expiry = ctx_->now + *spec->ttl;
+            expiresAt =
+                std::chrono::duration_cast<std::chrono::milliseconds>(expiry.time_since_epoch())
+                    .count();
+        }
+        out_.meta.onceProps[key] = Json{{"prop", path}, {"expiresAt", std::move(expiresAt)}};
+        return ctx_->inertia && !ctx_->partial && !spec->fresh &&
+               std::ranges::find(ctx_->exceptOnce, key) != ctx_->exceptOnce.end();
     }
 
     void addDeferred(const Prop &prop, const std::string &path) {

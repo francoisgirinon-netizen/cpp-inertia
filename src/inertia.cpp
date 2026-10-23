@@ -47,6 +47,9 @@ void emitMetadata(Json &page, const detail::Metadata &meta) {
         page["deferredProps"] = std::move(groups);
     }
     list("rescuedProps", meta.rescuedProps);
+    if (!meta.onceProps.empty()) {
+        page["onceProps"] = meta.onceProps;
+    }
 }
 
 } // namespace

@@ -254,37 +254,37 @@ status = "done"
 id = "once.metadata"
 behavior = "onceProps entry carries prop and expiresAt, the latter from ttl in milliseconds or null"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.except-header"
 behavior = "Once prop is dropped from props on non-partial, non-fresh Inertia requests whose key is in X-Inertia-Except-Once-Props, but its onceProps entry stays"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.partial-ignores-header"
 behavior = "X-Inertia-Except-Once-Props is ignored on partial reloads"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.fresh"
 behavior = "A fresh once prop is resolved even when its key is listed in X-Inertia-Except-Once-Props"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.custom-key"
 behavior = "Once custom key, not the prop path, is matched against X-Inertia-Except-Once-Props"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.defer"
 behavior = "A deferred once prop already loaded has no deferredProps entry but keeps its onceProps entry"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "scroll.metadata"
