@@ -190,3 +190,19 @@ TEST_CASE("always inside an unselected object keeps only its always descendants"
     const Props props{{"o", object({{"x", always(1)}, {"y", 2}})}};
     REQUIRE(partial(props, Partial{}.only("z")) == R"({"o":{"x":1},"errors":{}})");
 }
+
+TEST_CASE("plain JSON object values are filtered by sub-path", "[partial][protocol:partial.only]") {
+    const Props props{{"a", Json::object({{"x", 1}, {"y", 2}})}};
+    REQUIRE(partial(props, Partial{}.only("a.x")) == R"({"a":{"x":1},"errors":{}})");
+    REQUIRE(partial(props, Partial{}.except("a.y")) == R"({"a":{"x":1},"errors":{}})");
+    REQUIRE(partial(props, Partial{}.only("a")) == R"({"a":{"x":1,"y":2},"errors":{}})");
+}
+
+TEST_CASE("nested plain JSON objects are filtered at depth", "[partial][protocol:partial.except]") {
+    const Props props{{"auth", Json::object({{"user", Json::object({{"id", 1}, {"n", "x"}})},
+                                             {"refresh_token", "r"}})}};
+    REQUIRE(partial(props, Partial{}.except("auth.refresh_token")) ==
+            R"({"auth":{"user":{"id":1,"n":"x"}},"errors":{}})");
+    REQUIRE(partial(props, Partial{}.only("auth.user.id")) ==
+            R"({"auth":{"user":{"id":1}},"errors":{}})");
+}

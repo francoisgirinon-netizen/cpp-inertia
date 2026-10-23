@@ -95,13 +95,18 @@ class Walker {
         if (prop.isOptional() && !ctx_->partial) {
             return std::nullopt;
         }
+        // A plain JSON object value is filtered by sub-path like an Object prop.
+        const bool walkable = prop.kind() == Prop::Kind::Object ||
+                              (prop.kind() == Prop::Kind::Value && prop.value().is_object());
         if (!bypass && !selected(path)) {
             // An unselected object may still hold always descendants, which bypass the filter.
-            return prop.kind() == Prop::Kind::Object ? resolveObject(prop, path, false, false)
-                                                     : std::nullopt;
+            return walkable ? resolveObject(prop, path, false, false) : std::nullopt;
         }
         switch (prop.kind()) {
         case Prop::Kind::Value:
+            if (walkable && !bypass) {
+                return resolveObject(prop, path, false, true);
+            }
             return std::optional<Json>(std::in_place, prop.value());
         case Prop::Kind::Closure:
             return resolve(prop.resolver()(), path, true);
@@ -118,7 +123,8 @@ class Walker {
     std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass,
                                       bool selectedSelf) {
         Json result = Json::object();
-        for (const auto &[key, child] : prop.children()) {
+        const Props children = childrenForMerge(prop);
+        for (const auto &[key, child] : children) {
             std::string childPath = path;
             if (!childPath.empty()) {
                 childPath += '.';
@@ -129,7 +135,7 @@ class Walker {
                 result[key] = std::move(*value);
             }
         }
-        if (result.empty() && !bypass && (!selectedSelf || !prop.children().empty())) {
+        if (result.empty() && !bypass && (!selectedSelf || !children.empty())) {
             return std::nullopt; // everything below was filtered out
         }
         return std::optional<Json>(std::in_place, std::move(result));
