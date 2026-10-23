@@ -11,6 +11,7 @@ namespace inertia {
 namespace {
 constexpr std::string_view kErrorsKey = "inertia.errors";
 constexpr std::string_view kClearHistoryKey = "inertia.clear_history";
+constexpr std::string_view kPreserveFragmentKey = "inertia.preserve_fragment";
 constexpr std::string_view kFlashKey = "inertia.flash_data";
 } // namespace
 
@@ -48,5 +49,9 @@ void flash(SessionStore &session, std::string key, Json value) {
 }
 
 void clearHistory(SessionStore &session) { session.put(std::string(kClearHistoryKey), true); }
+
+void preserveFragment(SessionStore &session) {
+    session.put(std::string(kPreserveFragmentKey), true);
+}
 
 } // namespace inertia

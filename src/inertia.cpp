@@ -142,6 +142,9 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }
+    if (session.pull("inertia.preserve_fragment")) {
+        page["preserveFragment"] = true;
+    }
     const auto flashData = session.pull("inertia.flash_data");
     if (flashData && flashData->is_object() && !flashData->empty()) {
         page["flash"] = *flashData;

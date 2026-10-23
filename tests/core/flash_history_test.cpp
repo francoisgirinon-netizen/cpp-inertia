@@ -28,3 +28,12 @@ TEST_CASE("clearHistory is emitted once", "[history][protocol:page.clear-history
     REQUIRE(app.page(FakeRequest::inertia("/"), session, "C", {})["clearHistory"] == true);
     REQUIRE_FALSE(app.page(FakeRequest::inertia("/"), session, "C", {}).contains("clearHistory"));
 }
+
+TEST_CASE("preserveFragment is emitted once", "[history][protocol:page.preserve-fragment]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    preserveFragment(session);
+    REQUIRE(app.page(FakeRequest::inertia("/"), session, "C", {})["preserveFragment"] == true);
+    REQUIRE_FALSE(
+        app.page(FakeRequest::inertia("/"), session, "C", {}).contains("preserveFragment"));
+}

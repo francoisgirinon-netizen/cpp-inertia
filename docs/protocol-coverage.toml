@@ -68,7 +68,7 @@ status = "done"
 id = "page.preserve-fragment"
 behavior = "preserveFragment flag is emitted once, pulled from the inertia.preserve_fragment session key"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.flash"

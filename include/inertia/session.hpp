@@ -31,4 +31,7 @@ void flash(SessionStore &session, std::string key, Json value);
 // Sets "inertia.clear_history"; the next page render emits clearHistory once.
 void clearHistory(SessionStore &session);
 
+// Sets "inertia.preserve_fragment"; the next page render emits preserveFragment once.
+void preserveFragment(SessionStore &session);
+
 } // namespace inertia
