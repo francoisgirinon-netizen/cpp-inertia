@@ -109,3 +109,21 @@ TEST_CASE("invalid UTF-8 prop does not throw", "[page]") {
     REQUIRE_NOTHROW(res = renderOne(app, FakeRequest::inertia("/"), {{"s", std::string("\xff")}}));
     REQUIRE(res.status == 200);
 }
+
+TEST_CASE("finalize adds Vary: X-Inertia", "[page][protocol:vary.always]") {
+    const Inertia app{Config{}};
+    const auto req = FakeRequest::get("/");
+    const auto vary = [&](std::optional<std::string> initial) {
+        Response res;
+        if (initial) {
+            res.setHeader("Vary", *initial);
+        }
+        app.finalize(req, res);
+        return res.header("Vary").value_or("");
+    };
+    REQUIRE(vary(std::nullopt) == "X-Inertia");
+    REQUIRE(vary("Accept-Encoding") == "Accept-Encoding, X-Inertia");
+    REQUIRE(vary("X-Inertia") == "X-Inertia");
+    REQUIRE(vary("x-inertia") == "x-inertia");
+    REQUIRE(vary(", Accept") == "Accept, X-Inertia");
+}

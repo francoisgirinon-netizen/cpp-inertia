@@ -32,7 +32,7 @@ status = "done"
 id = "vary.always"
 behavior = "Every response carries Vary: X-Inertia, appended to an existing value and deduplicated"
 source = "docs/inertia-protocol-v3.md#headers: Response headers"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.required"

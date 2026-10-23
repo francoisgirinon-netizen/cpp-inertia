@@ -48,6 +48,9 @@ class Inertia {
     void render(const RequestView &req, SessionStore &session, std::string component, Props props,
                 std::function<void(Response)> done, RenderOptions opts = {}) const;
 
+    // Adds Vary: X-Inertia (merged with any existing value, deduplicated).
+    void finalize(const RequestView &req, Response &res) const;
+
   private:
     Config config_;
     std::shared_ptr<HttpClient> http_;

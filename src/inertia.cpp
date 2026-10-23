@@ -52,4 +52,21 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
 }
 // NOLINTEND(performance-unnecessary-value-param)
 
+void Inertia::finalize(const RequestView & /*req*/, Response &res) const {
+    auto items = headers::parseList(res.header(headers::kVary));
+    const bool present = std::ranges::any_of(
+        items, [](const auto &item) { return headers::iequals(item, headers::kInertia); });
+    if (!present) {
+        items.emplace_back(headers::kInertia);
+    }
+    std::string joined;
+    for (const auto &item : items) {
+        if (!joined.empty()) {
+            joined += ", ";
+        }
+        joined += item;
+    }
+    res.setHeader(std::string(headers::kVary), std::move(joined));
+}
+
 } // namespace inertia
