@@ -134,31 +134,31 @@ status = "todo"
 id = "partial.component-match"
 behavior = "Request is partial only when X-Inertia-Partial-Component equals the rendered component"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "partial.only"
 behavior = "only paths include the matching path, its descendants and its ancestors"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "partial.except"
 behavior = "except paths exclude the matching path and its descendants, and win over only"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "partial.dot-notation"
 behavior = "Prop paths are dot-paths; top-level dot keys unpack into nested objects, nested dot keys do not"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "partial.resolved-children"
 behavior = "Children of a value produced by resolving a closure bypass the partial filters"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "props.dot-keys"
