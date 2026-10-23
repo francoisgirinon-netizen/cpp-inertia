@@ -177,3 +177,16 @@ TEST_CASE("optional props resolve when selected", "[partial][protocol:optional.p
     REQUIRE(partial(props, Partial{}.only("b")) == R"({"b":2,"errors":{}})");
     REQUIRE(calls == 1);
 }
+
+TEST_CASE("always under a dot key survives an unrelated only",
+          "[partial][protocol:always.partial]") {
+    const Props props{{"a.b", always(1)}, {"a.c", 2}};
+    REQUIRE(partial(props, Partial{}.only("z")) == R"({"a":{"b":1},"errors":{}})");
+    REQUIRE(partial(props, Partial{}.except("a")) == R"({"a":{"b":1},"errors":{}})");
+}
+
+TEST_CASE("always inside an unselected object keeps only its always descendants",
+          "[partial][protocol:always.partial]") {
+    const Props props{{"o", object({{"x", always(1)}, {"y", 2}})}};
+    REQUIRE(partial(props, Partial{}.only("z")) == R"({"o":{"x":1},"errors":{}})");
+}

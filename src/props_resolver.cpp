@@ -80,11 +80,13 @@ class Walker {
     // here, keyed by `path`.
     std::optional<Json> resolve(const Prop &prop, const std::string &path, bool bypass) {
         bypass = bypass || prop.isAlways();
-        if (!bypass && !selected(path)) {
-            return std::nullopt;
-        }
         if (prop.isOptional() && !ctx_->partial) {
             return std::nullopt;
+        }
+        if (!bypass && !selected(path)) {
+            // An unselected object may still hold always descendants, which bypass the filter.
+            return prop.kind() == Prop::Kind::Object ? resolveObject(prop, path, false, false)
+                                                     : std::nullopt;
         }
         switch (prop.kind()) {
         case Prop::Kind::Value:
@@ -92,7 +94,7 @@ class Walker {
         case Prop::Kind::Closure:
             return resolve(prop.resolver()(), path, true);
         case Prop::Kind::Object:
-            return resolveObject(prop, path, bypass);
+            return resolveObject(prop, path, bypass, true);
         }
         return std::nullopt;
     }
@@ -101,7 +103,8 @@ class Walker {
     Resolved &result() { return out_; }
 
   private:
-    std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass) {
+    std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass,
+                                      bool selectedSelf) {
         Json result = Json::object();
         for (const auto &[key, child] : prop.children()) {
             std::string childPath = path;
@@ -114,7 +117,7 @@ class Walker {
                 result[key] = std::move(*value);
             }
         }
-        if (result.empty() && !prop.children().empty() && !bypass) {
+        if (result.empty() && !bypass && (!selectedSelf || !prop.children().empty())) {
             return std::nullopt; // everything below was filtered out
         }
         return std::optional<Json>(std::in_place, std::move(result));
