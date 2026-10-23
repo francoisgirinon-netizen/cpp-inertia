@@ -1,3 +1,5 @@
+# Project-local warning flags. Link it only through $<BUILD_LOCAL_INTERFACE:inertia_warnings> (or
+# privately from executables) so that neither the flags nor -Werror ever reach consumers.
 add_library(inertia_warnings INTERFACE)
 
 set(_inertia_common_warnings
@@ -13,13 +15,8 @@ set(_inertia_clang_warnings
 set(_inertia_gcc_warnings
     -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast)
 
-target_compile_options(inertia_warnings INTERFACE ${_inertia_common_warnings})
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(inertia_warnings INTERFACE ${_inertia_clang_warnings})
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(inertia_warnings INTERFACE ${_inertia_gcc_warnings})
-endif()
-
-if(INERTIA_WARNINGS_AS_ERRORS)
-    target_compile_options(inertia_warnings INTERFACE -Werror)
-endif()
+target_compile_options(inertia_warnings INTERFACE
+    "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang,GNU>:${_inertia_common_warnings}>"
+    "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:${_inertia_clang_warnings}>"
+    "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:${_inertia_gcc_warnings}>"
+    "$<$<AND:$<BOOL:${INERTIA_WARNINGS_AS_ERRORS}>,$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang,GNU>>:-Werror>")
