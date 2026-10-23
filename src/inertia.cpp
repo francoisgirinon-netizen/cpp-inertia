@@ -1,30 +1,75 @@
+#include <inertia/detail/props_resolver.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/inertia.hpp>
 
 #include <algorithm>
+#include <iterator>
+#include <span>
 #include <string>
 #include <utility>
 
 namespace inertia {
+
+namespace {
+
+// Top-level keys of the shared props (a dot key contributes its first segment), then "errors",
+// de-duplicated and in order.
+Json sharedKeys(std::span<const std::pair<std::string, Prop>> shared) {
+    std::vector<std::string> keys;
+    const auto add = [&keys](std::string key) {
+        if (std::ranges::find(keys, key) == keys.end()) {
+            keys.push_back(std::move(key));
+        }
+    };
+    for (const auto &entry : shared) {
+        add(entry.first.substr(0, entry.first.find('.')));
+    }
+    add("errors");
+    return keys;
+}
+
+} // namespace
 
 Inertia::Inertia(Config config, std::shared_ptr<HttpClient> http)
     : config_(std::move(config)), http_(std::move(http)) {}
 
 std::string Inertia::version() const { return config_.version ? config_.version() : std::string{}; }
 
-Json Inertia::page(const RequestView &req, SessionStore & /*session*/, std::string_view component,
+void Inertia::share(std::string key, Prop value) {
+    shared_.emplace_back(std::move(key), std::move(value));
+}
+
+void Inertia::shareWith(std::function<Props(const RequestView &, SessionStore &)> perRequest) {
+    perRequest_.push_back(std::move(perRequest));
+}
+
+void Inertia::shareOnce(std::string key, Resolver fn) {
+    share(std::move(key), once(std::move(fn)));
+}
+
+Json Inertia::page(const RequestView &req, SessionStore &session, std::string_view component,
                    const Props &props, const RenderOptions &opts) const {
-    Json propsJson = Json::object();
-    for (const auto &[key, value] : props) {
-        propsJson[key] = value;
+    Props all = shared_;
+    for (const auto &perRequest : perRequest_) {
+        auto extra = perRequest(req, session);
+        std::ranges::move(extra, std::back_inserter(all));
     }
-    propsJson["errors"] = Json::object();
+    const auto sharedCount = all.size();
+    all.insert(all.end(), props.begin(), props.end());
+
+    auto resolved = detail::resolveProps(all, detail::makeContext(req, component));
+    // errors stays the last key; a real always-prop in a later task.
+    resolved.props.erase("errors");
+    resolved.props["errors"] = Json::object();
 
     Json page = Json::object();
     page["component"] = std::string(component);
-    page["props"] = std::move(propsJson);
+    page["props"] = std::move(resolved.props);
     page["url"] = req.url();
     page["version"] = version();
+    if (config_.exposeSharedPropKeys && sharedCount > 0) {
+        page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
+    }
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }

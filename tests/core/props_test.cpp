@@ -1,10 +1,23 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <inertia/fake/fake.hpp>
+#include <inertia/inertia.hpp>
 #include <inertia/props.hpp>
 
 #include <chrono>
 
 using namespace inertia;
+using namespace inertia::fake;
+
+namespace {
+
+std::string propsOf(const Props &props) {
+    const Inertia app{Config{}};
+    MemorySession session;
+    return dumpJson(app.page(FakeRequest::inertia("/"), session, "Page", props)["props"]);
+}
+
+} // namespace
 
 TEST_CASE("plain values become value props", "[props]") {
     const Prop number = 1;
@@ -88,4 +101,33 @@ TEST_CASE("scroll and rescue modifiers", "[props]") {
     REQUIRE(scrolled.scrollSpec().value_or(ScrollSpec{}).wrapper == "rows");
     REQUIRE_FALSE(Prop{1}.rescues());
     REQUIRE(defer([] { return 1; }).rescue().rescues());
+}
+
+TEST_CASE("top-level dot keys unpack into nested objects", "[props][protocol:props.dot-keys]") {
+    REQUIRE(propsOf({{"a.b", 1}, {"a.c", 2}}) == R"({"a":{"b":1,"c":2},"errors":{}})");
+    REQUIRE(propsOf({{"a.b.c", 1}, {"a.b.d", 2}, {"e", 3}}) ==
+            R"({"a":{"b":{"c":1,"d":2}},"e":3,"errors":{}})");
+}
+
+TEST_CASE("nested dot keys are not unpacked", "[props][protocol:props.dot-keys]") {
+    REQUIRE(propsOf({{"a", object({{"x.y", 1}})}}) == R"({"a":{"x.y":1},"errors":{}})");
+}
+
+TEST_CASE("a later plain key replaces an earlier one in place", "[props]") {
+    REQUIRE(propsOf({{"a", 1}, {"b", 2}, {"a", 3}}) == R"({"a":3,"b":2,"errors":{}})");
+}
+
+TEST_CASE("closures resolve lazily and nested", "[props]") {
+    REQUIRE(propsOf({{"a", [] { return object({{"n", [] { return 1; }}}); }}}) ==
+            R"({"a":{"n":1},"errors":{}})");
+}
+
+TEST_CASE("plain closures resolve on full visits", "[props]") {
+    int calls = 0;
+    const auto out = propsOf({{"a", [&calls] {
+                                   ++calls;
+                                   return Json::array({1, 2});
+                               }}});
+    REQUIRE(out == R"({"a":[1,2],"errors":{}})");
+    REQUIRE(calls == 1);
 }

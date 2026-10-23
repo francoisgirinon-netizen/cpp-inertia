@@ -164,7 +164,7 @@ status = "todo"
 id = "props.dot-keys"
 behavior = "Top-level dot keys are unpacked into nested objects before resolution"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "always.partial"
