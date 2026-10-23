@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.31...4.4)
 # No C++ modules here; without this CMake wants clang-scan-deps, which the toolchain lacks and
 # which makes every try_compile (FindThreads, needed by Drogon) fail.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-project(cpp_inertia VERSION 0.1.0 LANGUAGES CXX)
+project(inertia VERSION 0.1.0
+        DESCRIPTION "Inertia.js v3 server protocol implementation for C++20"
+        LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
