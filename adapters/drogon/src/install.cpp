@@ -129,17 +129,34 @@ void attachCsrfCookie(const CsrfOptions &csrf, const ::drogon::HttpRequestPtr &r
     return res;
 }
 
-// finalize() only edits headers, so it is given a body-less copy and its result is written back.
+bool isManagedElsewhere(std::string_view name) {
+    // Content-Type and cookies are not plain headers in Drogon's response model.
+    return headers::iequals(name, "Content-Type") || headers::iequals(name, "Set-Cookie");
+}
+
+// Runs Inertia::finalize on the response and writes its edits (status, body, headers) back.
 void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &req,
                       const ::drogon::HttpResponsePtr &res) {
-    Response meta;
-    meta.status = static_cast<int>(res->statusCode());
-    for (const auto &[name, value] : res->headers()) {
-        meta.headers.emplace_back(name, value);
-    }
+    Response meta = fromDrogon(res);
+    const int status = meta.status;
+    const std::size_t bodySize = meta.body.size();
+    const Response before{.status = status, .headers = meta.headers, .body = {}};
+
     inertia.finalize(DrogonRequest{req}, meta);
+
+    if (meta.status != status) {
+        res->setStatusCode(static_cast<::drogon::HttpStatusCode>(meta.status));
+    }
+    if (meta.body.size() != bodySize) {
+        res->setBody(meta.body);
+    }
+    for (const auto &[name, value] : before.headers) {
+        if (!isManagedElsewhere(name) && !meta.header(name)) {
+            res->removeHeader(name);
+        }
+    }
     for (const auto &[name, value] : meta.headers) {
-        if (res->getHeader(name) != value) {
+        if (!isManagedElsewhere(name) && before.header(name) != value) {
             res->removeHeader(name);
             res->addHeader(name, value);
         }

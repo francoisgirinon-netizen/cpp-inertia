@@ -81,3 +81,17 @@ TEST_CASE("throwing prop yields 500 and server keeps serving", "[drogon]") {
     CHECK(after.status == 200);
     CHECK(PageJson::parse(after.body)["props"]["title"] == "Home");
 }
+
+TEST_CASE("finalize edits to status and headers reach the wire", "[drogon]") {
+    Client client;
+    // An empty 200 to an Inertia request becomes a redirect back to the Referer.
+    auto req = inertiaGet("/empty");
+    req.headers.emplace_back("Referer", "/came-from");
+    const auto redirected = client.send(req);
+    CHECK(redirected.status == 302);
+    CHECK(redirected.header("Location") == "/came-from");
+    CHECK(redirected.header("Vary").find("X-Inertia") != std::string::npos);
+
+    // The same route is untouched for a plain request.
+    CHECK(client.get("/empty").status == 200);
+}

@@ -94,6 +94,11 @@ void configureApp() {
             std::move(done)(text("submitted"));
         },
         {::drogon::Post, ::drogon::Put, ::drogon::Patch, ::drogon::Delete, ::drogon::Get});
+    app.registerHandler("/empty",
+                        [](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            std::move(done)(::drogon::HttpResponse::newHttpResponse());
+                        },
+                        {::drogon::Get});
     app.registerHandler("/ping",
                         [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
                             std::move(done)(text("pong"));
