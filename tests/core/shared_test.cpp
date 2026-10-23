@@ -101,3 +101,33 @@ TEST_CASE("metadata keys are omitted when empty", "[shared][protocol:page.metada
     const auto page = pageOf(app, {{"a", 1}, {"b", optional([] { return 2; })}});
     REQUIRE(keysOf(page) == "component,props,url,version");
 }
+
+TEST_CASE("a page dot key merges into a shared closure lazily", "[shared]") {
+    Inertia app{Config{}};
+    int calls = 0;
+    app.share("auth", [&calls] {
+        ++calls;
+        return Json::object({{"user", "u"}});
+    });
+    REQUIRE(dumpJson(pageOf(app, {{"auth.token", "t"}})["props"]) ==
+            R"({"auth":{"user":"u","token":"t"},"errors":{}})");
+    REQUIRE(calls == 1);
+
+    MemorySession session;
+    auto req = FakeRequest::inertia("/");
+    req.with("X-Inertia-Partial-Component", "Page").with("X-Inertia-Partial-Data", "other");
+    const auto page = app.page(req, session, "Page", {{"auth.token", "t"}, {"other", 1}});
+    REQUIRE(dumpJson(page["props"]) == R"({"other":1,"errors":{}})");
+    REQUIRE(calls == 1);
+}
+
+TEST_CASE("a dot key merged into a prop keeps its flags", "[shared]") {
+    Inertia app{Config{}};
+    app.share("auth", always(Json::object({{"user", "u"}})));
+    MemorySession session;
+    auto req = FakeRequest::inertia("/");
+    req.with("X-Inertia-Partial-Component", "Page").with("X-Inertia-Partial-Data", "other");
+    const auto page = app.page(req, session, "Page", {{"auth.token", "t"}, {"other", 1}});
+    REQUIRE(dumpJson(page["props"]) ==
+            R"({"auth":{"user":"u","token":"t"},"other":1,"errors":{}})");
+}

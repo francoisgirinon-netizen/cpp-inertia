@@ -86,6 +86,24 @@ Prop Prop::rescue() && {
     return std::move(*this);
 }
 
+Prop Prop::withChildren(Props children) const {
+    Prop p = *this;
+    p.kind_ = Kind::Object;
+    p.value_ = Json();
+    p.resolver_ = nullptr;
+    p.children_ = std::move(children);
+    return p;
+}
+
+Prop Prop::withResolver(Resolver fn) const {
+    Prop p = *this;
+    p.kind_ = Kind::Closure;
+    p.value_ = Json();
+    p.children_.clear();
+    p.resolver_ = std::move(fn);
+    return p;
+}
+
 Prop object(Props children) {
     Prop p{Json()};
     p.kind_ = Prop::Kind::Object;

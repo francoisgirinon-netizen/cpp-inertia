@@ -84,6 +84,10 @@ class Prop {
     [[nodiscard]] Prop deepMerge() &&;
     [[nodiscard]] Prop rescue() &&;
 
+    // Copies with the content replaced, keeping the category and metadata modifiers.
+    [[nodiscard]] Prop withChildren(Props children) const;
+    [[nodiscard]] Prop withResolver(Resolver fn) const;
+
     // Read access for the resolver.
     [[nodiscard]] Kind kind() const { return kind_; }
     [[nodiscard]] const Json &value() const { return value_; }

@@ -47,8 +47,10 @@ Props childrenForMerge(const Prop &existing) {
     return children;
 }
 
+Prop mergeInto(const Prop &existing, std::span<const std::string> segments, Prop value);
+
 // Inserts `value` at the dot-path `segments`, creating or extending nested objects. A plain key
-// replaces an existing entry in place; a dot key merges into the existing nested object.
+// replaces an existing entry in place; a dot key merges into the existing nested prop.
 void insertPath(Props &out, std::span<const std::string> segments, Prop value) {
     const auto &head = segments.front();
     auto it = std::ranges::find(out, head, &Props::value_type::first);
@@ -60,14 +62,24 @@ void insertPath(Props &out, std::span<const std::string> segments, Prop value) {
         }
         return;
     }
-    Props children;
     if (it == out.end()) {
-        it = out.emplace(out.end(), head, Prop(Json()));
-    } else {
-        children = childrenForMerge(it->second);
+        it = out.emplace(out.end(), head, object({}));
     }
-    insertPath(children, segments.subspan(1), std::move(value));
-    it->second = object(std::move(children));
+    it->second = mergeInto(it->second, segments.subspan(1), std::move(value));
+}
+
+// Inserts `value` below `existing`, which keeps its category and modifiers. A closure stays lazy:
+// the original runs first, then the child is inserted into its result.
+Prop mergeInto(const Prop &existing, std::span<const std::string> segments, Prop value) {
+    if (existing.kind() == Prop::Kind::Closure) {
+        return existing.withResolver(
+            [original = existing.resolver(),
+             rest = std::vector<std::string>(segments.begin(), segments.end()),
+             child = std::move(value)]() -> Prop { return mergeInto(original(), rest, child); });
+    }
+    Props children = childrenForMerge(existing);
+    insertPath(children, segments, std::move(value));
+    return existing.withChildren(std::move(children));
 }
 
 class Walker {
