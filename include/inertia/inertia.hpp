@@ -8,6 +8,7 @@
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -31,6 +32,8 @@ struct Config {
     bool preserveBigIntegers = false;
     bool withAllErrors = false;
     RootTemplate rootTemplate = defaultRootTemplate;
+    // Test hook: pins the time used for once-prop expiry. Empty -> system clock.
+    std::function<std::chrono::system_clock::time_point()> clock;
 };
 
 class Inertia {

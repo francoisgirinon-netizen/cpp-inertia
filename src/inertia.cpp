@@ -78,7 +78,11 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     const auto sharedCount = all.size();
     all.insert(all.end(), props.begin(), props.end());
 
-    auto resolved = detail::resolveProps(all, detail::makeContext(req, component));
+    auto ctx = detail::makeContext(req, component);
+    if (config_.clock) {
+        ctx.now = config_.clock();
+    }
+    auto resolved = detail::resolveProps(all, ctx);
     // errors stays the last key; a real always-prop in a later task.
     resolved.props.erase("errors");
     resolved.props["errors"] = Json::object();
