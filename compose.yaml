@@ -1,0 +1,37 @@
+name: cpp-inertia
+
+# Single isolated dev environment: clang 23 (mise), cmake, ninja, vcpkg, bun, Playwright.
+# Everything runs through scripts/dev, which exports UID/GID and calls `docker compose run --rm dev …`.
+# Ports are only published with `docker compose run --service-ports` (or `docker compose up dev`),
+# so one-shot commands (hooks, builds) never clash with a running dev server.
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    image: cpp-inertia-dev:latest
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /src
+    init: true
+    stdin_open: true
+    tty: true
+    command: ["bash"]
+    environment:
+      VCPKG_DEFAULT_BINARY_CACHE: /home/dev/.cache/vcpkg/archives
+      BUN_INSTALL_CACHE_DIR: /home/dev/.bun/install/cache
+      INERTIA_TEST_PORT: "18080"
+    volumes:
+      - .:/src
+      - vcpkg-cache:/home/dev/.cache/vcpkg
+      - bun-cache:/home/dev/.bun/install/cache
+    ports:
+      - "8080:8080"   # Drogon example server
+      - "5173:5173"   # Vite dev server (must listen on 0.0.0.0)
+      - "13714:13714" # Inertia SSR server
+
+volumes:
+  vcpkg-cache:
+  bun-cache:
