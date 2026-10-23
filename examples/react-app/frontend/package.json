@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --ssr src/ssr.tsx",
+    "ssr": "bun dist/ssr/ssr.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -29,14 +29,16 @@ function hotFilePlugin(): Plugin {
   }
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, isSsrBuild }) => ({
   base: command === 'build' ? '/build/' : '/',
   plugins: [react(), hotFilePlugin()],
   server: { host: '0.0.0.0', port: 5173, strictPort: true, origin: devUrl },
   build: {
-    manifest: true,
-    outDir: '../server/public/build',
+    // `vite build` writes the client bundle where the server serves it; `vite build --ssr` writes
+    // the Node/Bun SSR bundle (dist/ssr/ssr.js) elsewhere, so it is never served to browsers.
+    manifest: !isSsrBuild,
+    outDir: isSsrBuild ? 'dist/ssr' : '../server/public/build',
     emptyOutDir: true,
-    rollupOptions: { input: 'src/app.tsx' },
+    rollupOptions: { input: isSsrBuild ? 'src/ssr.tsx' : 'src/app.tsx' },
   },
 }))
