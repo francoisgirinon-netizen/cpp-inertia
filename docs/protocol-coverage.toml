@@ -170,19 +170,19 @@ status = "done"
 id = "always.partial"
 behavior = "Always props are resolved on full and partial visits and bypass both filters"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "optional.full"
 behavior = "Optional props are skipped with no metadata on a full visit"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "optional.partial"
 behavior = "Optional props are resolved on partial visits only when selected"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "defer.groups"

@@ -133,3 +133,47 @@ TEST_CASE("closures that are not selected are never invoked", "[partial]") {
     REQUIRE(partial(props, Partial{}.only("a")) == R"({"a":1,"errors":{}})");
     REQUIRE(calls == 1);
 }
+
+TEST_CASE("always props bypass only and except", "[partial][protocol:always.partial]") {
+    const Props props{{"keep", always(1)}, {"b", 2}};
+    REQUIRE(partial(props, Partial{}.only("b")) == R"({"keep":1,"b":2,"errors":{}})");
+    REQUIRE(partial(props, Partial{}.except("keep")) == R"({"keep":1,"b":2,"errors":{}})");
+    REQUIRE(partial(props, Partial{}.only("other")) == R"({"keep":1,"errors":{}})");
+}
+
+TEST_CASE("always props resolve on full visits", "[partial][protocol:always.partial]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    REQUIRE(dumpJson(app.page(FakeRequest::inertia("/"), session, "Page",
+                              {{"keep", always([] { return 1; })}})["props"]) ==
+            R"({"keep":1,"errors":{}})");
+}
+
+TEST_CASE("optional props are skipped on a full visit", "[partial][protocol:optional.full]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    int calls = 0;
+    const auto page = app.page(FakeRequest::inertia("/"), session, "Page",
+                               {{"lazy", optional([&calls] {
+                                     ++calls;
+                                     return 1;
+                                 })},
+                                {"b", 2}});
+    REQUIRE(dumpJson(page["props"]) == R"({"b":2,"errors":{}})");
+    REQUIRE(calls == 0);
+    REQUIRE_FALSE(page.contains("deferredProps"));
+    REQUIRE_FALSE(page.contains("mergeProps"));
+}
+
+TEST_CASE("optional props resolve when selected", "[partial][protocol:optional.partial]") {
+    int calls = 0;
+    const Props props{{"lazy", optional([&calls] {
+                           ++calls;
+                           return 1;
+                       })},
+                      {"b", 2}};
+    REQUIRE(partial(props, Partial{}.only("lazy")) == R"({"lazy":1,"errors":{}})");
+    REQUIRE(calls == 1);
+    REQUIRE(partial(props, Partial{}.only("b")) == R"({"b":2,"errors":{}})");
+    REQUIRE(calls == 1);
+}
