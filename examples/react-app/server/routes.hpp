@@ -5,5 +5,6 @@ namespace example {
 
 void registerHome();
 void registerUsers();
+void registerDashboard();
 
 } // namespace example
