@@ -15,12 +15,9 @@ include(cmake/Warnings.cmake)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# Placeholder translation unit so the static library has something to archive;
-# replaced by real sources in later tasks.
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/inertia_core_stub.cpp
-     "namespace inertia { void coreStub(); void coreStub() {} }\n")
-add_library(inertia_core STATIC ${CMAKE_CURRENT_BINARY_DIR}/inertia_core_stub.cpp)
+add_library(inertia_core STATIC)
 add_library(inertia::core ALIAS inertia_core)
+target_sources(inertia_core PRIVATE src/headers.cpp)
 target_include_directories(inertia_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
@@ -30,8 +27,7 @@ if(INERTIA_BUILD_TESTS)
     enable_testing()
     find_package(Catch2 CONFIG REQUIRED)
     include(Catch)
-    add_executable(inertia_core_tests tests/core/smoke_test.cpp)
-    target_link_libraries(inertia_core_tests PRIVATE inertia::core Catch2::Catch2WithMain
-                                                     inertia_warnings)
+    add_executable(inertia_core_tests tests/core/smoke_test.cpp tests/core/headers_test.cpp)
+    target_link_libraries(inertia_core_tests PRIVATE inertia::core Catch2::Catch2WithMain inertia_warnings)
     catch_discover_tests(inertia_core_tests)
 endif()
