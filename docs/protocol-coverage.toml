@@ -200,7 +200,7 @@ status = "done"
 id = "defer.rescue"
 behavior = "Deferred resolver that throws with rescue enabled is listed in rescuedProps and omitted from props"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "defer.merge"

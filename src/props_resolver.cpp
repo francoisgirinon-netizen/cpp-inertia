@@ -2,6 +2,7 @@
 #include <inertia/headers.hpp>
 
 #include <algorithm>
+#include <exception>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -113,7 +114,7 @@ class Walker {
             }
             return std::optional<Json>(std::in_place, prop.value());
         case Prop::Kind::Closure:
-            return resolve(prop.resolver()(), path, true);
+            return resolveClosure(prop, path);
         case Prop::Kind::Object:
             return resolveObject(prop, path, bypass, true);
         }
@@ -136,6 +137,20 @@ class Walker {
             it = groups.emplace(groups.end(), group, std::vector<std::string>{});
         }
         it->second.push_back(path);
+    }
+
+    // A deferred prop with rescue() that throws is omitted and reported in rescuedProps. Only
+    // std::exception is rescued; anything else is not a resolver failure we can describe.
+    std::optional<Json> resolveClosure(const Prop &prop, const std::string &path) {
+        if (!prop.deferGroup() || !prop.rescues()) {
+            return resolve(prop.resolver()(), path, true);
+        }
+        try {
+            return resolve(prop.resolver()(), path, true);
+        } catch (const std::exception &) {
+            out_.meta.rescuedProps.push_back(path);
+            return std::nullopt;
+        }
     }
 
     std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass,

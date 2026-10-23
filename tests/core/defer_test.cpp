@@ -55,3 +55,18 @@ TEST_CASE("a selected deferred prop resolves and deferredProps is absent on part
     REQUIRE(dumpJson(page["props"]) == R"({"f":7,"errors":{}})");
     REQUIRE_FALSE(page.contains("deferredProps"));
 }
+
+TEST_CASE("a rescued deferred prop is omitted and listed in rescuedProps",
+          "[defer][protocol:defer.rescue]") {
+    const auto page = partialPage(
+        {{"f", defer([]() -> Prop { throw std::runtime_error("boom"); }).rescue()}, {"x", 1}},
+        "f,x");
+    REQUIRE(dumpJson(page["props"]) == R"({"x":1,"errors":{}})");
+    REQUIRE(dumpJson(page["rescuedProps"]) == R"(["f"])");
+}
+
+TEST_CASE("a throwing deferred prop without rescue propagates", "[defer][protocol:defer.rescue]") {
+    REQUIRE_THROWS_AS(
+        partialPage({{"f", defer([]() -> Prop { throw std::runtime_error("boom"); })}}, "f"),
+        std::runtime_error);
+}
