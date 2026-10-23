@@ -2,10 +2,15 @@
 
 #include <inertia/inertia.hpp>
 
+#include <drogon/HttpClient.h>
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/Session.h>
 
+#include <chrono>
+#include <functional>
+#include <map>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -42,6 +47,28 @@ class DrogonSession final : public SessionStore {
 
   private:
     ::drogon::SessionPtr session_;
+};
+
+// The SSR transport: one ::drogon::HttpClient per origin, created on first use and shared by every
+// request. Callbacks run on the client's event-loop thread.
+class DrogonHttpClient final : public HttpClient {
+  public:
+    // nullptr: use the application's event loop.
+    explicit DrogonHttpClient(trantor::EventLoop *loop = nullptr);
+
+    void post(std::string url, std::string jsonBody, std::chrono::milliseconds timeout,
+              std::function<void(HttpResult)> done) override;
+    void get(std::string url, std::chrono::milliseconds timeout,
+             std::function<void(HttpResult)> done) override;
+
+  private:
+    void send(::drogon::HttpMethod method, std::string_view url, std::string body,
+              std::chrono::milliseconds timeout, std::function<void(HttpResult)> done);
+    [[nodiscard]] ::drogon::HttpClientPtr clientFor(const std::string &origin);
+
+    trantor::EventLoop *loop_;
+    std::mutex mutex_;
+    std::map<std::string, ::drogon::HttpClientPtr> clients_; // guarded by mutex_
 };
 
 } // namespace inertia::drogon

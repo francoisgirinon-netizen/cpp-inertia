@@ -5,6 +5,7 @@
 #include <drogon/HttpAppFramework.h>
 
 #include <functional>
+#include <memory>
 #include <utility>
 
 namespace inertia::drogon_test {
@@ -40,6 +41,28 @@ void configureApp() {
                             inertia::drogon::DrogonSession session{req->session()};
                             const auto value = session.pull("k");
                             std::move(done)(text(value ? value->dump() : "missing"));
+                        },
+                        {::drogon::Get});
+
+    // POST /echo answers with the request body and the Content-Type it arrived with.
+    app.registerHandler("/echo",
+                        [text](const ::drogon::HttpRequestPtr &req, Callback &&done) {
+                            auto res = text(std::string{req->body()});
+                            res->addHeader("X-Seen-Content-Type", req->getHeader("content-type"));
+                            std::move(done)(res);
+                        },
+                        {::drogon::Post});
+    app.registerHandler("/ping",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            std::move(done)(text("pong"));
+                        },
+                        {::drogon::Get});
+    // GET /slow answers after one second.
+    app.registerHandler("/slow",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            auto reply = std::make_shared<Callback>(std::move(done));
+                            ::drogon::app().getLoop()->runAfter(
+                                1.0, [reply, text] { (*reply)(text("late")); });
                         },
                         {::drogon::Get});
 }
