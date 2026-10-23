@@ -169,3 +169,49 @@ TEST_CASE("location on a non-Inertia request gives 302 with Location",
     REQUIRE(res.status == 302);
     REQUIRE(res.header("Location").value_or("") == "https://x.test");
 }
+
+TEST_CASE("empty Inertia 200 redirects back to the Referer",
+          "[middleware][protocol:response.empty]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a").with("Referer", "http://localhost/prev");
+    Response res;
+    app.finalize(req, res);
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location").value_or("") == "http://localhost/prev");
+}
+
+TEST_CASE("empty Inertia 200 redirects to / without a Referer",
+          "[middleware][protocol:response.empty]") {
+    const Inertia app{Config{}};
+    Response res;
+    app.finalize(FakeRequest::inertia("/a"), res);
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location").value_or("") == "/");
+}
+
+TEST_CASE("empty Inertia response redirect is 303 for PUT",
+          "[middleware][protocol:response.empty]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a");
+    req.verb = "PUT";
+    Response res;
+    app.finalize(req, res);
+    REQUIRE(res.status == 303);
+    REQUIRE(res.header("Location").value_or("") == "/");
+}
+
+TEST_CASE("body \"0\" is not an empty response", "[middleware][protocol:response.empty]") {
+    const Inertia app{Config{}};
+    Response res;
+    res.body = "0";
+    app.finalize(FakeRequest::inertia("/a"), res);
+    REQUIRE(res.status == 200);
+    REQUIRE_FALSE(res.header("Location").has_value());
+}
+
+TEST_CASE("empty non-Inertia 200 is left alone", "[middleware]") {
+    const Inertia app{Config{}};
+    Response res;
+    app.finalize(FakeRequest::get("/a"), res);
+    REQUIRE(res.status == 200);
+}

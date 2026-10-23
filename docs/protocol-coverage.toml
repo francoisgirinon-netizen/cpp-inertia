@@ -128,7 +128,7 @@ status = "done"
 id = "response.empty"
 behavior = "Inertia 200 with an empty body becomes 302 to Referer or to /, and a body of 0 is not empty"
 source = "docs/inertia-protocol-v3.md#behaviors: Empty response"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "partial.component-match"

@@ -160,6 +160,11 @@ Response Inertia::location(const RequestView &req, std::string_view url) const {
 }
 
 void Inertia::finalize(const RequestView &req, Response &res) const {
+    // An empty 200 has nothing to show, so the client is sent back to where it came from.
+    if (isInertia(req) && res.status == 200 && res.body.empty()) {
+        res.status = 302;
+        res.setHeader("Location", req.header("Referer").value_or("/"));
+    }
     const auto method = req.method();
     const bool seeOther = method == "PUT" || method == "PATCH" || method == "DELETE";
     if (isInertia(req) && seeOther && res.status == 302) {
