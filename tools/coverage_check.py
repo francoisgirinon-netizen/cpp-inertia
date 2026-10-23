@@ -34,7 +34,15 @@ def parse_args(argv):
         help="file holding --list-tags style output (repeatable; test hook)",
     )
     parser.add_argument(
-        "--strict", action="store_true", help="fail on rules still marked todo"
+        "--e2e-list",
+        metavar="PATH",
+        help="output of `playwright test --list`; rules with e2e = true need a "
+        "[protocol:<id>] test there (warning, error with --strict)",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="fail on rules still marked todo and on client-observable rules without an e2e test",
     )
     return parser.parse_args(argv)
 
@@ -57,8 +65,12 @@ def tags_from_exe(exe, problems):
     return tags_from_text(result.stdout)
 
 
-def check(rules, tags, strict, problems):
-    """Append a message to `problems` for every violation; return counts."""
+def check(rules, tags, strict, problems, e2e_tags=None, warnings=None):
+    """Append a message to `problems` for every violation; return counts.
+
+    With `e2e_tags` (the ids tagged in the Playwright list), every rule with `e2e = true`
+    must be among them: a warning, or a problem in strict mode.
+    """
     ids = set()
     counts = {status: 0 for status in STATUSES}
     for rule in rules:
@@ -79,11 +91,22 @@ def check(rules, tags, strict, problems):
             problems.append(f"missing reason for na rule: {rid}")
         if status == "done" and rid not in tags:
             problems.append(f"missing test for done rule: {rid}")
+        e2e = rule.get("e2e", False)
+        if not isinstance(e2e, bool):
+            problems.append(f"invalid e2e for rule {rid}: {e2e!r} (expected true or false)")
+        elif e2e and e2e_tags is not None and rid not in e2e_tags:
+            message = f"missing e2e test for rule: {rid}"
+            if strict:
+                problems.append(message)
+            elif warnings is not None:
+                warnings.append(f"warning: {message}")
         if status == "todo" and strict:
             problems.append(f"todo rule in strict mode: {rid}")
 
     for tag in sorted(tags - ids):
         problems.append(f"unknown protocol tag: {tag}")
+    for tag in sorted((e2e_tags or set()) - ids):
+        problems.append(f"unknown e2e protocol tag: {tag}")
     return len(ids), counts
 
 
@@ -104,7 +127,19 @@ def main(argv):
     for exe in args.tags_from:
         tags |= tags_from_exe(exe, problems)
 
-    total, counts = check(rules, tags, args.strict, problems)
+    e2e_tags = None
+    if args.e2e_list:
+        try:
+            with open(args.e2e_list, encoding="utf-8") as handle:
+                e2e_tags = tags_from_text(handle.read())
+        except OSError as err:
+            print(f"cannot read e2e list {args.e2e_list}: {err}")
+            return 1
+
+    warnings = []
+    total, counts = check(rules, tags, args.strict, problems, e2e_tags, warnings)
+    for warning in warnings:
+        print(warning)
     for problem in problems:
         print(problem)
     if problems:
