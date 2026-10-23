@@ -28,4 +28,7 @@ void withErrors(SessionStore &session, const Errors &errors, std::string_view ba
 // Merges key/value into "inertia.flash_data"; consumed by the next page render.
 void flash(SessionStore &session, std::string key, Json value);
 
+// Sets "inertia.clear_history"; the next page render emits clearHistory once.
+void clearHistory(SessionStore &session);
+
 } // namespace inertia

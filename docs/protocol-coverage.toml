@@ -62,7 +62,7 @@ status = "todo"
 id = "page.clear-history"
 behavior = "clearHistory flag is emitted once, pulled from the inertia.clear_history session key"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.preserve-fragment"

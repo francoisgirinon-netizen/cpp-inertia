@@ -136,6 +136,9 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
         page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
     }
     emitMetadata(page, resolved.meta);
+    if (session.pull("inertia.clear_history")) {
+        page["clearHistory"] = true;
+    }
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }

@@ -4,6 +4,7 @@
 #include <inertia/inertia.hpp>
 #include <inertia/session.hpp>
 
+#include <cstdint>
 #include <string>
 
 using namespace inertia;
@@ -17,4 +18,13 @@ TEST_CASE("flash data is emitted once and merged", "[flash][protocol:page.flash]
     const auto page = app.page(FakeRequest::inertia("/"), session, "C", {});
     REQUIRE(dumpJson(page["flash"]) == R"({"ok":1,"n":2})");
     REQUIRE_FALSE(app.page(FakeRequest::inertia("/"), session, "C", {}).contains("flash"));
+}
+
+TEST_CASE("clearHistory is emitted once", "[history][protocol:page.clear-history]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    REQUIRE_FALSE(app.page(FakeRequest::inertia("/"), session, "C", {}).contains("clearHistory"));
+    clearHistory(session);
+    REQUIRE(app.page(FakeRequest::inertia("/"), session, "C", {})["clearHistory"] == true);
+    REQUIRE_FALSE(app.page(FakeRequest::inertia("/"), session, "C", {}).contains("clearHistory"));
 }
