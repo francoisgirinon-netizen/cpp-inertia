@@ -2,7 +2,6 @@
 #include "routes.hpp"
 
 #include <inertia/fake/fake.hpp>
-#include <inertia/headers.hpp>
 
 #include <algorithm>
 #include <map>
@@ -15,17 +14,6 @@
 #include <vector>
 
 namespace inertia::conformance {
-
-std::optional<std::string> TestResponse::header(std::string_view name) const {
-    for (const auto &[key, value] : headers) {
-        if (headers::iequals(key, name)) {
-            return value;
-        }
-    }
-    return std::nullopt;
-}
-
-Json TestResponse::json() const { return Json::parse(body); }
 
 namespace {
 

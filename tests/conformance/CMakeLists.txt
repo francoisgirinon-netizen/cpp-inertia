@@ -2,7 +2,8 @@
 # scenarios.cpp + routes.cpp are shared unchanged.
 function(inertia_add_conformance_executable name harness_source)
     set(_dir ${CMAKE_CURRENT_FUNCTION_LIST_DIR})
-    add_executable(${name} ${_dir}/scenarios.cpp ${_dir}/routes.cpp ${harness_source})
+    add_executable(${name} ${_dir}/scenarios.cpp ${_dir}/routes.cpp ${_dir}/test_response.cpp
+                   ${harness_source})
     target_include_directories(${name} PRIVATE ${_dir})
     target_link_libraries(${name} PRIVATE inertia::core ${ARGN} Catch2::Catch2WithMain
                                           inertia_warnings)
@@ -12,3 +13,10 @@ endfunction()
 
 inertia_add_conformance_executable(inertia_conformance_fake
                                    ${CMAKE_CURRENT_SOURCE_DIR}/fake_harness.cpp inertia::fake)
+
+if(INERTIA_BUILD_DROGON)
+    inertia_add_conformance_executable(
+        inertia_conformance_drogon
+        "${CMAKE_CURRENT_SOURCE_DIR}/drogon_harness.cpp;$<TARGET_OBJECTS:inertia_drogon_test_support>"
+        inertia_drogon_test_support)
+endif()
