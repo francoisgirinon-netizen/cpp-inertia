@@ -1,6 +1,7 @@
 build/
 node_modules/
-examples/react-app/frontend/public/build/
 public/hot
 test-results/
 __pycache__/
+examples/react-app/server/public/build/
+examples/react-app/frontend/dist/

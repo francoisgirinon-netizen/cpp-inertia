@@ -32,6 +32,10 @@ if(INERTIA_BUILD_DROGON)
     add_subdirectory(adapters/drogon)
 endif()
 
+if(INERTIA_BUILD_EXAMPLES AND INERTIA_BUILD_DROGON)
+    add_subdirectory(examples/react-app/server)
+endif()
+
 if(INERTIA_BUILD_TESTS)
     enable_testing()
     find_package(Catch2 CONFIG REQUIRED)
