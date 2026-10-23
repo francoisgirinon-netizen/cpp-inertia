@@ -1,0 +1,409 @@
+# Protocol coverage matrix for cpp-inertia.
+# Each [[rule]] is a protocol rule from docs/inertia-protocol-v3.md.
+# status: todo (not implemented or tested), done (tagged test exists), na (out of scope).
+
+inertia_react_version = "3.9.1"
+
+[[rule]]
+id = "html.script-element"
+behavior = "First visit returns 200 text/html with a data-page JSON script element and a root div"
+source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
+status = "todo"
+
+[[rule]]
+id = "html.json-escaping"
+behavior = "Page JSON in the script element escapes slash, less-than and greater-than without HTML entities"
+source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
+status = "todo"
+
+[[rule]]
+id = "html.root-id"
+behavior = "Root id is configurable (default app) and data-page equals that id"
+source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
+status = "todo"
+
+[[rule]]
+id = "json.response"
+behavior = "Inertia request returns 200 JSON with X-Inertia true and application/json content type"
+source = "docs/inertia-protocol-v3.md#behaviors: Inertia request"
+status = "todo"
+
+[[rule]]
+id = "vary.always"
+behavior = "Every response carries Vary: X-Inertia, appended to an existing value and deduplicated"
+source = "docs/inertia-protocol-v3.md#headers: Response headers"
+status = "todo"
+
+[[rule]]
+id = "page.required"
+behavior = "Page object always has component, props (including errors), url and version"
+source = "docs/inertia-protocol-v3.md#page-object: Always present"
+status = "todo"
+
+[[rule]]
+id = "page.url.trailing-slash"
+behavior = "url is the request path and query as received, with any trailing slash preserved"
+source = "docs/inertia-protocol-v3.md#page-object: Always present"
+status = "todo"
+
+[[rule]]
+id = "page.version.empty"
+behavior = "version is the empty string when assets are not versioned"
+source = "docs/inertia-protocol-v3.md#page-object: Always present"
+status = "todo"
+
+[[rule]]
+id = "page.encrypt-history"
+behavior = "encryptHistory flag is emitted only when enabled globally or by a per-response override"
+source = "docs/inertia-protocol-v3.md#page-object: Flags"
+status = "todo"
+
+[[rule]]
+id = "page.clear-history"
+behavior = "clearHistory flag is emitted once, pulled from the inertia.clear_history session key"
+source = "docs/inertia-protocol-v3.md#page-object: Flags"
+status = "todo"
+
+[[rule]]
+id = "page.preserve-fragment"
+behavior = "preserveFragment flag is emitted once, pulled from the inertia.preserve_fragment session key"
+source = "docs/inertia-protocol-v3.md#page-object: Flags"
+status = "todo"
+
+[[rule]]
+id = "page.flash"
+behavior = "flash object is pulled from the session and omitted when empty; repeated flash calls merge"
+source = "docs/inertia-protocol-v3.md#page-object: Optional"
+status = "todo"
+
+[[rule]]
+id = "page.shared-props"
+behavior = "sharedProps lists top-level shared keys, using the first segment of dot keys"
+source = "docs/inertia-protocol-v3.md#page-object: Metadata"
+status = "todo"
+
+[[rule]]
+id = "page.bigint"
+behavior = "Integers outside the JS safe range serialize as a bigint object when preserveBigIntegers is set"
+source = "docs/inertia-protocol-v3.md#page-object: Flags"
+status = "todo"
+
+[[rule]]
+id = "page.metadata.omit-empty"
+behavior = "Metadata fields are emitted only when non-empty"
+source = "docs/inertia-protocol-v3.md#page-object: Metadata"
+status = "todo"
+
+[[rule]]
+id = "version.mismatch"
+behavior = "GET Inertia request with a differing X-Inertia-Version gets 409 with X-Inertia-Location and X-Inertia-Version"
+source = "docs/inertia-protocol-v3.md#behaviors: Version mismatch"
+status = "todo"
+
+[[rule]]
+id = "version.non-get"
+behavior = "Non-GET methods never receive the version-mismatch 409"
+source = "docs/inertia-protocol-v3.md#behaviors: Version mismatch"
+status = "todo"
+
+[[rule]]
+id = "redirect.303"
+behavior = "Inertia 302 becomes 303 for PUT, PATCH and DELETE, but not for POST"
+source = "docs/inertia-protocol-v3.md#behaviors: 303"
+status = "todo"
+
+[[rule]]
+id = "redirect.fragment"
+behavior = "Inertia non-prefetch redirect whose Location contains a hash becomes 409 with X-Inertia-Redirect"
+source = "docs/inertia-protocol-v3.md#behaviors: Fragment redirect"
+status = "todo"
+
+[[rule]]
+id = "redirect.external"
+behavior = "location(url) gives 409 with X-Inertia-Location for Inertia requests and 302 with Location otherwise"
+source = "docs/inertia-protocol-v3.md#behaviors: External redirect, location(url)"
+status = "todo"
+
+[[rule]]
+id = "response.empty"
+behavior = "Inertia 200 with an empty body becomes 302 to Referer or to /, and a body of 0 is not empty"
+source = "docs/inertia-protocol-v3.md#behaviors: Empty response"
+status = "todo"
+
+[[rule]]
+id = "partial.component-match"
+behavior = "Request is partial only when X-Inertia-Partial-Component equals the rendered component"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "partial.only"
+behavior = "only paths include the matching path, its descendants and its ancestors"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "partial.except"
+behavior = "except paths exclude the matching path and its descendants, and win over only"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "partial.dot-notation"
+behavior = "Prop paths are dot-paths; top-level dot keys unpack into nested objects, nested dot keys do not"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "partial.resolved-children"
+behavior = "Children of a value produced by resolving a closure bypass the partial filters"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "props.dot-keys"
+behavior = "Top-level dot keys are unpacked into nested objects before resolution"
+source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
+status = "todo"
+
+[[rule]]
+id = "always.partial"
+behavior = "Always props are resolved on full and partial visits and bypass both filters"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "optional.full"
+behavior = "Optional props are skipped with no metadata on a full visit"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "optional.partial"
+behavior = "Optional props are resolved on partial visits only when selected"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "defer.groups"
+behavior = "Deferred props on a full visit are listed in deferredProps by group, default group default"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "defer.partial"
+behavior = "Deferred props resolve when selected on partial visits, and deferredProps is never emitted on partials"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "defer.rescue"
+behavior = "Deferred resolver that throws with rescue enabled is listed in rescuedProps and omitted from props"
+source = "docs/inertia-protocol-v3.md#page-object: Metadata"
+status = "todo"
+
+[[rule]]
+id = "defer.merge"
+behavior = "Deferred merge props emit merge metadata even while still deferred"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "merge.append"
+behavior = "Root append props are listed in mergeProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.prepend"
+behavior = "Root prepend props are listed in prependProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.deep"
+behavior = "Deep merge props are listed in deepMergeProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.nested-paths"
+behavior = "Nested append or prepend paths emit path.sub entries in mergeProps or prependProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.match-on"
+behavior = "A matchOn key adds propPath.key to matchPropsOn, extended to propPath.sub.key for nested paths"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.reset"
+behavior = "Merge metadata is suppressed for paths listed in X-Inertia-Reset"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "merge.partial-filter"
+behavior = "Partial reloads emit merge metadata only for only paths and their descendants, not excluded by except"
+source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
+status = "todo"
+
+[[rule]]
+id = "once.metadata"
+behavior = "onceProps entry carries prop and expiresAt, the latter from ttl in milliseconds or null"
+source = "docs/inertia-protocol-v3.md#behaviors: Once props"
+status = "todo"
+
+[[rule]]
+id = "once.except-header"
+behavior = "Once prop is dropped from props on non-partial, non-fresh Inertia requests whose key is in X-Inertia-Except-Once-Props, but its onceProps entry stays"
+source = "docs/inertia-protocol-v3.md#behaviors: Once props"
+status = "todo"
+
+[[rule]]
+id = "once.partial-ignores-header"
+behavior = "X-Inertia-Except-Once-Props is ignored on partial reloads"
+source = "docs/inertia-protocol-v3.md#behaviors: Once props"
+status = "todo"
+
+[[rule]]
+id = "once.fresh"
+behavior = "A fresh once prop is resolved even when its key is listed in X-Inertia-Except-Once-Props"
+source = "docs/inertia-protocol-v3.md#behaviors: Once props"
+status = "todo"
+
+[[rule]]
+id = "once.custom-key"
+behavior = "Once custom key, not the prop path, is matched against X-Inertia-Except-Once-Props"
+source = "docs/inertia-protocol-v3.md#behaviors: Once props"
+status = "todo"
+
+[[rule]]
+id = "once.defer"
+behavior = "A deferred once prop already loaded has no deferredProps entry but keeps its onceProps entry"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "scroll.metadata"
+behavior = "scrollProps carries pageName, previousPage, nextPage, currentPage and reset for each scroll path"
+source = "docs/inertia-protocol-v3.md#page-object: Metadata"
+status = "todo"
+
+[[rule]]
+id = "scroll.merge-intent"
+behavior = "Scroll merge label goes to prependProps when the intent header is prepend, otherwise to mergeProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
+status = "todo"
+
+[[rule]]
+id = "scroll.reset"
+behavior = "scrollProps reset true for paths in X-Inertia-Reset and suppresses the merge label"
+source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
+status = "todo"
+
+[[rule]]
+id = "scroll.deferred"
+behavior = "Deferred scroll props emit deferredProps and merge metadata but no scrollProps"
+source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
+status = "todo"
+
+[[rule]]
+id = "errors.empty"
+behavior = "errors is an always prop and is an empty object, never an array, when there are no errors"
+source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
+status = "todo"
+
+[[rule]]
+id = "errors.first-message"
+behavior = "Each field maps to its first message, or to a string array in all-errors mode"
+source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
+status = "todo"
+
+[[rule]]
+id = "errors.bag"
+behavior = "With X-Inertia-Error-Bag, errors are scoped as bag then field"
+source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
+status = "todo"
+
+[[rule]]
+id = "ssr.render"
+behavior = "SSR POSTs the page JSON to ssrUrl /render and substitutes head and body into the response"
+source = "docs/inertia-protocol-v3.md#behaviors: SSR"
+status = "todo"
+
+[[rule]]
+id = "ssr.fallback"
+behavior = "Any SSR failure (connection, non-2xx, invalid JSON) falls back to client-side rendering"
+source = "docs/inertia-protocol-v3.md#behaviors: SSR"
+status = "todo"
+
+[[rule]]
+id = "ssr.health"
+behavior = "GET /health returns a status OK object"
+source = "docs/inertia-protocol-v3.md#behaviors: SSR"
+status = "todo"
+
+[[rule]]
+id = "asset.version-default"
+behavior = "Default asset version is a hash of the Vite manifest file that changes with the assets"
+source = "docs/inertia-protocol-v3.md#behaviors: Asset version default"
+status = "todo"
+
+[[rule]]
+id = "laravel.previous-url"
+behavior = "Laravel-only: Laravel previous-URL storage"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel previous-URL storage; C++ has no session-backed previous URL concept"
+
+[[rule]]
+id = "laravel.precognition"
+behavior = "Laravel-only: Laravel Precognition live validation is not part of the server protocol"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel Precognition live validation is not part of the server protocol"
+
+[[rule]]
+id = "laravel.exception-handler"
+behavior = "Laravel-only: Laravel exception handler integration"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel exception handler integration; there is no framework exception handler"
+
+[[rule]]
+id = "laravel.ensure-pages-exist"
+behavior = "Laravel-only: Laravel ensure_pages_exist development check"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel ensure_pages_exist development check; C++ components are not discovered from pages on disk"
+
+[[rule]]
+id = "laravel.mix-manifest"
+behavior = "Laravel-only: Laravel Mix manifest"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel Mix manifest; the asset version uses the Vite manifest instead"
+
+[[rule]]
+id = "laravel.devtools-recorder"
+behavior = "Laravel-only: Laravel devtools recorder"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "Laravel devtools recorder; not part of the C++ library"
+
+[[rule]]
+id = "laravel.php-enums-arrayable"
+behavior = "Laravel-only: PHP enums and Arrayable/Responsable objects"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "PHP enums and Arrayable/Responsable objects; C++ has no equivalent, props are plain values"
+
+[[rule]]
+id = "laravel.provides-inertia-properties"
+behavior = "Laravel-only: ProvidesInertiaProperties"
+source = "docs/inertia-protocol-v3.md#out-of-scope-laravel-specific"
+status = "na"
+reason = "ProvidesInertiaProperties; the C++ equivalent is plain functions returning Props"
