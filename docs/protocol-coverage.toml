@@ -74,7 +74,7 @@ status = "todo"
 id = "page.flash"
 behavior = "flash object is pulled from the session and omitted when empty; repeated flash calls merge"
 source = "docs/inertia-protocol-v3.md#page-object: Optional"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.shared-props"

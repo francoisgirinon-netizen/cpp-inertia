@@ -10,6 +10,7 @@ namespace inertia {
 
 namespace {
 constexpr std::string_view kErrorsKey = "inertia.errors";
+constexpr std::string_view kFlashKey = "inertia.flash_data";
 } // namespace
 
 Response redirect(std::string url, int status) {
@@ -34,6 +35,15 @@ void withErrors(SessionStore &session, const Errors &errors, std::string_view ba
         target[field] = messages;
     }
     session.put(std::string(kErrorsKey), std::move(all));
+}
+
+void flash(SessionStore &session, std::string key, Json value) {
+    Json data = session.get(kFlashKey).value_or(Json::object());
+    if (!data.is_object()) {
+        data = Json::object();
+    }
+    data[std::move(key)] = std::move(value);
+    session.put(std::string(kFlashKey), std::move(data));
 }
 
 } // namespace inertia

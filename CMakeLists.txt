@@ -37,7 +37,7 @@ if(INERTIA_BUILD_TESTS)
                                   tests/core/shared_test.cpp tests/core/defer_test.cpp tests/core/merge_test.cpp
                                   tests/core/once_test.cpp tests/core/scroll_test.cpp
                                   tests/core/middleware_test.cpp
-                                  tests/core/errors_test.cpp)
+                                  tests/core/errors_test.cpp tests/core/flash_history_test.cpp)
     target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
                                                      Catch2::Catch2WithMain inertia_warnings)
     catch_discover_tests(inertia_core_tests)

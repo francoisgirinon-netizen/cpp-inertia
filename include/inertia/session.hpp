@@ -25,4 +25,7 @@ using Errors = std::vector<std::pair<std::string, std::vector<std::string>>>;
 // bag; they are consumed by the next page render.
 void withErrors(SessionStore &session, const Errors &errors, std::string_view bag = "default");
 
+// Merges key/value into "inertia.flash_data"; consumed by the next page render.
+void flash(SessionStore &session, std::string key, Json value);
+
 } // namespace inertia
