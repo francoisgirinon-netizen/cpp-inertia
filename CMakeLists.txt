@@ -26,12 +26,38 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(inertia_core STATIC)
 add_library(inertia::core ALIAS inertia_core)
-target_sources(inertia_core PRIVATE src/headers.cpp src/html.cpp src/inertia.cpp src/props.cpp src/props_resolver.cpp src/session.cpp src/ssr.cpp src/vite.cpp)
-target_include_directories(inertia_core PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+set_target_properties(inertia_core PROPERTIES EXPORT_NAME core)
+target_sources(inertia_core
+    PRIVATE
+        src/headers.cpp
+        src/html.cpp
+        src/inertia.cpp
+        src/props.cpp
+        src/props_resolver.cpp
+        src/session.cpp
+        src/ssr.cpp
+        src/vite.cpp
+        include/inertia/detail/props_resolver.hpp # private: only src/ includes it, never installed
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS include
+        FILES
+            include/inertia/headers.hpp
+            include/inertia/html.hpp
+            include/inertia/inertia.hpp
+            include/inertia/json.hpp
+            include/inertia/ports/file_reader.hpp
+            include/inertia/ports/http_client.hpp
+            include/inertia/ports/request_view.hpp
+            include/inertia/ports/session_store.hpp
+            include/inertia/props.hpp
+            include/inertia/response.hpp
+            include/inertia/session.hpp
+            include/inertia/ssr.hpp
+            include/inertia/vite.hpp)
 target_compile_features(inertia_core PUBLIC cxx_std_20) # inertia::fake and inertia::drogon inherit it
 target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
-target_link_libraries(inertia_core PRIVATE inertia_warnings)
+target_link_libraries(inertia_core PRIVATE $<BUILD_LOCAL_INTERFACE:inertia_warnings>)
 
 add_subdirectory(adapters/fake)
 if(INERTIA_BUILD_DROGON)
