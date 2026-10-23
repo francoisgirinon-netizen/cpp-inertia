@@ -61,6 +61,9 @@ int main() {
         std::make_shared<DiskFileReader>());
 
     inertia::Config config;
+    // The asset version is the hash of the Vite manifest, read on every request (not cached). After
+    // `bun run build` changes the manifest, a client holding the old version sends a stale
+    // X-Inertia-Version on its next visit, gets a 409 + X-Inertia-Location and does a full reload.
     config.version = inertia::versionFromVite(vite);
     config.vite = std::move(vite);
     config.ssr.enabled = ssrEnabled(); // INERTIA_SSR=1, with `bun run ssr` listening on :13714
