@@ -1,6 +1,8 @@
 # Protocol coverage matrix for cpp-inertia.
 # Each [[rule]] is a protocol rule from docs/inertia-protocol-v3.md.
 # status: todo (not implemented or tested), done (tagged test exists), na (out of scope).
+# e2e (optional, default false): true when a client can observe the rule, so e2e/*.spec.ts must
+# hold a test titled with [protocol:<id>] (checked by tools/coverage_check.py --e2e-list).
 
 inertia_react_version = "3.9.1"
 
@@ -9,30 +11,35 @@ id = "html.script-element"
 behavior = "First visit returns 200 text/html with a data-page JSON script element and a root div"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "html.json-escaping"
 behavior = "Page JSON in the script element escapes slash, less-than and greater-than without HTML entities"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "html.root-id"
 behavior = "Root id is configurable (default app) and data-page equals that id"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "json.response"
 behavior = "Inertia request returns 200 JSON with X-Inertia true and application/json content type"
 source = "docs/inertia-protocol-v3.md#behaviors: Inertia request"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "vary.always"
 behavior = "Every response carries Vary: X-Inertia, appended to an existing value and deduplicated"
 source = "docs/inertia-protocol-v3.md#headers: Response headers"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.required"
@@ -57,36 +64,42 @@ id = "page.encrypt-history"
 behavior = "encryptHistory flag is emitted only when enabled globally or by a per-response override"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.clear-history"
 behavior = "clearHistory flag is emitted once, pulled from the inertia.clear_history session key"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.preserve-fragment"
 behavior = "preserveFragment flag is emitted once, pulled from the inertia.preserve_fragment session key"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.flash"
 behavior = "flash object is pulled from the session and omitted when empty; repeated flash calls merge"
 source = "docs/inertia-protocol-v3.md#page-object: Optional"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.shared-props"
 behavior = "sharedProps lists top-level shared keys, using the first segment of dot keys"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.bigint"
 behavior = "Integers outside the JS safe range serialize as a bigint object when preserveBigIntegers is set"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "page.metadata.omit-empty"
@@ -99,6 +112,7 @@ id = "version.mismatch"
 behavior = "GET Inertia request with a differing X-Inertia-Version gets 409 with X-Inertia-Location and X-Inertia-Version"
 source = "docs/inertia-protocol-v3.md#behaviors: Version mismatch"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "version.non-get"
@@ -111,54 +125,63 @@ id = "redirect.303"
 behavior = "Inertia 302 becomes 303 for PUT, PATCH and DELETE, but not for POST"
 source = "docs/inertia-protocol-v3.md#behaviors: 303"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "redirect.fragment"
 behavior = "Inertia non-prefetch redirect whose Location contains a hash becomes 409 with X-Inertia-Redirect"
 source = "docs/inertia-protocol-v3.md#behaviors: Fragment redirect"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "redirect.external"
 behavior = "location(url) gives 409 with X-Inertia-Location for Inertia requests and 302 with Location otherwise"
 source = "docs/inertia-protocol-v3.md#behaviors: External redirect, location(url)"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "response.empty"
 behavior = "Inertia 200 with an empty body becomes 302 to Referer or to /, and a body of 0 is not empty"
 source = "docs/inertia-protocol-v3.md#behaviors: Empty response"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "partial.component-match"
 behavior = "Request is partial only when X-Inertia-Partial-Component equals the rendered component"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "partial.only"
 behavior = "only paths include the matching path, its descendants and its ancestors"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "partial.except"
 behavior = "except paths exclude the matching path and its descendants, and win over only"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "partial.dot-notation"
 behavior = "Prop paths are dot-paths; top-level dot keys unpack into nested objects, nested dot keys do not"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "partial.resolved-children"
 behavior = "Children of a value produced by resolving a closure bypass the partial filters"
 source = "docs/inertia-protocol-v3.md#behaviors: Partial reload"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "props.dot-keys"
@@ -171,168 +194,196 @@ id = "always.partial"
 behavior = "Always props are resolved on full and partial visits and bypass both filters"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "optional.full"
 behavior = "Optional props are skipped with no metadata on a full visit"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "optional.partial"
 behavior = "Optional props are resolved on partial visits only when selected"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "defer.groups"
 behavior = "Deferred props on a full visit are listed in deferredProps by group, default group default"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "defer.partial"
 behavior = "Deferred props resolve when selected on partial visits, and deferredProps is never emitted on partials"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "defer.rescue"
 behavior = "Deferred resolver that throws with rescue enabled is listed in rescuedProps and omitted from props"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "defer.merge"
 behavior = "Deferred merge props emit merge metadata even while still deferred"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.append"
 behavior = "Root append props are listed in mergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.prepend"
 behavior = "Root prepend props are listed in prependProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.deep"
 behavior = "Deep merge props are listed in deepMergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.nested-paths"
 behavior = "Nested append or prepend paths emit path.sub entries in mergeProps or prependProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.match-on"
 behavior = "A matchOn key adds propPath.key to matchPropsOn, extended to propPath.sub.key for nested paths"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.reset"
 behavior = "Merge metadata is suppressed for paths listed in X-Inertia-Reset"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "merge.partial-filter"
 behavior = "Partial reloads emit merge metadata only for only paths and their descendants, not excluded by except"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.metadata"
 behavior = "onceProps entry carries prop and expiresAt, the latter from ttl in milliseconds or null"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.except-header"
 behavior = "Once prop is dropped from props on non-partial, non-fresh Inertia requests whose key is in X-Inertia-Except-Once-Props, but its onceProps entry stays"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.partial-ignores-header"
 behavior = "X-Inertia-Except-Once-Props is ignored on partial reloads"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.fresh"
 behavior = "A fresh once prop is resolved even when its key is listed in X-Inertia-Except-Once-Props"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.custom-key"
 behavior = "Once custom key, not the prop path, is matched against X-Inertia-Except-Once-Props"
 source = "docs/inertia-protocol-v3.md#behaviors: Once props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "once.defer"
 behavior = "A deferred once prop already loaded has no deferredProps entry but keeps its onceProps entry"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "scroll.metadata"
 behavior = "scrollProps carries pageName, previousPage, nextPage, currentPage and reset for each scroll path"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "scroll.merge-intent"
 behavior = "Scroll merge label goes to prependProps when the intent header is prepend, otherwise to mergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "scroll.reset"
 behavior = "scrollProps reset true for paths in X-Inertia-Reset and suppresses the merge label"
 source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "scroll.deferred"
 behavior = "Deferred scroll props emit deferredProps and merge metadata but no scrollProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "errors.empty"
 behavior = "errors is an always prop and is an empty object, never an array, when there are no errors"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "errors.first-message"
 behavior = "Each field maps to its first message, or to a string array in all-errors mode"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "errors.bag"
 behavior = "With X-Inertia-Error-Bag, errors are scoped as bag then field"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "ssr.render"
 behavior = "SSR POSTs the page JSON to ssrUrl /render and substitutes head and body into the response"
 source = "docs/inertia-protocol-v3.md#behaviors: SSR"
 status = "done"
+e2e = true
 
 [[rule]]
 id = "ssr.fallback"
