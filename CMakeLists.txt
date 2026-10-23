@@ -26,7 +26,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(inertia_core STATIC)
 add_library(inertia::core ALIAS inertia_core)
-set_target_properties(inertia_core PROPERTIES EXPORT_NAME core)
+set_target_properties(inertia_core PROPERTIES EXPORT_NAME core VERIFY_INTERFACE_HEADER_SETS ON)
 target_sources(inertia_core
     PRIVATE
         src/headers.cpp

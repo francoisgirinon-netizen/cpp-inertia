@@ -7,7 +7,7 @@ endif()
 
 add_library(inertia_drogon STATIC)
 add_library(inertia::drogon ALIAS inertia_drogon)
-set_target_properties(inertia_drogon PROPERTIES EXPORT_NAME drogon)
+set_target_properties(inertia_drogon PROPERTIES EXPORT_NAME drogon VERIFY_INTERFACE_HEADER_SETS ON)
 target_sources(inertia_drogon
     PRIVATE
         src/convert.cpp

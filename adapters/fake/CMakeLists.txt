@@ -1,6 +1,6 @@
 add_library(inertia_fake STATIC)
 add_library(inertia::fake ALIAS inertia_fake)
-set_target_properties(inertia_fake PROPERTIES EXPORT_NAME fake)
+set_target_properties(inertia_fake PROPERTIES EXPORT_NAME fake VERIFY_INTERFACE_HEADER_SETS ON)
 target_sources(inertia_fake
     PRIVATE
         src/fake.cpp
