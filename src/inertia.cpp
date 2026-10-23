@@ -31,6 +31,36 @@ Json sharedKeys(std::span<const std::pair<std::string, Prop>> shared) {
     return keys;
 }
 
+// Shapes the session's {bag: {field: [messages]}} into the errors prop: each field keeps its first
+// message unless all-errors mode is on. With an error-bag header the default bag is scoped under
+// that name; without one a lone default bag is returned unscoped.
+Json errorsProp(const Json &stored, bool allErrors, const std::optional<std::string> &bagHeader) {
+    const auto shape = [allErrors](const Json &fields) {
+        Json out = Json::object();
+        for (const auto &[field, messages] : fields.items()) {
+            if (allErrors) {
+                out[field] = messages;
+            } else if (messages.is_array() && !messages.empty()) {
+                out[field] = messages.front();
+            }
+        }
+        return out;
+    };
+    Json out = Json::object();
+    if (!stored.is_object()) {
+        return out;
+    }
+    const bool onlyDefault = stored.size() == 1 && stored.contains("default");
+    if (onlyDefault && !bagHeader) {
+        return shape(stored["default"]);
+    }
+    for (const auto &[bag, fields] : stored.items()) {
+        const bool header = bag == "default" && bagHeader && !bagHeader->empty();
+        out[header ? *bagHeader : bag] = shape(fields);
+    }
+    return out;
+}
+
 // Writes the non-empty page metadata keys in protocol order.
 void emitMetadata(Json &page, const detail::Metadata &meta) {
     const auto list = [&page](const char *key, const std::vector<std::string> &items) {
@@ -92,9 +122,10 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
         ctx.now = config_.clock();
     }
     auto resolved = detail::resolveProps(all, ctx);
-    // errors stays the last key; a real always-prop in a later task.
+    // errors stays the last key and wins over a user prop of the same name.
     resolved.props.erase("errors");
-    resolved.props["errors"] = Json::object();
+    resolved.props["errors"] = errorsProp(session.pull("inertia.errors").value_or(Json::object()),
+                                          config_.withAllErrors, req.header(headers::kErrorBag));
 
     Json page = Json::object();
     page["component"] = std::string(component);

@@ -314,19 +314,19 @@ status = "done"
 id = "errors.empty"
 behavior = "errors is an always prop and is an empty object, never an array, when there are no errors"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "errors.first-message"
 behavior = "Each field maps to its first message, or to a string array in all-errors mode"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "errors.bag"
 behavior = "With X-Inertia-Error-Bag, errors are scoped as bag then field"
 source = "docs/inertia-protocol-v3.md#behaviors: Validation errors"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "ssr.render"
