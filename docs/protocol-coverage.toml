@@ -206,37 +206,37 @@ status = "done"
 id = "defer.merge"
 behavior = "Deferred merge props emit merge metadata even while still deferred"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.append"
 behavior = "Root append props are listed in mergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.prepend"
 behavior = "Root prepend props are listed in prependProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.deep"
 behavior = "Deep merge props are listed in deepMergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.nested-paths"
 behavior = "Nested append or prepend paths emit path.sub entries in mergeProps or prependProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.match-on"
 behavior = "A matchOn key adds propPath.key to matchPropsOn, extended to propPath.sub.key for nested paths"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.reset"

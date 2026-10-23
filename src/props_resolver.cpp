@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <initializer_list>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -26,6 +27,21 @@ std::vector<std::string> splitPath(std::string_view key) {
         segments.emplace_back(key.substr(start, dot - start));
         start = dot + 1;
     }
+}
+
+// Dot-joins any number of non-empty segments.
+std::string joinPath(std::initializer_list<std::string_view> parts) {
+    std::string out;
+    for (const auto part : parts) {
+        if (part.empty()) {
+            continue;
+        }
+        if (!out.empty()) {
+            out += '.';
+        }
+        out += part;
+    }
+    return out;
 }
 
 // True when `path` equals `base` or is a descendant of it.
@@ -103,6 +119,7 @@ class Walker {
             // An unselected object may still hold always descendants, which bypass the filter.
             return walkable ? resolveObject(prop, path, false, false) : std::nullopt;
         }
+        addMergeMetadata(prop, path);
         if (prop.deferGroup() && !ctx_->partial) {
             addDeferred(prop, path);
             return std::nullopt;
@@ -125,6 +142,30 @@ class Walker {
     Resolved &result() { return out_; }
 
   private:
+    // Classifies the prop's merge spec into the merge metadata lists.
+    void addMergeMetadata(const Prop &prop, const std::string &path) {
+        const auto &spec = prop.mergeSpec();
+        if (!spec) {
+            return;
+        }
+        auto &meta = out_.meta;
+        if (spec->mode == MergeMode::Deep) {
+            meta.deepMergeProps.push_back(path);
+        } else if (spec->appendPaths.empty() && spec->prependPaths.empty()) {
+            (spec->mode == MergeMode::Prepend ? meta.prependProps : meta.mergeProps)
+                .push_back(path);
+        }
+        for (const auto &sub : spec->appendPaths) {
+            meta.mergeProps.push_back(joinPath({path, sub}));
+        }
+        for (const auto &sub : spec->prependPaths) {
+            meta.prependProps.push_back(joinPath({path, sub}));
+        }
+        for (const auto &match : spec->matchOn) {
+            meta.matchPropsOn.push_back(joinPath({path, match.subPath, match.key}));
+        }
+    }
+
     void addDeferred(const Prop &prop, const std::string &path) {
         const auto &deferGroup = prop.deferGroup();
         if (!deferGroup) {
