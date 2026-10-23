@@ -70,3 +70,21 @@ TEST_CASE("a throwing deferred prop without rescue propagates", "[defer][protoco
         partialPage({{"f", defer([]() -> Prop { throw std::runtime_error("boom"); })}}, "f"),
         std::runtime_error);
 }
+
+TEST_CASE("the deferred modifier turns any prop into a deferred one", "[defer]") {
+    int calls = 0;
+    const auto fn = [&calls]() -> Prop {
+        ++calls;
+        return 1;
+    };
+    const auto page = fullPage(
+        {{"a", Prop(fn).deferred()}, {"b", Prop(fn).deferred("g")}, {"c", Prop(1).deferred("g")}});
+    REQUIRE(calls == 0);
+    REQUIRE_FALSE(page["props"].contains("a"));
+    REQUIRE_FALSE(page["props"].contains("c"));
+    REQUIRE(dumpJson(page["deferredProps"]) == R"({"default":["a"],"g":["b","c"]})");
+
+    const auto loaded = partialPage({{"b", Prop(fn).deferred("g")}}, "b");
+    REQUIRE(calls == 1);
+    REQUIRE(loaded["props"]["b"] == 1);
+}
