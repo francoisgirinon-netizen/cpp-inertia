@@ -38,19 +38,19 @@ status = "todo"
 id = "page.required"
 behavior = "Page object always has component, props (including errors), url and version"
 source = "docs/inertia-protocol-v3.md#page-object: Always present"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.url.trailing-slash"
 behavior = "url is the request path and query as received, with any trailing slash preserved"
 source = "docs/inertia-protocol-v3.md#page-object: Always present"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.version.empty"
 behavior = "version is the empty string when assets are not versioned"
 source = "docs/inertia-protocol-v3.md#page-object: Always present"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.encrypt-history"
