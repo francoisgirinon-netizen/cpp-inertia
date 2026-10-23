@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { inertiaGet } from './helpers'
+import { inertiaGet, ssrMode } from './helpers'
 
 test('first visit is HTML with a data-page script element and a root div [protocol:html.script-element]', async ({
   request,
@@ -10,7 +10,7 @@ test('first visit is HTML with a data-page script element and a root div [protoc
   expect(res.headers()['content-type']).toContain('text/html')
   const html = await res.text()
   expect(html).toMatch(/<script data-page="app" type="application\/json">\{.*\}<\/script>/s)
-  expect(html).toMatch(/<div id="app"/)
+  expect(html).toMatch(/<div [^>]*id="app"/)
 
   // The official client boots from exactly that markup.
   await page.goto('/')
@@ -26,10 +26,15 @@ test('page JSON in the script element escapes slash, < and > yet parses to the o
   const html = await res.text()
   const raw = /<script data-page="app" type="application\/json">(.*?)<\/script>/s.exec(html)?.[1] ?? ''
   expect(raw).toContain('"component":"Users\\/Index"')
-  expect(raw).toContain('\\u003Cb\\u003E')
-  expect(raw).not.toMatch(/[<>]/)
+  expect(raw).toMatch(/\\u003[cC]b/)
+  expect(raw).not.toContain('<')
   expect(raw).not.toContain('&lt;')
   expect(raw).not.toContain('&#')
+  if (!ssrMode) {
+    // With SSR the script element is the SSR server's own output, which leaves ">" alone.
+    expect(raw).toContain('\\u003Cb\\u003E')
+    expect(raw).not.toContain('>')
+  }
 
   await page.goto('/users?search=%3Cb%3E')
   await expect(page.getByLabel('Search')).toHaveValue('<b>')
