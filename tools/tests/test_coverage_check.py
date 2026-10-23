@@ -16,7 +16,7 @@ def rule(rid, status="todo", reason=None):
         "[[rule]]",
         f'id = "{rid}"',
         f'behavior = "behavior of {rid}"',
-        f'source = "docs/inertia-protocol-v3.md#behaviors"',
+        'source = "docs/inertia-protocol-v3.md#behaviors"',
         f'status = "{status}"',
     ]
     if reason is not None:
