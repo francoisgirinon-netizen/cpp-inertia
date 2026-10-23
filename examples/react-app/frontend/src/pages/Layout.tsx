@@ -12,6 +12,7 @@ const links = [
   ['/fragment', 'Fragment'],
   ['/props', 'Props'],
   ['/login', 'Login'],
+  ['/variants', 'Variants'],
 ] as const
 
 // Shared by every page: the navigation and the flash messages sent by the server.
