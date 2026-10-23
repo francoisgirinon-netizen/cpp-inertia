@@ -53,5 +53,8 @@ RUN mkdir -p /opt/playwright-tmp && cd /opt/playwright-tmp \
     && bunx playwright install --with-deps chromium \
     && cd / && rm -rf /opt/playwright-tmp && chmod -R a+rX /opt/playwright
 
+# clang-tidy (conda:clang-tools) needs the compiler's builtin headers (stddef.h, ...).
+RUN ln -s /opt/mise/installs/clang/${CLANG_VERSION}/lib/clang /opt/mise/installs/conda-clang-tools/${CLANG_VERSION}/lib/clang
+
 USER dev
 WORKDIR /src
