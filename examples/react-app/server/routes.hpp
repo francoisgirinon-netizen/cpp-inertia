@@ -10,5 +10,6 @@ void registerFeed();
 void registerPosts();
 void registerHistory();
 void registerExternal();
+void registerFragment();
 
 } // namespace example
