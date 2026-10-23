@@ -3,6 +3,10 @@
 #include <inertia/vite.hpp>
 
 #include <algorithm>
+#include <atomic>
+#include <exception>
+#include <functional>
+#include <memory>
 #include <utility>
 
 namespace inertia {
@@ -44,6 +48,14 @@ std::optional<SsrResult> parseReply(const HttpResult &reply) {
     return out;
 }
 
+bool parseHealth(const HttpResult &reply) {
+    if (reply.error || reply.status < 200 || reply.status >= 300) {
+        return false;
+    }
+    const Json parsed = Json::parse(reply.body, nullptr, false);
+    return parsed.is_object() && parsed.contains("status") && parsed["status"] == "OK";
+}
+
 } // namespace
 
 SsrGateway::SsrGateway(SsrConfig cfg, std::shared_ptr<HttpClient> http,
@@ -74,24 +86,61 @@ std::string SsrGateway::renderUrl() const {
     return baseUrl() + "/render";
 }
 
+namespace {
+
+// Runs `call` with a reply callback that delivers parse(reply) to `done` at most once. When the
+// client itself throws before answering, `done` receives `fallback` instead. An exception thrown
+// by `done` is never turned into a fallback: it propagates to the caller.
+template <typename R, typename Call, typename Parse>
+void dispatch(Call call, Parse parse, std::function<void(R)> done, R fallback) {
+    struct State {
+        std::function<void(R)> done;
+        std::atomic<bool> fired{false};
+        std::exception_ptr doneError;
+    };
+    auto state = std::make_shared<State>();
+    state->done = std::move(done);
+    auto onReply = [state, parse, fallback](const HttpResult &reply) {
+        if (state->fired.exchange(true)) {
+            return;
+        }
+        R value = fallback;
+        try {
+            value = parse(reply);
+        } catch (...) { // NOLINT(bugprone-empty-catch): a malformed reply keeps the fallback
+        }
+        try {
+            state->done(std::move(value));
+        } catch (...) {
+            state->doneError = std::current_exception();
+            throw;
+        }
+    };
+    try {
+        call(std::move(onReply));
+    } catch (...) {
+        if (state->doneError) {
+            std::rethrow_exception(state->doneError);
+        }
+        if (!state->fired.exchange(true)) {
+            state->done(std::move(fallback));
+        }
+    }
+}
+
+} // namespace
+
 void SsrGateway::render(const Json &page, std::string_view /*requestPath*/,
                         std::function<void(std::optional<SsrResult>)> done) const {
     if (!http_) {
         done(std::nullopt);
         return;
     }
-    try {
-        http_->post(renderUrl(), dumpJson(page), cfg_.timeout,
-                    [cb = std::move(done)](const HttpResult &reply) {
-                        std::optional<SsrResult> result;
-                        try {
-                            result = parseReply(reply);
-                        } catch (...) { // NOLINT(bugprone-empty-catch): any failure falls back
-                        }
-                        cb(std::move(result));
-                    });
-    } catch (...) { // NOLINT(bugprone-empty-catch): a throwing client must not escape
-    }
+    dispatch<std::optional<SsrResult>>(
+        [&](std::function<void(HttpResult)> cb) {
+            http_->post(renderUrl(), dumpJson(page), cfg_.timeout, std::move(cb));
+        },
+        parseReply, std::move(done), std::nullopt);
 }
 
 void SsrGateway::health(std::function<void(bool)> done) const {
@@ -99,19 +148,11 @@ void SsrGateway::health(std::function<void(bool)> done) const {
         done(false);
         return;
     }
-    try {
-        http_->get(baseUrl() + "/health", cfg_.timeout,
-                   [cb = std::move(done)](const HttpResult &reply) {
-                       bool ok = false;
-                       if (!reply.error && reply.status >= 200 && reply.status < 300) {
-                           const Json parsed = Json::parse(reply.body, nullptr, false);
-                           ok = parsed.is_object() && parsed.contains("status") &&
-                                parsed["status"] == "OK";
-                       }
-                       cb(ok);
-                   });
-    } catch (...) { // NOLINT(bugprone-empty-catch): a throwing client must not escape
-    }
+    dispatch<bool>(
+        [&](std::function<void(HttpResult)> cb) {
+            http_->get(baseUrl() + "/health", cfg_.timeout, std::move(cb));
+        },
+        parseHealth, std::move(done), false);
 }
 
 } // namespace inertia

@@ -1,12 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <inertia/fake/fake.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
+#include <functional>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -214,4 +217,116 @@ TEST_CASE("Inertia requests never call SSR", "[ssr]") {
     const auto res = r.get("/home", true);
     REQUIRE(r.rig.http->posts.empty());
     REQUIRE(res.header("Content-Type") == "application/json");
+}
+
+namespace {
+
+// Throws from post/get, optionally after having answered the call.
+class ThrowingClient final : public HttpClient {
+  public:
+    bool answerFirst = false;
+
+    void post(std::string /*url*/, std::string /*jsonBody*/, std::chrono::milliseconds /*timeout*/,
+              std::function<void(HttpResult)> done) override {
+        if (answerFirst) {
+            done(reply(200, kSsrReply));
+        }
+        throw std::runtime_error("client exploded");
+    }
+    void get(std::string /*url*/, std::chrono::milliseconds /*timeout*/,
+             std::function<void(HttpResult)> done) override {
+        if (answerFirst) {
+            done(reply(200, R"({"status":"OK"})"));
+        }
+        throw std::runtime_error("client exploded");
+    }
+};
+
+// Keeps the callback so the test can answer after render() has returned.
+class DeferredClient final : public HttpClient {
+  public:
+    std::function<void(HttpResult)> pending;
+
+    void post(std::string /*url*/, std::string /*jsonBody*/, std::chrono::milliseconds /*timeout*/,
+              std::function<void(HttpResult)> done) override {
+        pending = std::move(done);
+    }
+    void get(std::string /*url*/, std::chrono::milliseconds /*timeout*/,
+             std::function<void(HttpResult)> done) override {
+        pending = std::move(done);
+    }
+};
+
+} // namespace
+
+TEST_CASE("a throwing client falls back to client-side rendering exactly once",
+          "[ssr][protocol:ssr.fallback]") {
+    auto client = std::make_shared<ThrowingClient>();
+    client->answerFirst = GENERATE(false, true);
+    Config cfg;
+    cfg.ssr = enabledConfig();
+    const Inertia app(std::move(cfg), client);
+    MemorySession session;
+    int calls = 0;
+    Response out;
+    app.render(FakeRequest::get("/home"), session, "Home", {}, [&](Response r) {
+        ++calls;
+        out = std::move(r);
+    });
+    REQUIRE(calls == 1);
+    REQUIRE(out.status == 200);
+    if (!client->answerFirst) {
+        REQUIRE(out.body.find("data-page=") != std::string::npos);
+    }
+}
+
+TEST_CASE("a throwing client makes health false exactly once", "[ssr][protocol:ssr.health]") {
+    auto client = std::make_shared<ThrowingClient>();
+    client->answerFirst = GENERATE(false, true);
+    const SsrGateway gw(enabledConfig(), client, nullptr);
+    int calls = 0;
+    bool last = true;
+    gw.health([&](bool v) {
+        ++calls;
+        last = v;
+    });
+    REQUIRE(calls == 1);
+    REQUIRE(last == client->answerFirst);
+}
+
+TEST_CASE("exceptions from the completion callback are not swallowed", "[ssr]") {
+    auto client = std::make_shared<ThrowingClient>();
+    client->answerFirst = true;
+    Config cfg;
+    cfg.ssr = enabledConfig();
+    const Inertia app(std::move(cfg), client);
+    MemorySession session;
+    REQUIRE_THROWS_AS(app.render(FakeRequest::get("/home"), session, "Home", {},
+                                 [](const Response &) { throw std::logic_error("user"); }),
+                      std::logic_error);
+}
+
+TEST_CASE("an async SSR answer outlives the Inertia instance", "[ssr]") {
+    auto client = std::make_shared<DeferredClient>();
+    MemorySession session;
+    int calls = 0;
+    Response out;
+    {
+        Config cfg;
+        cfg.ssr = enabledConfig();
+        cfg.rootId = "root";
+        cfg.rootTemplate = [](const RootContext &ctx) {
+            return "<html>" + ctx.head + ctx.body + "</html>";
+        };
+        const Inertia app(std::move(cfg), client);
+        app.render(FakeRequest::get("/home"), session, "Home", {}, [&](Response r) {
+            ++calls;
+            out = std::move(r);
+        });
+        REQUIRE(calls == 0);
+    }
+    client->pending(reply(500, ""));
+    REQUIRE(calls == 1);
+    REQUIRE(out.body.find(R"(data-page="root")") != std::string::npos);
+    REQUIRE(out.body.rfind("<html>", 0) == 0);
 }
