@@ -7,16 +7,16 @@ export const inertiaHeaders = { 'X-Inertia': 'true', Accept: 'text/html, applica
 
 // An Inertia XHR (not an asset or a prefetch of the initial document) for `path`, matched on the
 // path only so query strings the client adds do not matter.
-// `partialData` additionally requires that exact X-Inertia-Partial-Data header (deferred props
-// start their own reloads, so a click can race with them).
-export function isVisit(path: string, method = 'GET', partialData?: string) {
+// `partialData` additionally requires that exact X-Inertia-Partial-Data header, or none at all for
+// null (deferred props start their own partial reloads, so a click can race with them).
+export function isVisit(path: string, method = 'GET', partialData?: string | null) {
   return (res: Response) => {
     const req = res.request()
     return (
       new URL(res.url()).pathname === path &&
       req.method() === method &&
       req.headers()['x-inertia'] === 'true' &&
-      (partialData === undefined || req.headers()['x-inertia-partial-data'] === partialData)
+      (partialData === undefined || (req.headers()['x-inertia-partial-data'] ?? null) === partialData)
     )
   }
 }
@@ -27,7 +27,7 @@ export async function visitDuring(
   path: string,
   action: () => Promise<unknown>,
   method = 'GET',
-  partialData?: string,
+  partialData?: string | null,
 ): Promise<Response> {
   const [res] = await Promise.all([
     page.waitForResponse(isVisit(path, method, partialData)),
