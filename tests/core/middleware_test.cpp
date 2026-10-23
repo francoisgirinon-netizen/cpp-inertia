@@ -107,3 +107,47 @@ TEST_CASE("302 stays 302 for non-Inertia PUT", "[middleware][protocol:redirect.3
     app.finalize(req, res);
     REQUIRE(res.status == 302);
 }
+
+TEST_CASE("Inertia redirect with a fragment becomes 409 with X-Inertia-Redirect",
+          "[middleware][protocol:redirect.fragment]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a");
+    req.verb = "POST";
+    Response res = redirect("/a#b");
+    app.finalize(req, res);
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Redirect").value_or("") == "/a#b");
+    REQUIRE(res.body.empty());
+    REQUIRE_FALSE(res.header("Location").has_value());
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+}
+
+TEST_CASE("fragment redirect becomes 409 for any method",
+          "[middleware][protocol:redirect.fragment]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a");
+    req.verb = "GET";
+    Response res = redirect("/a#b", 303);
+    app.finalize(req, res);
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Redirect").value_or("") == "/a#b");
+}
+
+TEST_CASE("prefetch redirect with a fragment keeps its status",
+          "[middleware][protocol:redirect.fragment]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a").with("Purpose", "prefetch");
+    Response res = redirect("/a#b");
+    app.finalize(req, res);
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location").value_or("") == "/a#b");
+}
+
+TEST_CASE("non-Inertia redirect with a fragment keeps its status",
+          "[middleware][protocol:redirect.fragment]") {
+    const Inertia app{Config{}};
+    Response res = redirect("/a#b");
+    app.finalize(FakeRequest::get("/a"), res);
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location").value_or("") == "/a#b");
+}

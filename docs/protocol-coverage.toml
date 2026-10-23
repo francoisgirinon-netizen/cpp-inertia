@@ -116,7 +116,7 @@ status = "done"
 id = "redirect.fragment"
 behavior = "Inertia non-prefetch redirect whose Location contains a hash becomes 409 with X-Inertia-Redirect"
 source = "docs/inertia-protocol-v3.md#behaviors: Fragment redirect"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "redirect.external"

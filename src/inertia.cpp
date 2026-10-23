@@ -153,6 +153,19 @@ void Inertia::finalize(const RequestView &req, Response &res) const {
     if (isInertia(req) && seeOther && res.status == 302) {
         res.status = 303;
     }
+    const bool prefetch = headers::iequals(req.header(headers::kPurpose).value_or(""), "prefetch");
+    const auto location = res.header("Location");
+    if (isInertia(req) && !prefetch && res.status >= 300 && res.status < 400 && location &&
+        location->find('#') != std::string::npos) {
+        // Inertia cannot follow a fragment redirect, so the client is asked to visit it itself.
+        std::erase_if(res.headers, [](const auto &entry) {
+            return headers::iequals(entry.first, "Location") ||
+                   headers::iequals(entry.first, headers::kInertia);
+        });
+        res.setHeader(std::string(headers::kRedirect), *location);
+        res.status = 409;
+        res.body.clear();
+    }
     auto items = headers::parseList(res.header(headers::kVary));
     const bool present = std::ranges::any_of(
         items, [](const auto &item) { return headers::iequals(item, headers::kInertia); });
