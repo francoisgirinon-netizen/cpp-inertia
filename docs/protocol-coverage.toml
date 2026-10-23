@@ -56,7 +56,7 @@ status = "done"
 id = "page.encrypt-history"
 behavior = "encryptHistory flag is emitted only when enabled globally or by a per-response override"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.clear-history"

@@ -10,6 +10,16 @@
 using namespace inertia;
 using namespace inertia::fake;
 
+namespace {
+
+RenderOptions encrypt(bool value) {
+    RenderOptions opts;
+    opts.encryptHistory = value;
+    return opts;
+}
+
+} // namespace
+
 TEST_CASE("flash data is emitted once and merged", "[flash][protocol:page.flash]") {
     const Inertia app{Config{}};
     MemorySession session;
@@ -36,4 +46,17 @@ TEST_CASE("preserveFragment is emitted once", "[history][protocol:page.preserve-
     REQUIRE(app.page(FakeRequest::inertia("/"), session, "C", {})["preserveFragment"] == true);
     REQUIRE_FALSE(
         app.page(FakeRequest::inertia("/"), session, "C", {}).contains("preserveFragment"));
+}
+
+TEST_CASE("encryptHistory follows config and override",
+          "[history][protocol:page.encrypt-history]") {
+    MemorySession session;
+    const auto req = FakeRequest::inertia("/");
+    REQUIRE_FALSE(Inertia{Config{}}.page(req, session, "C", {}).contains("encryptHistory"));
+    Config config;
+    config.encryptHistory = true;
+    const Inertia app{config};
+    REQUIRE(app.page(req, session, "C", {})["encryptHistory"] == true);
+    REQUIRE_FALSE(app.page(req, session, "C", {}, encrypt(false)).contains("encryptHistory"));
+    REQUIRE(Inertia{Config{}}.page(req, session, "C", {}, encrypt(true))["encryptHistory"] == true);
 }
