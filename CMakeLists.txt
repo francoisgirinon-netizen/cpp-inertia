@@ -23,11 +23,15 @@ target_include_directories(inertia_core PUBLIC
 target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(inertia_core PRIVATE inertia_warnings)
 
+add_subdirectory(adapters/fake)
+
 if(INERTIA_BUILD_TESTS)
     enable_testing()
     find_package(Catch2 CONFIG REQUIRED)
     include(Catch)
-    add_executable(inertia_core_tests tests/core/smoke_test.cpp tests/core/headers_test.cpp)
-    target_link_libraries(inertia_core_tests PRIVATE inertia::core Catch2::Catch2WithMain inertia_warnings)
+    add_executable(inertia_core_tests tests/core/smoke_test.cpp tests/core/headers_test.cpp
+                                  tests/core/fake_test.cpp)
+    target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
+                                                     Catch2::Catch2WithMain inertia_warnings)
     catch_discover_tests(inertia_core_tests)
 endif()
