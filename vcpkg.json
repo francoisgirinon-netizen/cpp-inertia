@@ -1,0 +1,12 @@
+{
+  "name": "cpp-inertia",
+  "version": "0.1.0",
+  "dependencies": ["nlohmann-json", "catch2"],
+  "default-features": ["drogon"],
+  "features": {
+    "drogon": {
+      "description": "Drogon adapter, example app and adapter tests",
+      "dependencies": ["drogon"]
+    }
+  }
+}
