@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: clang-format
+        name: clang-format
+        entry: scripts/dev clang-format -i
+        language: system
+        types: [c++]
+      - id: clang-tidy
+        name: clang-tidy
+        entry: scripts/dev tools/run-clang-tidy.sh
+        language: system
+        files: \.cpp$
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
