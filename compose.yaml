@@ -16,6 +16,10 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     working_dir: /src
     init: true
+    # ThreadSanitizer re-executes itself with ASLR disabled (personality(ADDR_NO_RANDOMIZE)), which
+    # Docker's default seccomp profile forbids: without this the tsan preset cannot even start.
+    security_opt:
+      - seccomp=unconfined
     stdin_open: true
     tty: true
     command: ["bash"]
