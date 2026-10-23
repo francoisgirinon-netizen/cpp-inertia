@@ -132,6 +132,11 @@ Prop merge(Prop p) { return std::move(p).merge(); }
 
 Prop deepMerge(Prop p) { return std::move(p).deepMerge(); }
 
+Prop Prop::deferred(std::string group) && {
+    deferGroup_ = std::move(group);
+    return std::move(*this);
+}
+
 Prop once(Resolver fn) { return Prop(std::move(fn)).once(); }
 
 Prop scroll(Resolver fn, std::function<ScrollMetadata()> metadata, std::string wrapper) {

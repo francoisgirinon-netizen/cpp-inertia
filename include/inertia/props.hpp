@@ -83,6 +83,7 @@ class Prop {
     [[nodiscard]] Prop merge() &&;
     [[nodiscard]] Prop deepMerge() &&;
     [[nodiscard]] Prop rescue() &&;
+    [[nodiscard]] Prop deferred(std::string group = "default") &&;
 
     // Copies with the content replaced, keeping the category and metadata modifiers.
     [[nodiscard]] Prop withChildren(Props children) const;
