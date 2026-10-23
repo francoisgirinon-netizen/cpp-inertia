@@ -4,6 +4,7 @@
 
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
+#include <drogon/Session.h>
 
 #include <optional>
 #include <string>
@@ -28,5 +29,19 @@ class DrogonRequest final : public RequestView {
 
 [[nodiscard]] ::drogon::HttpResponsePtr toDrogon(const Response &res);
 [[nodiscard]] Response fromDrogon(const ::drogon::HttpResponsePtr &res);
+
+// Stores each value as its dumped JSON text inside the Drogon session. Drogon's Session has its
+// own lock, so a store is safe to use while other requests of the same session run.
+class DrogonSession final : public SessionStore {
+  public:
+    explicit DrogonSession(::drogon::SessionPtr session);
+
+    [[nodiscard]] std::optional<Json> get(std::string_view key) const override;
+    void put(std::string key, Json value) override;
+    std::optional<Json> pull(std::string_view key) override;
+
+  private:
+    ::drogon::SessionPtr session_;
+};
 
 } // namespace inertia::drogon
