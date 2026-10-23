@@ -290,25 +290,25 @@ status = "done"
 id = "scroll.metadata"
 behavior = "scrollProps carries pageName, previousPage, nextPage, currentPage and reset for each scroll path"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "scroll.merge-intent"
 behavior = "Scroll merge label goes to prependProps when the intent header is prepend, otherwise to mergeProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "scroll.reset"
 behavior = "scrollProps reset true for paths in X-Inertia-Reset and suppresses the merge label"
 source = "docs/inertia-protocol-v3.md#behaviors: Scroll props"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "scroll.deferred"
 behavior = "Deferred scroll props emit deferredProps and merge metadata but no scrollProps"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "errors.empty"

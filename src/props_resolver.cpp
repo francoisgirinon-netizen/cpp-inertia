@@ -125,6 +125,9 @@ class Walker {
             return std::nullopt; // already cached by the client
         }
         const bool deferredNow = prop.deferGroup() && !ctx_->partial;
+        if (const auto &scrollSpec = prop.scrollSpec()) {
+            addScrollMetadata(*scrollSpec, path, deferredNow);
+        }
         if (deferredNow) {
             addDeferred(prop, path);
             return std::nullopt;
@@ -208,6 +211,25 @@ class Walker {
         out_.meta.onceProps[key] = Json{{"prop", path}, {"expiresAt", std::move(expiresAt)}};
         return ctx_->inertia && !ctx_->partial && !spec->fresh &&
                std::ranges::find(ctx_->exceptOnce, key) != ctx_->exceptOnce.end();
+    }
+
+    // The merge label goes to prependProps or mergeProps (suppressed by reset, filtered on
+    // partials like any merge path). scrollProps is omitted while the prop is deferred.
+    void addScrollMetadata(const ScrollSpec &spec, const std::string &path, bool deferredNow) {
+        const bool reset = std::ranges::find(ctx_->reset, path) != ctx_->reset.end();
+        if (mergeAllowed(path)) {
+            (ctx_->prependIntent ? out_.meta.prependProps : out_.meta.mergeProps)
+                .push_back(joinPath({path, spec.wrapper}));
+        }
+        if (deferredNow) {
+            return;
+        }
+        const ScrollMetadata page = spec.metadata ? spec.metadata() : ScrollMetadata{};
+        out_.meta.scrollProps[path] = Json{{"pageName", page.pageName},
+                                           {"previousPage", page.previousPage},
+                                           {"nextPage", page.nextPage},
+                                           {"currentPage", page.currentPage},
+                                           {"reset", reset}};
     }
 
     void addDeferred(const Prop &prop, const std::string &path) {
