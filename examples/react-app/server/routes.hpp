@@ -7,5 +7,6 @@ void registerHome();
 void registerUsers();
 void registerDashboard();
 void registerFeed();
+void registerPosts();
 
 } // namespace example
