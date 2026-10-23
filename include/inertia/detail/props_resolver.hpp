@@ -24,7 +24,8 @@ struct ResolveContext {
 // Page metadata collected while resolving; emitted by Inertia::page only when non-empty.
 struct Metadata {
     std::vector<std::string> mergeProps, prependProps, deepMergeProps, matchPropsOn, rescuedProps;
-    std::vector<std::pair<std::string, std::vector<std::string>>> deferredProps;
+    using DeferredGroup = std::pair<std::string, std::vector<std::string>>;
+    std::vector<DeferredGroup> deferredProps;
     Json scrollProps = Json::object(), onceProps = Json::object();
 };
 

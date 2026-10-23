@@ -28,6 +28,27 @@ Json sharedKeys(std::span<const std::pair<std::string, Prop>> shared) {
     return keys;
 }
 
+// Writes the non-empty page metadata keys in protocol order.
+void emitMetadata(Json &page, const detail::Metadata &meta) {
+    const auto list = [&page](const char *key, const std::vector<std::string> &items) {
+        if (!items.empty()) {
+            page[key] = items;
+        }
+    };
+    list("mergeProps", meta.mergeProps);
+    list("prependProps", meta.prependProps);
+    list("deepMergeProps", meta.deepMergeProps);
+    list("matchPropsOn", meta.matchPropsOn);
+    if (!meta.deferredProps.empty()) {
+        Json groups = Json::object();
+        for (const auto &[group, paths] : meta.deferredProps) {
+            groups[group] = paths;
+        }
+        page["deferredProps"] = std::move(groups);
+    }
+    list("rescuedProps", meta.rescuedProps);
+}
+
 } // namespace
 
 Inertia::Inertia(Config config, std::shared_ptr<HttpClient> http)
@@ -70,6 +91,7 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     if (config_.exposeSharedPropKeys && sharedCount > 0) {
         page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
     }
+    emitMetadata(page, resolved.meta);
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }

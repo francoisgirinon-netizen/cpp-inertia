@@ -188,13 +188,13 @@ status = "done"
 id = "defer.groups"
 behavior = "Deferred props on a full visit are listed in deferredProps by group, default group default"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "defer.partial"
 behavior = "Deferred props resolve when selected on partial visits, and deferredProps is never emitted on partials"
 source = "docs/inertia-protocol-v3.md#behaviors: Prop evaluation per category"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "defer.rescue"

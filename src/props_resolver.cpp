@@ -102,6 +102,10 @@ class Walker {
             // An unselected object may still hold always descendants, which bypass the filter.
             return walkable ? resolveObject(prop, path, false, false) : std::nullopt;
         }
+        if (prop.deferGroup() && !ctx_->partial) {
+            addDeferred(prop, path);
+            return std::nullopt;
+        }
         switch (prop.kind()) {
         case Prop::Kind::Value:
             if (walkable && !bypass) {
@@ -120,6 +124,20 @@ class Walker {
     Resolved &result() { return out_; }
 
   private:
+    void addDeferred(const Prop &prop, const std::string &path) {
+        const auto &deferGroup = prop.deferGroup();
+        if (!deferGroup) {
+            return;
+        }
+        const auto &group = *deferGroup;
+        auto &groups = out_.meta.deferredProps;
+        auto it = std::ranges::find(groups, group, &Metadata::DeferredGroup::first);
+        if (it == groups.end()) {
+            it = groups.emplace(groups.end(), group, std::vector<std::string>{});
+        }
+        it->second.push_back(path);
+    }
+
     std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass,
                                       bool selectedSelf) {
         Json result = Json::object();
