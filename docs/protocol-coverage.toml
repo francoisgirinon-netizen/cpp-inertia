@@ -80,7 +80,7 @@ status = "todo"
 id = "page.shared-props"
 behavior = "sharedProps lists top-level shared keys, using the first segment of dot keys"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.bigint"
@@ -92,7 +92,7 @@ status = "todo"
 id = "page.metadata.omit-empty"
 behavior = "Metadata fields are emitted only when non-empty"
 source = "docs/inertia-protocol-v3.md#page-object: Metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "version.mismatch"
