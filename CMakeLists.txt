@@ -44,6 +44,8 @@ if(INERTIA_BUILD_TESTS)
     catch_discover_tests(inertia_core_tests)
     inertia_add_protocol_tests(inertia_core_tests)
 
+    add_subdirectory(tests/conformance)
+
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     # Deferred so that every test target registered in later subdirectories is included.
     cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL inertia_register_coverage_check
