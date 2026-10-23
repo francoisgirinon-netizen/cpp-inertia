@@ -11,8 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(INERTIA_BUILD_DROGON "Build the Drogon adapter" ON)
-option(INERTIA_BUILD_TESTS "Build tests" ON)
-option(INERTIA_BUILD_EXAMPLES "Build examples" OFF)
+option(INERTIA_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+include(CMakeDependentOption)
+cmake_dependent_option(INERTIA_BUILD_EXAMPLES "Build examples (needs the Drogon adapter)" OFF
+                       "PROJECT_IS_TOP_LEVEL;INERTIA_BUILD_DROGON" OFF)
+option(INERTIA_INSTALL "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
 option(INERTIA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(INERTIA_COVERAGE_STRICT "Fail coverage_check on todo protocol ids" OFF)
 
@@ -34,7 +37,7 @@ if(INERTIA_BUILD_DROGON)
     add_subdirectory(adapters/drogon)
 endif()
 
-if(INERTIA_BUILD_EXAMPLES AND INERTIA_BUILD_DROGON)
+if(INERTIA_BUILD_EXAMPLES)
     add_subdirectory(examples/react-app/server)
 endif()
 
