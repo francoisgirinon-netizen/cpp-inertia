@@ -3,6 +3,7 @@
 #include <inertia/ports/file_reader.hpp>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -31,6 +32,10 @@ class Vite {
     // malformed manifest yields "" and never throws.
     [[nodiscard]] std::string tags() const;
 
+    // FNV-1a 64-bit of the raw manifest as 16 lowercase hex digits; "" when the manifest is
+    // missing or is not a JSON object.
+    [[nodiscard]] std::string manifestHash() const;
+
   private:
     [[nodiscard]] std::string devTags(const std::string &url) const;
     [[nodiscard]] std::string prodTags() const;
@@ -39,5 +44,8 @@ class Vite {
     ViteConfig cfg_;
     std::shared_ptr<const FileReader> files_;
 };
+
+// Asset version for Config::version: the manifest hash, so it changes with the built assets.
+[[nodiscard]] std::function<std::string()> versionFromVite(std::shared_ptr<const Vite> vite);
 
 } // namespace inertia

@@ -350,7 +350,7 @@ status = "todo"
 id = "asset.version-default"
 behavior = "Default asset version is a hash of the Vite manifest file that changes with the assets"
 source = "docs/inertia-protocol-v3.md#behaviors: Asset version default"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "laravel.previous-url"

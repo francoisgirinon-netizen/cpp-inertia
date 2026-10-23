@@ -122,3 +122,41 @@ TEST_CASE("malformed manifest JSON is treated as missing and never throws", "[vi
     REQUIRE_NOTHROW(tags = vite.tags());
     REQUIRE(tags.empty());
 }
+
+TEST_CASE("manifestHash is FNV-1a 64 of the raw manifest, 16 lowercase hex digits",
+          "[vite][protocol:asset.version-default]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] = "{}";
+    const Vite vite(ViteConfig{}, files);
+    REQUIRE(vite.manifestHash() == "08f44b07b5901a25");
+}
+
+TEST_CASE("manifestHash is empty without a manifest or with malformed JSON",
+          "[vite][protocol:asset.version-default]") {
+    auto files = makeFiles();
+    REQUIRE(Vite(ViteConfig{}, files).manifestHash().empty());
+    files->files[std::string(kManifestPath)] = R"({"src/app.tsx": )";
+    REQUIRE_NOTHROW(Vite(ViteConfig{}, files).manifestHash());
+    REQUIRE(Vite(ViteConfig{}, files).manifestHash().empty());
+}
+
+TEST_CASE("versionFromVite is stable for the same manifest and changes with it",
+          "[vite][protocol:asset.version-default]") {
+    auto files = makeFiles();
+    auto vite = std::make_shared<const Vite>(ViteConfig{}, files);
+    const auto version = versionFromVite(vite);
+    REQUIRE(version().empty());
+
+    files->files[std::string(kManifestPath)] = kManifest;
+    const auto first = version();
+    REQUIRE(first.size() == 16);
+    REQUIRE(version() == first);
+    REQUIRE(std::make_shared<const Vite>(ViteConfig{}, files)->manifestHash() == first);
+
+    files->files[std::string(kManifestPath)] = std::string(kManifest) + " ";
+    REQUIRE(version() != first);
+}
+
+TEST_CASE("versionFromVite without a Vite is empty", "[vite][protocol:asset.version-default]") {
+    REQUIRE(versionFromVite(nullptr)().empty());
+}

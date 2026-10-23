@@ -1,6 +1,9 @@
 #include <inertia/json.hpp>
 #include <inertia/vite.hpp>
 
+#include <cstdint>
+#include <format>
+#include <functional>
 #include <set>
 #include <string>
 #include <utility>
@@ -10,6 +13,18 @@ namespace inertia {
 namespace {
 
 constexpr std::string_view kWhitespace = " \t\r\n";
+
+// FNV-1a 64-bit hash of the raw bytes.
+std::uint64_t fnv1a64(std::string_view data) {
+    constexpr std::uint64_t kOffsetBasis = 0xcbf29ce484222325ULL;
+    constexpr std::uint64_t kPrime = 0x100000001b3ULL;
+    std::uint64_t hash = kOffsetBasis;
+    for (const auto byte : data) {
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= kPrime;
+    }
+    return hash;
+}
 
 std::string assetUrl(const std::string &buildDir, const std::string &file) {
     return "/" + buildDir + "/" + file;
@@ -147,6 +162,18 @@ std::string Vite::prodTags() const {
 
 std::optional<std::string> Vite::manifestContent() const {
     return files_->read(cfg_.publicDir / cfg_.buildDir / ".vite" / "manifest.json");
+}
+
+std::string Vite::manifestHash() const {
+    const auto content = manifestContent();
+    if (!content || !parseManifest(content)) {
+        return {};
+    }
+    return std::format("{:016x}", fnv1a64(*content));
+}
+
+std::function<std::string()> versionFromVite(std::shared_ptr<const Vite> vite) {
+    return [held = std::move(vite)] { return held ? held->manifestHash() : std::string{}; };
 }
 
 } // namespace inertia
