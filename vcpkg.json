@@ -1,6 +1,9 @@
 {
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "cpp-inertia",
   "version": "0.1.0",
+  "description": "Inertia.js v3 server protocol implementation for C++20",
+  "builtin-baseline": "65a2c2391af39b773f83f91e0ab6c8ced8f9c727",
   "dependencies": ["nlohmann-json", "catch2"],
   "default-features": ["drogon"],
   "features": {
