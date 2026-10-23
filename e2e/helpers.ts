@@ -51,3 +51,13 @@ export async function inertiaGet(
     headers: { 'X-Inertia': 'true', 'X-Inertia-Version': version, ...headers },
   })
 }
+
+// The response the browser fetched after following the redirect that answered `fromPath`. (The
+// followed request is a fresh GET whose own headers Playwright does not report, so it is matched
+// through the redirect chain.)
+export function followedRedirectFrom(fromPath: string, toPath: string) {
+  return (res: Response) =>
+    new URL(res.url()).pathname === toPath &&
+    res.request().redirectedFrom() !== null &&
+    new URL(res.request().redirectedFrom()?.url() ?? "").pathname === fromPath
+}
