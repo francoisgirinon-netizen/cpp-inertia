@@ -18,7 +18,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(inertia_core STATIC)
 add_library(inertia::core ALIAS inertia_core)
-target_sources(inertia_core PRIVATE src/headers.cpp src/html.cpp src/inertia.cpp src/props.cpp src/props_resolver.cpp)
+target_sources(inertia_core PRIVATE src/headers.cpp src/html.cpp src/inertia.cpp src/props.cpp src/props_resolver.cpp src/session.cpp)
 target_include_directories(inertia_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
@@ -35,7 +35,8 @@ if(INERTIA_BUILD_TESTS)
                                   tests/core/page_test.cpp
                                   tests/core/props_test.cpp tests/core/partial_test.cpp
                                   tests/core/shared_test.cpp tests/core/defer_test.cpp tests/core/merge_test.cpp
-                                  tests/core/once_test.cpp tests/core/scroll_test.cpp)
+                                  tests/core/once_test.cpp tests/core/scroll_test.cpp
+                                  tests/core/middleware_test.cpp)
     target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
                                                      Catch2::Catch2WithMain inertia_warnings)
     catch_discover_tests(inertia_core_tests)
