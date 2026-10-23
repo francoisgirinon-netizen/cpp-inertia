@@ -332,19 +332,19 @@ status = "done"
 id = "ssr.render"
 behavior = "SSR POSTs the page JSON to ssrUrl /render and substitutes head and body into the response"
 source = "docs/inertia-protocol-v3.md#behaviors: SSR"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "ssr.fallback"
 behavior = "Any SSR failure (connection, non-2xx, invalid JSON) falls back to client-side rendering"
 source = "docs/inertia-protocol-v3.md#behaviors: SSR"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "ssr.health"
 behavior = "GET /health returns a status OK object"
 source = "docs/inertia-protocol-v3.md#behaviors: SSR"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "asset.version-default"
