@@ -8,13 +8,13 @@ inertia_react_version = "3.9.1"
 id = "html.script-element"
 behavior = "First visit returns 200 text/html with a data-page JSON script element and a root div"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "html.json-escaping"
 behavior = "Page JSON in the script element escapes slash, less-than and greater-than without HTML entities"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "html.root-id"
