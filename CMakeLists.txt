@@ -6,9 +6,9 @@ project(inertia VERSION 0.1.0
         DESCRIPTION "Inertia.js v3 server protocol implementation for C++20"
         LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
 option(INERTIA_BUILD_DROGON "Build the Drogon adapter" ON)
 option(INERTIA_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
@@ -29,6 +29,7 @@ add_library(inertia::core ALIAS inertia_core)
 target_sources(inertia_core PRIVATE src/headers.cpp src/html.cpp src/inertia.cpp src/props.cpp src/props_resolver.cpp src/session.cpp src/ssr.cpp src/vite.cpp)
 target_include_directories(inertia_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_compile_features(inertia_core PUBLIC cxx_std_20) # inertia::fake and inertia::drogon inherit it
 target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(inertia_core PRIVATE inertia_warnings)
 
