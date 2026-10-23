@@ -142,10 +142,29 @@ class Walker {
     Resolved &result() { return out_; }
 
   private:
+    // Merge metadata is suppressed by X-Inertia-Reset; on partials it needs the path to equal or
+    // descend from an only entry (ancestors do not count) and not be excluded.
+    [[nodiscard]] bool mergeAllowed(std::string_view path) const {
+        if (std::ranges::find(ctx_->reset, path) != ctx_->reset.end()) {
+            return false;
+        }
+        if (!ctx_->partial) {
+            return true;
+        }
+        const bool onlyMatch =
+            ctx_->only.empty() || std::ranges::any_of(ctx_->only, [&](const std::string &entry) {
+                return isSelfOrDescendant(path, entry);
+            });
+        const bool excluded = std::ranges::any_of(ctx_->except, [&](const std::string &entry) {
+            return isSelfOrDescendant(path, entry);
+        });
+        return onlyMatch && !excluded;
+    }
+
     // Classifies the prop's merge spec into the merge metadata lists.
     void addMergeMetadata(const Prop &prop, const std::string &path) {
         const auto &spec = prop.mergeSpec();
-        if (!spec) {
+        if (!spec || !mergeAllowed(path)) {
             return;
         }
         auto &meta = out_.meta;

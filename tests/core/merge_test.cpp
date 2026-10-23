@@ -4,6 +4,7 @@
 #include <inertia/inertia.hpp>
 
 #include <string>
+#include <string_view>
 
 using namespace inertia;
 using namespace inertia::fake;
@@ -65,4 +66,39 @@ TEST_CASE("matchOn keys", "[merge][protocol:merge.match-on]") {
     REQUIRE(meta(fullPage(one(merge(1).append("data", "id"))), "matchPropsOn") ==
             R"(["x.data.id"])");
     REQUIRE(meta(fullPage(one(deepMerge(1).matchOn("id"))), "matchPropsOn") == R"(["x.id"])");
+}
+
+TEST_CASE("X-Inertia-Reset suppresses merge metadata", "[merge][protocol:merge.reset]") {
+    const auto page = fullPage({{"x", merge(1).matchOn("id")}, {"y", merge(2)}}, "x");
+    REQUIRE(meta(page, "mergeProps") == R"(["y"])");
+    REQUIRE(meta(page, "matchPropsOn") == "absent");
+}
+
+namespace {
+
+Json partialPage(const Props &props, std::string_view header, const std::string &value) {
+    const Inertia app{Config{}};
+    MemorySession session;
+    auto req = FakeRequest::inertia("/");
+    req.with("X-Inertia-Partial-Component", "Page");
+    req.with(std::string(header), value);
+    return app.page(req, session, "Page", props);
+}
+
+constexpr std::string_view kOnly = "X-Inertia-Partial-Data";
+constexpr std::string_view kExcept = "X-Inertia-Partial-Except";
+
+} // namespace
+
+TEST_CASE("merge metadata follows the partial only/except filter",
+          "[merge][protocol:merge.partial-filter]") {
+    const Props flat = one(merge(1));
+    REQUIRE(meta(partialPage(flat, kOnly, "x"), "mergeProps") == R"(["x"])");
+    REQUIRE(meta(partialPage(flat, kExcept, "x"), "mergeProps") == "absent");
+
+    const Props nested = {{"parent", object({{"x", merge(1)}})}};
+    REQUIRE(meta(partialPage(nested, kOnly, "parent"), "mergeProps") == R"(["parent.x"])");
+
+    const Props holder = {{"x", merge(object({{"sub", 1}}))}};
+    REQUIRE(meta(partialPage(holder, kOnly, "x.sub"), "mergeProps") == "absent");
 }

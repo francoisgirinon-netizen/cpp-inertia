@@ -242,13 +242,13 @@ status = "done"
 id = "merge.reset"
 behavior = "Merge metadata is suppressed for paths listed in X-Inertia-Reset"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "merge.partial-filter"
 behavior = "Partial reloads emit merge metadata only for only paths and their descendants, not excluded by except"
 source = "docs/inertia-protocol-v3.md#behaviors: Merge metadata"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "once.metadata"
