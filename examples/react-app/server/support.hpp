@@ -3,6 +3,7 @@
 // Small helpers shared by the example's route files.
 
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/json.hpp>
 #include <inertia/session.hpp>
 
 #include <drogon/HttpAppFramework.h>
@@ -37,6 +38,13 @@ template <class MakeProps> void registerPage(const PageRoute &route, MakeProps m
 // The Inertia view of the request's Drogon session (flash messages, validation errors, ...).
 inline inertia::drogon::DrogonSession sessionOf(const ::drogon::HttpRequestPtr &req) {
     return inertia::drogon::DrogonSession{req->session()};
+}
+
+// The request's JSON body (what the Inertia client sends for forms), or {} when it is not an
+// object.
+inline inertia::Json jsonBody(const ::drogon::HttpRequestPtr &req) {
+    auto body = inertia::Json::parse(req->body(), nullptr, false);
+    return body.is_object() ? body : inertia::Json::object();
 }
 
 inline void reply(Callback &&done, const inertia::Response &response) {

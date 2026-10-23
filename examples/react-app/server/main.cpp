@@ -70,6 +70,7 @@ int main() {
     inertiaApp->share("appName", "cpp-inertia demo");
 
     example::registerHome();
+    example::registerUsers();
 
     // Must come last: Inertia is immutable once installed.
     inertia::drogon::install(inertiaApp);
