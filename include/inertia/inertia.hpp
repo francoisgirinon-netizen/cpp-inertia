@@ -19,6 +19,8 @@
 
 namespace inertia {
 
+class Vite;
+
 struct RenderOptions {
     std::optional<bool> encryptHistory;
     std::optional<bool> preserveBigIntegers;
@@ -32,6 +34,8 @@ struct Config {
     bool preserveBigIntegers = false;
     bool withAllErrors = false;
     RootTemplate rootTemplate = defaultRootTemplate;
+    // Set: first-visit HTML gets vite->tags() in RootContext::viteTags.
+    std::shared_ptr<const Vite> vite;
     // Test hook: pins the time used for once-prop expiry. Empty -> system clock.
     std::function<std::chrono::system_clock::time_point()> clock;
 };

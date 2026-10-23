@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/fake/fake.hpp>
+#include <inertia/inertia.hpp>
 #include <inertia/vite.hpp>
 
 #include <memory>
@@ -159,4 +160,36 @@ TEST_CASE("versionFromVite is stable for the same manifest and changes with it",
 
 TEST_CASE("versionFromVite without a Vite is empty", "[vite][protocol:asset.version-default]") {
     REQUIRE(versionFromVite(nullptr)().empty());
+}
+
+namespace {
+
+Response renderWith(const Inertia &app, const fake::FakeRequest &req) {
+    fake::MemorySession session;
+    Response out;
+    app.render(req, session, "Users/Index", Props{}, [&](Response r) { out = std::move(r); });
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("first-visit HTML carries the vite tags before the head", "[vite]") {
+    auto files = makeFiles();
+    files->files["public/hot"] = "http://localhost:5173";
+    Config cfg;
+    cfg.vite = std::make_shared<const Vite>(ViteConfig{}, files);
+    const Inertia app(cfg);
+    const auto res = renderWith(app, fake::FakeRequest::get("/users"));
+    const auto tags = cfg.vite->tags();
+    REQUIRE(res.body.starts_with(R"(<!DOCTYPE html><html><head><meta charset="utf-8">)" + tags));
+}
+
+TEST_CASE("Inertia JSON responses carry no vite tags", "[vite]") {
+    auto files = makeFiles();
+    files->files["public/hot"] = "http://localhost:5173";
+    Config cfg;
+    cfg.vite = std::make_shared<const Vite>(ViteConfig{}, files);
+    const Inertia app(cfg);
+    const auto res = renderWith(app, fake::FakeRequest::inertia("/users"));
+    REQUIRE(res.body.find("@vite/client") == std::string::npos);
 }

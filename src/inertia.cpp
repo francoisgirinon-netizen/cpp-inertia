@@ -1,6 +1,7 @@
 #include <inertia/detail/props_resolver.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/vite.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -199,8 +200,11 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
         res.body = dumpJson(page);
     } else {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.body = config_.rootTemplate(RootContext{
-            .page = page, .head = "", .body = inertiaBody(page, config_.rootId), .viteTags = ""});
+        std::string viteTags = config_.vite ? config_.vite->tags() : std::string{};
+        res.body = config_.rootTemplate(RootContext{.page = page,
+                                                    .head = "",
+                                                    .body = inertiaBody(page, config_.rootId),
+                                                    .viteTags = std::move(viteTags)});
     }
     done(std::move(res));
 }
