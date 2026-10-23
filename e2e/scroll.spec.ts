@@ -30,9 +30,12 @@ test('loading the next page asks to append and merges it into the list [protocol
   expect(body.mergeProps).toEqual(['items.data'])
   expect(body).not.toHaveProperty('prependProps')
   expect(body.scrollProps.items.currentPage).toBe(2)
-  await expect(page.getByRole('listitem')).toHaveCount(20)
-  await expect(page.getByRole('listitem').first()).toHaveText('Item 1')
-  await expect(page.getByRole('listitem').last()).toHaveText('Item 20')
+  // The client may fetch yet another page on its own once the list is long enough to need it,
+  // so assert "at least two pages, in order, without duplicates" rather than an exact count.
+  const items = page.getByRole('listitem')
+  await expect.poll(() => items.count()).toBeGreaterThanOrEqual(20)
+  const texts = await items.allTextContents()
+  expect(texts).toEqual(texts.map((_text, index) => `Item ${index + 1}`))
 
   // A prepend intent (loading earlier pages) moves the merge label to prependProps.
   const wire = await inertiaGet(request, '/feed?page=2', {
