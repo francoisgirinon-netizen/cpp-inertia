@@ -86,7 +86,7 @@ status = "done"
 id = "page.bigint"
 behavior = "Integers outside the JS safe range serialize as a bigint object when preserveBigIntegers is set"
 source = "docs/inertia-protocol-v3.md#page-object: Flags"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "page.metadata.omit-empty"

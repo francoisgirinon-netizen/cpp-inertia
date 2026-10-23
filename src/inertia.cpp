@@ -3,6 +3,7 @@
 #include <inertia/inertia.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
 #include <span>
 #include <string>
@@ -59,6 +60,27 @@ Json errorsProp(const Json &stored, bool allErrors, const std::optional<std::str
         out[header ? *bagHeader : bag] = shape(fields);
     }
     return out;
+}
+
+// Largest integer a JavaScript number holds exactly.
+constexpr std::int64_t kMaxSafeInteger = 9007199254740991LL;
+
+// Replaces, in place and recursively, integers beyond +/-(2^53 - 1) by {"$bigint": "<digits>"}.
+void wrapBigIntegers(Json &value) {
+    if (value.is_number_unsigned()) {
+        if (value.get<std::uint64_t>() > static_cast<std::uint64_t>(kMaxSafeInteger)) {
+            value = Json{{"$bigint", std::to_string(value.get<std::uint64_t>())}};
+        }
+    } else if (value.is_number_integer()) {
+        const auto number = value.get<std::int64_t>();
+        if (number > kMaxSafeInteger || number < -kMaxSafeInteger) {
+            value = Json{{"$bigint", std::to_string(number)}};
+        }
+    } else if (value.is_structured()) {
+        for (auto &child : value) {
+            wrapBigIntegers(child);
+        }
+    }
 }
 
 // Writes the non-empty page metadata keys in protocol order.
@@ -127,6 +149,11 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     resolved.props["errors"] = errorsProp(session.pull("inertia.errors").value_or(Json::object()),
                                           config_.withAllErrors, req.header(headers::kErrorBag));
 
+    const bool bigIntegers = opts.preserveBigIntegers.value_or(config_.preserveBigIntegers);
+    if (bigIntegers) {
+        wrapBigIntegers(resolved.props);
+    }
+
     Json page = Json::object();
     page["component"] = std::string(component);
     page["props"] = std::move(resolved.props);
@@ -145,9 +172,15 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     if (session.pull("inertia.preserve_fragment")) {
         page["preserveFragment"] = true;
     }
-    const auto flashData = session.pull("inertia.flash_data");
+    if (bigIntegers) {
+        page["preserveBigIntegers"] = true;
+    }
+    auto flashData = session.pull("inertia.flash_data");
     if (flashData && flashData->is_object() && !flashData->empty()) {
-        page["flash"] = *flashData;
+        if (bigIntegers) {
+            wrapBigIntegers(*flashData);
+        }
+        page["flash"] = std::move(*flashData);
     }
     return page;
 }
