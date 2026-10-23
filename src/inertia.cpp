@@ -31,4 +31,25 @@ Json Inertia::page(const RequestView &req, SessionStore & /*session*/, std::stri
     return page;
 }
 
+// By-value parameters are part of the public contract: they are consumed asynchronously by later
+// tasks (deferred props).
+// NOLINTBEGIN(performance-unnecessary-value-param)
+void Inertia::render(const RequestView &req, SessionStore &session, std::string component,
+                     Props props, std::function<void(Response)> done, RenderOptions opts) const {
+    const Json page = this->page(req, session, component, props, opts);
+    Response res;
+    res.status = 200;
+    if (req.header(headers::kInertia)) {
+        res.setHeader(std::string(headers::kInertia), "true");
+        res.setHeader("Content-Type", "application/json");
+        res.body = dumpJson(page);
+    } else {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.body = config_.rootTemplate(RootContext{
+            .page = page, .head = "", .body = inertiaBody(page, config_.rootId), .viteTags = ""});
+    }
+    done(std::move(res));
+}
+// NOLINTEND(performance-unnecessary-value-param)
+
 } // namespace inertia

@@ -3,10 +3,27 @@
 #include <inertia/fake/fake.hpp>
 #include <inertia/inertia.hpp>
 
+#include <optional>
 #include <string>
 
 using namespace inertia;
 using namespace inertia::fake;
+
+namespace {
+
+Response renderOne(const Inertia &app, const FakeRequest &req, Props props) {
+    MemorySession session;
+    Response out;
+    bool called = false;
+    app.render(req, session, "Users/Index", std::move(props), [&](Response r) {
+        out = std::move(r);
+        called = true;
+    });
+    REQUIRE(called);
+    return out;
+}
+
+} // namespace
 
 TEST_CASE("page object has required keys", "[page][protocol:page.required]") {
     const Inertia app{Config{}};
@@ -34,4 +51,61 @@ TEST_CASE("version defaults to empty", "[page][protocol:page.version.empty]") {
     REQUIRE(app.version() == "abc");
     MemorySession session;
     REQUIRE(app.page(FakeRequest::inertia("/"), session, "C", {})["version"] == "abc");
+}
+
+TEST_CASE("Inertia request gets JSON", "[page][protocol:json.response]") {
+    const Inertia app{Config{}};
+    const auto req = FakeRequest::inertia("/users");
+    const auto res = renderOne(app, req, {{"a", 1}});
+    REQUIRE(res.status == 200);
+    REQUIRE(res.header("X-Inertia") == "true");
+    REQUIRE(res.header("Content-Type").value_or("").find("application/json") == 0);
+    MemorySession session;
+    REQUIRE(Json::parse(res.body) == app.page(req, session, "Users/Index", {{"a", 1}}));
+}
+
+TEST_CASE("first visit gets HTML with script element", "[html][protocol:html.script-element]") {
+    const Inertia app{Config{}};
+    const auto res = renderOne(app, FakeRequest::get("/users"), {{"a", 1}});
+    REQUIRE(res.status == 200);
+    REQUIRE(res.header("Content-Type") == "text/html; charset=utf-8");
+    REQUIRE(res.body.find(R"(<script data-page="app" type="application/json">)") !=
+            std::string::npos);
+    REQUIRE(res.body.find(R"(</script><div id="app"></div>)") != std::string::npos);
+}
+
+TEST_CASE("root id is configurable", "[html][protocol:html.root-id]") {
+    Config config;
+    config.rootId = "root";
+    const Inertia app{config};
+    const auto res = renderOne(app, FakeRequest::get("/"), {});
+    REQUIRE(res.body.find(R"(data-page="root")") != std::string::npos);
+    REQUIRE(res.body.find(R"(<div id="root">)") != std::string::npos);
+}
+
+TEST_CASE("props cannot break out of the script element", "[html][protocol:html.json-escaping]") {
+    const Inertia app{Config{}};
+    const auto res = renderOne(app, FakeRequest::get("/"),
+                               {{"s", "</script><!--x-->"},
+                                {"t", "a\xE2\x80\xA8"
+                                      "b"}});
+    REQUIRE(res.body.find("\\u003C\\/script\\u003E\\u003C!--x--\\u003E") != std::string::npos);
+    std::size_t count = 0;
+    for (auto pos = res.body.find("</script>"); pos != std::string::npos;
+         pos = res.body.find("</script>", pos + 1)) {
+        ++count;
+    }
+    REQUIRE(count == 1);
+    REQUIRE(res.body.find("<!--") == std::string::npos);
+    REQUIRE(res.body.find("\xE2\x80\xA8") == std::string::npos);
+}
+
+TEST_CASE("invalid UTF-8 prop does not throw", "[page]") {
+    const Inertia app{Config{}};
+    Response res;
+    REQUIRE_NOTHROW(res = renderOne(app, FakeRequest::get("/"), {{"s", std::string("\xff")}}));
+    REQUIRE(res.status == 200);
+    REQUIRE(res.body.find("\xEF\xBF\xBD") != std::string::npos);
+    REQUIRE_NOTHROW(res = renderOne(app, FakeRequest::inertia("/"), {{"s", std::string("\xff")}}));
+    REQUIRE(res.status == 200);
 }

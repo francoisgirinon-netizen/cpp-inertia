@@ -45,6 +45,9 @@ class Inertia {
                             std::string_view component, const Props &props,
                             const RenderOptions &opts = {}) const;
 
+    void render(const RequestView &req, SessionStore &session, std::string component, Props props,
+                std::function<void(Response)> done, RenderOptions opts = {}) const;
+
   private:
     Config config_;
     std::shared_ptr<HttpClient> http_;

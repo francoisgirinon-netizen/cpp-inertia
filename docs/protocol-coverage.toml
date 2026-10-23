@@ -20,13 +20,13 @@ status = "done"
 id = "html.root-id"
 behavior = "Root id is configurable (default app) and data-page equals that id"
 source = "docs/inertia-protocol-v3.md#behaviors: First visit (non-Inertia request)"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "json.response"
 behavior = "Inertia request returns 200 JSON with X-Inertia true and application/json content type"
 source = "docs/inertia-protocol-v3.md#behaviors: Inertia request"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "vary.always"
