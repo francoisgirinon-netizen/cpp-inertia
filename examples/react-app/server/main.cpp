@@ -72,6 +72,7 @@ int main() {
     example::registerHome();
     example::registerUsers();
     example::registerDashboard();
+    example::registerFeed();
 
     // Must come last: Inertia is immutable once installed.
     inertia::drogon::install(inertiaApp);

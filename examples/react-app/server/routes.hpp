@@ -6,5 +6,6 @@ namespace example {
 void registerHome();
 void registerUsers();
 void registerDashboard();
+void registerFeed();
 
 } // namespace example
