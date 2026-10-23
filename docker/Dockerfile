@@ -13,7 +13,7 @@ RUN (getent passwd "${UID}" | cut -d: -f1 | xargs -r userdel -r || true) \
     && (getent group "${GID}" | cut -d: -f1 | xargs -r groupdel || true) \
     && groupadd -g "${GID}" dev \
     && useradd -m -u "${UID}" -g "${GID}" -s /bin/bash dev \
-    && mkdir -p /home/dev/.cache/vcpkg /home/dev/.bun/install/cache \
+    && mkdir -p /home/dev/.cache/vcpkg/archives /home/dev/.bun/install/cache \
     && chown -R dev:dev /home/dev
 
 # mise + pinned toolchain (installed system-wide so any UID can use it).
@@ -34,6 +34,12 @@ RUN B=/opt/mise/installs/clang/${CLANG_VERSION}/bin \
     && cp "$B/x86_64-conda-linux-gnu-clang.cfg" "$B/x86_64-conda-linux-gnu-clang++.cfg" \
     && ln -s "$B/clang++" /usr/local/bin/clang++ \
     && mise reshim && chmod -R a+rX /opt/mise
+
+# binutils: CMake finds ar/ranlib/nm next to the system toolchain, not next to the conda clang.
+# The rest is what vcpkg ports (openssl, libuuid, ...) need to build from source.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        binutils make perl linux-libc-dev autoconf automake libtool \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 
