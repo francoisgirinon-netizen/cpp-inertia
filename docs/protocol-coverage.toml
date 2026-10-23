@@ -98,13 +98,13 @@ status = "done"
 id = "version.mismatch"
 behavior = "GET Inertia request with a differing X-Inertia-Version gets 409 with X-Inertia-Location and X-Inertia-Version"
 source = "docs/inertia-protocol-v3.md#behaviors: Version mismatch"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "version.non-get"
 behavior = "Non-GET methods never receive the version-mismatch 409"
 source = "docs/inertia-protocol-v3.md#behaviors: Version mismatch"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "redirect.303"

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/fake/fake.hpp>
+#include <inertia/inertia.hpp>
 #include <inertia/session.hpp>
 
 #include <optional>
@@ -31,4 +32,47 @@ TEST_CASE("back falls back to / without a Referer", "[middleware]") {
     const Response res = back(FakeRequest::get("/form"));
     REQUIRE(res.status == 302);
     REQUIRE(res.header("Location").value_or("") == "/");
+}
+
+namespace {
+
+Inertia appWithVersion(std::string version) {
+    Config config;
+    config.version = [v = std::move(version)] { return v; };
+    return Inertia{std::move(config)};
+}
+
+} // namespace
+
+TEST_CASE("version mismatch on a GET Inertia request gives 409 with location",
+          "[middleware][protocol:version.mismatch]") {
+    const auto app = appWithVersion("v2");
+    const Response res =
+        app.handleVersion(FakeRequest::inertia("/a?b=1", "v1")).value_or(Response{});
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").value_or("") == "http://localhost/a?b=1");
+    REQUIRE(res.header("X-Inertia-Version").value_or("") == "v2");
+    REQUIRE(res.body.empty());
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+}
+
+TEST_CASE("matching version passes through on Inertia requests",
+          "[middleware][protocol:version.mismatch]") {
+    const auto app = appWithVersion("v2");
+    REQUIRE_FALSE(app.handleVersion(FakeRequest::inertia("/a", "v2")).has_value());
+}
+
+TEST_CASE("non-Inertia requests never get the version 409",
+          "[middleware][protocol:version.mismatch]") {
+    const auto app = appWithVersion("v2");
+    REQUIRE_FALSE(app.handleVersion(FakeRequest::get("/a")).has_value());
+}
+
+TEST_CASE("non-GET requests never get the version 409", "[middleware][protocol:version.non-get]") {
+    const auto app = appWithVersion("v2");
+    for (const char *verb : {"POST", "PUT", "PATCH", "DELETE"}) {
+        auto req = FakeRequest::inertia("/a", "v1");
+        req.verb = verb;
+        REQUIRE_FALSE(app.handleVersion(req).has_value());
+    }
 }

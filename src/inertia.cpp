@@ -12,6 +12,9 @@ namespace inertia {
 
 namespace {
 
+// An Inertia request carries the X-Inertia header.
+bool isInertia(const RequestView &req) { return req.header(headers::kInertia).has_value(); }
+
 // Top-level keys of the shared props (a dot key contributes its first segment), then "errors",
 // de-duplicated and in order.
 Json sharedKeys(std::span<const std::pair<std::string, Prop>> shared) {
@@ -116,7 +119,7 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
     const Json page = this->page(req, session, component, props, opts);
     Response res;
     res.status = 200;
-    if (req.header(headers::kInertia)) {
+    if (isInertia(req)) {
         res.setHeader(std::string(headers::kInertia), "true");
         res.setHeader("Content-Type", "application/json");
         res.body = dumpJson(page);
@@ -128,6 +131,21 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
     done(std::move(res));
 }
 // NOLINTEND(performance-unnecessary-value-param)
+
+std::optional<Response> Inertia::handleVersion(const RequestView &req) const {
+    if (!isInertia(req) || req.method() != "GET") {
+        return std::nullopt;
+    }
+    const std::string current = version();
+    if (req.header(headers::kVersion).value_or("") == current) {
+        return std::nullopt;
+    }
+    Response res;
+    res.status = 409;
+    res.setHeader(std::string(headers::kLocation), req.fullUrl());
+    res.setHeader(std::string(headers::kVersion), current);
+    return res;
+}
 
 void Inertia::finalize(const RequestView & /*req*/, Response &res) const {
     auto items = headers::parseList(res.header(headers::kVary));

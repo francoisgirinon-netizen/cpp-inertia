@@ -55,6 +55,10 @@ class Inertia {
     void render(const RequestView &req, SessionStore &session, std::string component, Props props,
                 std::function<void(Response)> done, RenderOptions opts = {}) const;
 
+    // Pre-route check: a GET Inertia request whose X-Inertia-Version differs from the current
+    // version gets a 409 that asks the client to reload. Any other request yields nullopt.
+    [[nodiscard]] std::optional<Response> handleVersion(const RequestView &req) const;
+
     // Adds Vary: X-Inertia (merged with any existing value, deduplicated).
     void finalize(const RequestView &req, Response &res) const;
 
