@@ -147,6 +147,18 @@ std::optional<Response> Inertia::handleVersion(const RequestView &req) const {
     return res;
 }
 
+Response Inertia::location(const RequestView &req, std::string_view url) const {
+    Response res;
+    if (isInertia(req)) {
+        res.status = 409;
+        res.setHeader(std::string(headers::kLocation), std::string(url));
+    } else {
+        res.status = 302;
+        res.setHeader("Location", std::string(url));
+    }
+    return res;
+}
+
 void Inertia::finalize(const RequestView &req, Response &res) const {
     const auto method = req.method();
     const bool seeOther = method == "PUT" || method == "PATCH" || method == "DELETE";

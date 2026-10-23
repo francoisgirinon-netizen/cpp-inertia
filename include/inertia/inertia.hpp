@@ -59,6 +59,9 @@ class Inertia {
     // version gets a 409 that asks the client to reload. Any other request yields nullopt.
     [[nodiscard]] std::optional<Response> handleVersion(const RequestView &req) const;
 
+    // External redirect: 409 with X-Inertia-Location for Inertia requests, else 302 to url.
+    [[nodiscard]] Response location(const RequestView &req, std::string_view url) const;
+
     // Adds Vary: X-Inertia (merged with any existing value, deduplicated).
     void finalize(const RequestView &req, Response &res) const;
 

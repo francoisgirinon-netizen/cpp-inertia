@@ -151,3 +151,21 @@ TEST_CASE("non-Inertia redirect with a fragment keeps its status",
     REQUIRE(res.status == 302);
     REQUIRE(res.header("Location").value_or("") == "/a#b");
 }
+
+TEST_CASE("location on an Inertia request gives 409 with X-Inertia-Location",
+          "[middleware][protocol:redirect.external]") {
+    const Inertia app{Config{}};
+    const Response res = app.location(FakeRequest::inertia("/a"), "https://x.test");
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").value_or("") == "https://x.test");
+    REQUIRE(res.body.empty());
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+}
+
+TEST_CASE("location on a non-Inertia request gives 302 with Location",
+          "[middleware][protocol:redirect.external]") {
+    const Inertia app{Config{}};
+    const Response res = app.location(FakeRequest::get("/a"), "https://x.test");
+    REQUIRE(res.status == 302);
+    REQUIRE(res.header("Location").value_or("") == "https://x.test");
+}

@@ -122,7 +122,7 @@ status = "done"
 id = "redirect.external"
 behavior = "location(url) gives 409 with X-Inertia-Location for Inertia requests and 302 with Location otherwise"
 source = "docs/inertia-protocol-v3.md#behaviors: External redirect, location(url)"
-status = "todo"
+status = "done"
 
 [[rule]]
 id = "response.empty"
