@@ -28,6 +28,10 @@ struct Reply {
 
     // Case-insensitive lookup of the first matching header.
     [[nodiscard]] std::string header(std::string_view name) const;
+    // The whole Set-Cookie line that sets `name`, or "" when the reply does not set it.
+    [[nodiscard]] std::string setCookie(std::string_view name) const;
+    // The value that Set-Cookie line assigns, or "".
+    [[nodiscard]] std::string cookieValue(std::string_view name) const;
 };
 
 struct Request {

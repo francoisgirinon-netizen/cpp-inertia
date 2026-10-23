@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // Inside this namespace the global Drogon namespace must always be spelled ::drogon.
 namespace inertia::drogon {
@@ -71,12 +72,25 @@ class DrogonHttpClient final : public HttpClient {
     std::map<std::string, ::drogon::HttpClientPtr> clients_; // guarded by mutex_
 };
 
-// Wires an Inertia instance into the application; call once, before app().run().
-//  - pre-handling advice: Inertia::handleVersion (a version mismatch answers 409 here);
-//  - post-handling advice: Inertia::finalize on every response, including those short-circuited
-//    by the pre-handling advice.
+struct CsrfOptions {
+    bool enabled = true;
+    std::string cookie = "XSRF-TOKEN"; // readable by scripts (not HttpOnly), as Axios expects
+    std::string header = "X-XSRF-TOKEN";
+    // Requests that skip the check: an exact path, or a prefix ending in "*". For endpoints that
+    // are called by machines (webhooks) and cannot hold a session token.
+    std::vector<std::string> exceptPaths;
+};
+
+// Wires an Inertia instance into the application; call once, after app().enableSession() and
+// before app().run().
+//  - pre-handling advice: Inertia::handleVersion (a version mismatch answers 409 here), then, for
+//    every method but GET/HEAD/OPTIONS, the CSRF check: the header must equal the token kept in
+//    the session (constant-time comparison), else the answer is 419 ("page expired");
+//  - post-handling advice: Inertia::finalize and, when the client lacks the current token, the
+//    XSRF-TOKEN cookie. Both are also applied to responses short-circuited by the pre-handling
+//    advice (Drogon skips post-handling advices for those).
 // The instance must be fully configured (shared props registered) before it is installed.
-void install(const std::shared_ptr<const Inertia> &inertia);
+void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf = {});
 
 // Renders a page for `req` with the installed Inertia and the request's Drogon session (so
 // app().enableSession() is required). `callback` receives exactly one response, possibly from

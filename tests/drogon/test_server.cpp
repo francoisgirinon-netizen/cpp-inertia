@@ -115,6 +115,30 @@ std::string Reply::header(std::string_view name) const {
     return {};
 }
 
+std::string Reply::setCookie(std::string_view name) const {
+    const std::string prefix = std::string{name} + "=";
+    for (const auto &[key, value] : headers) {
+        if (!inertia::headers::iequals(key, "Set-Cookie")) {
+            continue;
+        }
+        const auto at = value.find(prefix);
+        if (at != std::string::npos && (at == 0 || value[at - 1] == ' ' || value[at - 1] == ':')) {
+            return value;
+        }
+    }
+    return {};
+}
+
+std::string Reply::cookieValue(std::string_view name) const {
+    const auto line = setCookie(name);
+    const auto start = line.find(std::string{name} + "=");
+    if (start == std::string::npos) {
+        return {};
+    }
+    const auto from = start + name.size() + 1;
+    return line.substr(from, line.find(';', from) - from);
+}
+
 Client::Client() {
     loopThread_.run();
     resetCookies();

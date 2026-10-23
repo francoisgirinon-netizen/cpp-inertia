@@ -2,15 +2,21 @@
 
 #include <inertia/headers.hpp>
 
+#include <drogon/Cookie.h>
 #include <drogon/HttpAppFramework.h>
+#include <drogon/utils/Utilities.h>
 #include <trantor/utils/Logger.h>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace inertia::drogon {
@@ -37,6 +43,92 @@ std::shared_ptr<const Inertia> requireInstalled() {
     return res;
 }
 
+constexpr std::string_view kTokenKey = "inertia.csrf_token";
+constexpr std::size_t kTokenBytes = 32;
+
+std::string newToken() {
+    std::array<unsigned char, kTokenBytes> bytes{};
+    if (!::drogon::utils::secureRandomBytes(bytes.data(), bytes.size())) {
+        throw std::runtime_error("no secure random source for the CSRF token");
+    }
+    return ::drogon::utils::binaryStringToHex(bytes.data(), bytes.size());
+}
+
+// The session's token, created on first use. modify() runs under the session lock, so two
+// concurrent first requests of one session agree on a single token.
+std::string tokenOf(const ::drogon::SessionPtr &session) {
+    std::string token;
+    session->modify<std::string>(std::string{kTokenKey}, [&token](std::string &stored) {
+        if (stored.empty()) {
+            stored = newToken();
+        }
+        token = stored;
+    });
+    return token;
+}
+
+// Compares without exiting early on the first differing byte.
+bool constantTimeEquals(std::string_view a, std::string_view b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    unsigned diff = 0;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        diff |= static_cast<unsigned>(static_cast<unsigned char>(a[i])) ^
+                static_cast<unsigned>(static_cast<unsigned char>(b[i]));
+    }
+    return diff == 0;
+}
+
+bool isSafeMethod(std::string_view method) {
+    return method == "GET" || method == "HEAD" || method == "OPTIONS";
+}
+
+bool isExempt(const CsrfOptions &csrf, const std::string &path) {
+    return std::ranges::any_of(csrf.exceptPaths, [&](const std::string &rule) {
+        if (!rule.empty() && rule.back() == '*') {
+            return path.starts_with(std::string_view{rule}.substr(0, rule.size() - 1));
+        }
+        return path == rule;
+    });
+}
+
+bool csrfMatches(const CsrfOptions &csrf, const ::drogon::HttpRequestPtr &req) {
+    const auto &session = req->session();
+    if (!session) {
+        return false;
+    }
+    const auto sent = req->getHeader(csrf.header);
+    const auto expected = session->getOptional<std::string>(std::string{kTokenKey});
+    return !sent.empty() && expected && constantTimeEquals(sent, *expected);
+}
+
+// Sets the token cookie unless the client already presents the current token.
+void attachCsrfCookie(const CsrfOptions &csrf, const ::drogon::HttpRequestPtr &req,
+                      const ::drogon::HttpResponsePtr &res) {
+    const auto &session = req->session();
+    if (!session) {
+        return;
+    }
+    const auto token = tokenOf(session);
+    if (constantTimeEquals(req->getCookie(csrf.cookie), token)) {
+        return;
+    }
+    ::drogon::Cookie cookie{csrf.cookie, token};
+    cookie.setPath("/");
+    cookie.setHttpOnly(false); // scripts must read it to echo it back in the header
+    cookie.setSameSite(::drogon::Cookie::SameSite::kLax);
+    cookie.setSecure(req->isOnSecureConnection());
+    res->addCookie(std::move(cookie));
+}
+
+::drogon::HttpResponsePtr pageExpired() {
+    auto res = ::drogon::HttpResponse::newHttpResponse();
+    res->setStatusCode(static_cast<::drogon::HttpStatusCode>(419)); // Laravel's "page expired"
+    res->setBody("CSRF token mismatch");
+    return res;
+}
+
 // finalize() only edits headers, so it is given a body-less copy and its result is written back.
 void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &req,
                       const ::drogon::HttpResponsePtr &res) {
@@ -56,36 +148,54 @@ void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &re
 
 } // namespace
 
-void install(const std::shared_ptr<const Inertia> &inertia) {
+void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
     installed().store(inertia);
     auto &app = ::drogon::app();
+    const auto options = std::make_shared<const CsrfOptions>(std::move(csrf));
 
-    app.registerPreHandlingAdvice([inertia](const ::drogon::HttpRequestPtr &req,
-                                            ::drogon::AdviceCallback &&stop,
-                                            ::drogon::AdviceChainCallback &&next) {
-        try {
-            const DrogonRequest view{req};
-            if (auto early = inertia->handleVersion(view)) {
-                // Drogon does not run post-handling advices for a response produced by a
-                // pre-handling advice, so the short-circuit is finalized here (idempotent).
-                inertia->finalize(view, *early);
-                std::move(stop)(toDrogon(*early));
+    // Version, CSRF, and the post-handling steps for a response the pre-handling advice produced
+    // itself (Drogon does not run post-handling advices for those).
+    const auto afterHandling = [inertia, options](const ::drogon::HttpRequestPtr &req,
+                                                  const ::drogon::HttpResponsePtr &res) {
+        if (options->enabled) {
+            attachCsrfCookie(*options, req, res);
+        }
+        finalizeResponse(*inertia, req, res);
+    };
+
+    app.registerPreHandlingAdvice(
+        [inertia, options, afterHandling](const ::drogon::HttpRequestPtr &req,
+                                          ::drogon::AdviceCallback &&stop,
+                                          ::drogon::AdviceChainCallback &&next) {
+            ::drogon::HttpResponsePtr early;
+            try {
+                const DrogonRequest view{req};
+                if (auto versionMismatch = inertia->handleVersion(view)) {
+                    early = toDrogon(*versionMismatch);
+                } else if (options->enabled && !isSafeMethod(view.method()) &&
+                           !isExempt(*options, req->path()) && !csrfMatches(*options, req)) {
+                    early = pageExpired();
+                }
+                if (early) {
+                    afterHandling(req, early);
+                }
+            } catch (const std::exception &error) {
+                LOG_ERROR << "inertia: pre-handling failed: " << error.what();
+                early = serverError();
+            }
+            if (early) {
+                std::move(stop)(early);
                 return;
             }
-        } catch (const std::exception &error) {
-            LOG_ERROR << "inertia: version check failed: " << error.what();
-            std::move(stop)(serverError());
-            return;
-        }
-        std::move(next)();
-    });
+            std::move(next)();
+        });
 
     app.registerPostHandlingAdvice(
-        [inertia](const ::drogon::HttpRequestPtr &req, const ::drogon::HttpResponsePtr &res) {
+        [afterHandling](const ::drogon::HttpRequestPtr &req, const ::drogon::HttpResponsePtr &res) {
             try {
-                finalizeResponse(*inertia, req, res);
+                afterHandling(req, res);
             } catch (const std::exception &error) {
-                LOG_ERROR << "inertia: finalize failed: " << error.what();
+                LOG_ERROR << "inertia: post-handling failed: " << error.what();
             }
         });
 }

@@ -18,7 +18,9 @@ void configureApp() {
 
     Config config;
     config.version = [] { return std::string("v1"); };
-    inertia::drogon::install(std::make_shared<Inertia>(std::move(config)));
+    // /echo stands in for the SSR server (called by DrogonHttpClient, which sends no CSRF token).
+    inertia::drogon::install(std::make_shared<Inertia>(std::move(config)),
+                             {.enabled = true, .exceptPaths = {"/echo"}});
 
     using Callback = std::function<void(const ::drogon::HttpResponsePtr &)>;
     const auto registerPage = [&app](const std::string &path, const char *name,
@@ -86,6 +88,12 @@ void configureApp() {
                             std::move(done)(res);
                         },
                         {::drogon::Post});
+    app.registerHandler(
+        "/submit",
+        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+            std::move(done)(text("submitted"));
+        },
+        {::drogon::Post, ::drogon::Put, ::drogon::Patch, ::drogon::Delete, ::drogon::Get});
     app.registerHandler("/ping",
                         [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
                             std::move(done)(text("pong"));
