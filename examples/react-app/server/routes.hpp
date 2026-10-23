@@ -11,5 +11,6 @@ void registerPosts();
 void registerHistory();
 void registerExternal();
 void registerFragment();
+void registerProps();
 
 } // namespace example
