@@ -9,5 +9,6 @@ void registerDashboard();
 void registerFeed();
 void registerPosts();
 void registerHistory();
+void registerExternal();
 
 } // namespace example

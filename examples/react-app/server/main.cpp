@@ -75,6 +75,7 @@ int main() {
     example::registerFeed();
     example::registerPosts();
     example::registerHistory();
+    example::registerExternal();
 
     // Must come last: Inertia is immutable once installed.
     inertia::drogon::install(inertiaApp);
