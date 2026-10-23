@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run a command inside the cpp-inertia tsan container (seccomp relaxed, for ThreadSanitizer only; use scripts/dev otherwise) as the host user.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export UID
+export GID="$(id -g)"
+tty_flag=()
+[ -t 0 ] || tty_flag=(-T)
+exec docker compose run --rm "${tty_flag[@]}" tsan "$@"
