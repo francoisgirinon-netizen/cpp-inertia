@@ -2,10 +2,11 @@
 
 #include "random.hpp"
 
+#include <algorithm>
 #include <cstddef>
+#include <list>
 #include <map>
 #include <mutex>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -58,7 +59,9 @@ constexpr std::size_t kIdLength = kIdBytes * 2;
 } // namespace
 
 MemorySessionStore::MemorySessionStore(MemorySessionOptions options)
-    : options_(std::move(options)), lastSweep_(now()) {}
+    : options_(std::move(options)) {
+    options_.maxSessions = std::max<std::size_t>(options_.maxSessions, 1);
+}
 
 MemorySessionStore::~MemorySessionStore() = default;
 
@@ -66,16 +69,34 @@ std::chrono::steady_clock::time_point MemorySessionStore::now() const {
     return options_.clock ? options_.clock() : std::chrono::steady_clock::now();
 }
 
-void MemorySessionStore::sweepLocked(std::chrono::steady_clock::time_point at) {
-    std::erase_if(sessions_,
-                  [&](const auto &entry) { return at - entry.second.lastUsed > options_.idleTtl; });
-    lastSweep_ = at;
+// The list is ordered by last use, so the expired sessions are exactly its tail.
+void MemorySessionStore::expireLocked(std::chrono::steady_clock::time_point at) {
+    while (!lru_.empty()) {
+        const auto it = sessions_.find(lru_.back());
+        if (at - it->second.lastUsed <= options_.idleTtl) {
+            break;
+        }
+        sessions_.erase(it);
+        lru_.pop_back();
+    }
+}
+
+MemorySessionStore::Opened
+MemorySessionStore::insertLocked(std::string id, std::shared_ptr<SessionData> data,
+                                 std::chrono::steady_clock::time_point at) {
+    while (sessions_.size() >= options_.maxSessions && !lru_.empty()) {
+        sessions_.erase(lru_.back());
+        lru_.pop_back();
+    }
+    lru_.push_front(id);
+    sessions_.emplace(id, Entry{.data = data, .lastUsed = at, .position = lru_.begin()});
+    return {.id = std::move(id), .data = std::move(data), .created = true};
 }
 
 void MemorySessionStore::sweep() {
     const auto at = now();
     const std::scoped_lock lock{mutex_};
-    sweepLocked(at);
+    expireLocked(at);
 }
 
 std::size_t MemorySessionStore::size() const {
@@ -89,21 +110,32 @@ MemorySessionStore::Opened MemorySessionStore::open(std::optional<std::string_vi
     std::string fresh = detail::randomHex(kIdBytes);
 
     const std::scoped_lock lock{mutex_};
-    if (at - lastSweep_ >= options_.sweepInterval) {
-        sweepLocked(at);
-    }
+    expireLocked(at);
     if (id && id->size() == kIdLength) {
         if (const auto it = sessions_.find(std::string{*id}); it != sessions_.end()) {
-            if (at - it->second.lastUsed <= options_.idleTtl) {
-                it->second.lastUsed = at;
-                return {.id = it->first, .data = it->second.data, .created = false};
-            }
-            sessions_.erase(it);
+            it->second.lastUsed = at;
+            lru_.splice(lru_.begin(), lru_, it->second.position);
+            return {.id = it->first, .data = it->second.data, .created = false};
         }
     }
-    auto data = std::make_shared<SessionData>();
-    sessions_.emplace(fresh, Entry{.data = data, .lastUsed = at});
-    return {.id = std::move(fresh), .data = std::move(data), .created = true};
+    return insertLocked(std::move(fresh), std::make_shared<SessionData>(), at);
+}
+
+MemorySessionStore::Opened MemorySessionStore::rotate(std::string_view oldId) {
+    const auto at = now();
+    std::string fresh = detail::randomHex(kIdBytes);
+
+    const std::scoped_lock lock{mutex_};
+    expireLocked(at);
+    std::shared_ptr<SessionData> data;
+    if (const auto it = sessions_.find(std::string{oldId}); it != sessions_.end()) {
+        data = it->second.data;
+        lru_.erase(it->second.position);
+        sessions_.erase(it);
+    } else {
+        data = std::make_shared<SessionData>();
+    }
+    return insertLocked(std::move(fresh), std::move(data), at);
 }
 
 std::string MemorySessionStore::cookieHeader(std::string_view id, bool secure) const {

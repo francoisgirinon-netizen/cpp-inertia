@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -56,8 +57,9 @@ class SessionData;
 struct MemorySessionOptions {
     // A session that was not used for this long is forgotten.
     std::chrono::seconds idleTtl{30 * 60};
-    // Expired sessions are swept out lazily, at most this often, while sessions are opened.
-    std::chrono::seconds sweepInterval{60};
+    // Upper bound on live sessions. At the cap the least recently used session is evicted to make
+    // room, so anonymous floods cannot grow memory without bound (they only push out old sessions).
+    std::size_t maxSessions = 100'000;
     std::string cookieName = "inertia_session";
     // Time source; tests replace it. Default: std::chrono::steady_clock::now.
     std::function<std::chrono::steady_clock::time_point()> clock = nullptr;
@@ -66,7 +68,9 @@ struct MemorySessionOptions {
 // cpp-httplib has no sessions, so the adapter keeps them in memory: a map from a random id (the
 // session cookie) to the session's values. Thread safe. SINGLE PROCESS ONLY: sessions are lost on
 // restart and are not shared between processes or hosts; put a sticky-session proxy in front or
-// use another adapter when you need that. Memory is bounded only by the idle TTL.
+// use another adapter when you need that. Memory is bounded by the idle TTL and by
+// MemorySessionOptions::maxSessions (least recently used first). Expired sessions are dropped,
+// oldest first, whenever a session is opened or rotated, so there is no sweep to schedule.
 class MemorySessionStore {
   public:
     struct Opened {
@@ -87,7 +91,12 @@ class MemorySessionStore {
     // (no session fixation). Throws std::runtime_error when the system has no secure randomness.
     [[nodiscard]] Opened open(std::optional<std::string_view> id);
 
-    // Drops every session idle for longer than the TTL.
+    // Moves the session of `oldId` to a new random id: same data, the old id stops working at once.
+    // Call it when privileges change (after a login) to defeat session fixation. An unknown or
+    // expired `oldId` just opens a fresh session. The result has created = true.
+    [[nodiscard]] Opened rotate(std::string_view oldId);
+
+    // Drops every session idle for longer than the TTL (open() and rotate() already do).
     void sweep();
     [[nodiscard]] std::size_t size() const;
 
@@ -100,15 +109,18 @@ class MemorySessionStore {
     struct Entry {
         std::shared_ptr<SessionData> data;
         std::chrono::steady_clock::time_point lastUsed;
+        std::list<std::string>::iterator position; // in lru_
     };
 
     [[nodiscard]] std::chrono::steady_clock::time_point now() const;
-    void sweepLocked(std::chrono::steady_clock::time_point at);
+    void expireLocked(std::chrono::steady_clock::time_point at);
+    Opened insertLocked(std::string id, std::shared_ptr<SessionData> data,
+                        std::chrono::steady_clock::time_point at);
 
     MemorySessionOptions options_;
     mutable std::mutex mutex_;
     std::unordered_map<std::string, Entry> sessions_; // guarded by mutex_
-    std::chrono::steady_clock::time_point lastSweep_; // guarded by mutex_
+    std::list<std::string> lru_; // ids, most recently used first; guarded by mutex_
 };
 
 // One request's view of a session. Safe to use while other requests of the same session run (the

@@ -92,18 +92,63 @@ TEST_CASE("sweep drops idle sessions and keeps live ones", "[httplib]") {
     CHECK(store.open(idle.id).created);
 }
 
-TEST_CASE("opening sessions sweeps lazily once per interval", "[httplib]") {
+TEST_CASE("opening a session drops the expired ones, cheaply and in order", "[httplib]") {
     ManualClock clock;
-    MemorySessionStore store{
-        MemorySessionOptions{.idleTtl = 10s, .sweepInterval = 30s, .clock = clock.fn()}};
+    MemorySessionStore store{MemorySessionOptions{.idleTtl = 10s, .clock = clock.fn()}};
     for (int i = 0; i < 5; ++i) {
         (void)store.open(std::nullopt);
     }
-    clock.now += 20s; // all expired, but the sweep interval has not elapsed
+    clock.now += 20s;
     (void)store.open(std::nullopt);
-    CHECK(store.size() == 6);
-    clock.now += 20s; // 40 s since the start: the next open sweeps
-    (void)store.open(std::nullopt);
+    CHECK(store.size() == 1);
+}
+
+TEST_CASE("at the cap the least recently used session is evicted", "[httplib]") {
+    ManualClock clock;
+    MemorySessionStore store{
+        MemorySessionOptions{.idleTtl = 1h, .maxSessions = 3, .clock = clock.fn()}};
+    const auto a = store.open(std::nullopt);
+    clock.now += 1s;
+    const auto b = store.open(std::nullopt);
+    clock.now += 1s;
+    const auto c = store.open(std::nullopt);
+    clock.now += 1s;
+    CHECK_FALSE(store.open(a.id).created); // a is now the most recently used; b is the oldest
+    const auto d = store.open(std::nullopt);
+    CHECK(store.size() == 3);
+    CHECK(store.open(b.id).created); // evicted (and evicts c in turn)
+    CHECK(store.size() == 3);
+    CHECK(store.open(d.id).created == false);
+    CHECK(store.open(c.id).created); // c was the least recently used when b came back
+}
+
+TEST_CASE("the default cap is 100000 sessions", "[httplib]") {
+    CHECK(MemorySessionOptions{}.maxSessions == 100'000);
+}
+
+TEST_CASE("rotate moves the data to a new id and invalidates the old one", "[httplib]") {
+    MemorySessionStore store;
+    const auto first = store.open(std::nullopt);
+    HttplibSession{first.data}.put("user", 42);
+
+    const auto rotated = store.rotate(first.id);
+    CHECK(rotated.created);
+    CHECK(rotated.id != first.id);
+    CHECK(rotated.id.size() == 64);
+    CHECK(rotated.data == first.data);
+    CHECK(HttplibSession{rotated.data}.get("user") == 42);
+    CHECK(store.size() == 1);
+
+    const auto stale = store.open(first.id);
+    CHECK(stale.created);
+    CHECK(stale.data != first.data);
+    CHECK_FALSE(store.open(rotated.id).created);
+}
+
+TEST_CASE("rotate of an unknown id just opens a fresh session", "[httplib]") {
+    MemorySessionStore store;
+    const auto fresh = store.rotate("nope");
+    CHECK(fresh.created);
     CHECK(store.size() == 1);
 }
 
@@ -179,7 +224,7 @@ TEST_CASE("getOrCreate runs the factory once even when sessions race", "[httplib
 }
 
 TEST_CASE("concurrent open and put on many sessions do not race", "[httplib]") {
-    MemorySessionStore store{MemorySessionOptions{.idleTtl = 60s, .sweepInterval = 0s}};
+    MemorySessionStore store{MemorySessionOptions{.idleTtl = 60s}};
     const auto shared = store.open(std::nullopt);
     std::vector<std::thread> threads;
     threads.reserve(8);
