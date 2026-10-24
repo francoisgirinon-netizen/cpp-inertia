@@ -2,6 +2,7 @@
 
 #include <inertia/detail/session_keys.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>

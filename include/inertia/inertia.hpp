@@ -15,12 +15,9 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 namespace inertia {
-
-class Vite;
 
 /// Per-response overrides of the matching Config settings. An unset field keeps the config value.
 struct RenderOptions {

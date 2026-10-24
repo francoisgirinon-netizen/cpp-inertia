@@ -1,13 +1,25 @@
+#include <inertia/inertia.hpp>
+
 #include <inertia/detail/props_resolver.hpp>
 #include <inertia/detail/session_keys.hpp>
 #include <inertia/headers.hpp>
-#include <inertia/inertia.hpp>
+#include <inertia/html.hpp>
+#include <inertia/json.hpp>
+#include <inertia/ports/http_client.hpp>
+#include <inertia/ports/request_view.hpp>
+#include <inertia/ports/session_store.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
+#include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <iterator>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>

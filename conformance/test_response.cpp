@@ -1,10 +1,12 @@
 #include <inertia/conformance/harness.hpp>
-
 #include <inertia/headers.hpp>
+#include <inertia/json.hpp>
 
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace inertia::conformance {
 

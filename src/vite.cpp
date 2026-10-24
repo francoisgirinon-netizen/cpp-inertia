@@ -1,12 +1,19 @@
-#include <inertia/json.hpp>
 #include <inertia/vite.hpp>
 
+#include <inertia/json.hpp>
+#include <inertia/ports/file_reader.hpp>
+
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia {
 

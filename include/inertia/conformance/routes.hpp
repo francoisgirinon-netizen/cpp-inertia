@@ -1,6 +1,9 @@
 #pragma once
 
 #include <inertia/inertia.hpp>
+#include <inertia/ports/request_view.hpp>
+#include <inertia/ports/session_store.hpp>
+#include <inertia/response.hpp>
 
 #include <functional>
 #include <string>

@@ -1,9 +1,13 @@
 #include <inertia/conformance/routes.hpp>
 
+#include <inertia/json.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
 #include <inertia/session.hpp>
 
 #include <chrono>
 #include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>

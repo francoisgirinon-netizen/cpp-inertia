@@ -1,7 +1,7 @@
 #include <inertia/fake/fake.hpp>
+
 #include <inertia/headers.hpp>
 
-#include <algorithm>
 #include <optional>
 #include <utility>
 

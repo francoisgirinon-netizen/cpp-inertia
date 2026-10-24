@@ -3,10 +3,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/conformance/harness.hpp>
-
 #include <inertia/html.hpp>
+#include <inertia/json.hpp>
 
 #include <algorithm>
+#include <cstddef>
+#include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>

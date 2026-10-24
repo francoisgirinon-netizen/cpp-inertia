@@ -1,5 +1,8 @@
-#include <inertia/html.hpp>
 #include <inertia/ssr.hpp>
+
+#include <inertia/html.hpp>
+#include <inertia/json.hpp>
+#include <inertia/ports/http_client.hpp>
 #include <inertia/vite.hpp>
 
 #include <algorithm>
@@ -7,7 +10,11 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia {
 
