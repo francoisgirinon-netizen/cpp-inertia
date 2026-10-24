@@ -56,6 +56,13 @@ file(GLOB_RECURSE _cxx17_headers CONFIGURE_DEPENDS RELATIVE ${PROJECT_SOURCE_DIR
 set(_cxx17_dir ${CMAKE_CURRENT_BINARY_DIR}/headers_cxx17)
 set(_cxx17_units)
 foreach(_header IN LISTS _cxx17_headers)
+    # An adapter that is not built (core-only preset) has no headers to check either.
+    if(_header MATCHES "^adapters/([^/]+)/")
+        set(_adapter_target inertia_${CMAKE_MATCH_1})
+        if(NOT TARGET ${_adapter_target})
+            continue()
+        endif()
+    endif()
     string(REGEX REPLACE "^(adapters/[^/]+/)?include/" "" _include "${_header}")
     string(REPLACE "/" "_" _unit "${_include}")
     file(CONFIGURE OUTPUT ${_cxx17_dir}/${_unit}.cpp CONTENT "#include <@_include@>\n" @ONLY)
