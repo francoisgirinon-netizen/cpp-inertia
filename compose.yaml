@@ -30,6 +30,8 @@ x-dev-base: &dev-base
     INERTIA_TEST_PORT: "18080"
     # Forwarded from the host (`INERTIA_SSR=1 scripts/dev ...`); empty means off.
     INERTIA_SSR: ${INERTIA_SSR:-}
+    # Forwarded from the host: which example server the e2e suite runs (drogon or httplib).
+    INERTIA_E2E_SERVER: ${INERTIA_E2E_SERVER:-}
   volumes:
     - .:/src
     # VCPKG_CACHE_DIR (CI) turns the named volume into a host directory the cache action persists.
