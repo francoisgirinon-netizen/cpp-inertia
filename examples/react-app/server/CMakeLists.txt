@@ -1,4 +1,17 @@
-add_executable(inertia_example main.cpp home.cpp users.cpp dashboard.cpp feed.cpp posts.cpp history.cpp external.cpp fragment.cpp props.cpp login.cpp variants.cpp)
+add_executable(inertia_example)
+target_sources(inertia_example PRIVATE
+    main.cpp
+    home.cpp
+    users.cpp
+    dashboard.cpp
+    feed.cpp
+    posts.cpp
+    history.cpp
+    external.cpp
+    fragment.cpp
+    props.cpp
+    login.cpp
+    variants.cpp)
 target_link_libraries(inertia_example PRIVATE inertia::drogon inertia_warnings)
 # The server reads the Vite build (manifest) and the dev-server hot file from here.
 target_compile_definitions(inertia_example PRIVATE
