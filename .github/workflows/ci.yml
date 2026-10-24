@@ -54,8 +54,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
+      - name: Configure the dev tree with the examples (compile database for clang-tidy)
+        run: scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON
+      - name: Rewrite the compile database for the runner
+        run: python3 tools/host-compile-commands.py
       - name: Install pre-commit
         run: pipx install pre-commit==4.7.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run every hook on the whole tree
         run: pre-commit run --all-files --show-diff-on-failure
 
