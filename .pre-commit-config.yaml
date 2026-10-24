@@ -11,6 +11,8 @@ repos:
         entry: scripts/dev tools/run-clang-tidy.sh
         language: system
         files: \.cpp$
+        # the out-of-tree consumer project is not part of the main compile database
+        exclude: ^tests/package/
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.2.0
     hooks:
