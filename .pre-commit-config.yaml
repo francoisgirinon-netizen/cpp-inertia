@@ -13,6 +13,20 @@ repos:
         files: \.cpp$
         # the out-of-tree consumer project is not part of the main compile database
         exclude: ^tests/package/
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.15.1
+    hooks:
+      - id: hadolint-docker
+        # the ready-made entry is the untagged image; pin the released tag
+        entry: ghcr.io/hadolint/hadolint:v2.15.1 hadolint
+  - repo: local
+    hooks:
+      - id: dclint
+        name: dclint
+        description: Lint compose.yaml with zavoloklom/docker-compose-linter (no pre-commit hook upstream)
+        entry: zavoloklom/dclint:3.1.0
+        language: docker_image
+        files: ^compose\.ya?ml$
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.2.0
     hooks:
