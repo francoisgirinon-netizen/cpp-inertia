@@ -40,6 +40,45 @@ TEST_CASE("DrogonRequest maps method, url, fullUrl and headers", "[drogon]") {
     CHECK_FALSE(view.header("X-Missing").has_value());
 }
 
+TEST_CASE("DrogonRequest ignores forwarded headers by default", "[drogon]") {
+    auto req = makeRequest(::drogon::Get, "/x", "");
+    req->addHeader("Host", "internal:8080");
+    req->addHeader("X-Forwarded-Proto", "https");
+    req->addHeader("X-Forwarded-Host", "public.example");
+    const inertia::drogon::DrogonRequest view{req};
+    CHECK(view.fullUrl() == "http://internal:8080/x");
+    CHECK_FALSE(view.isSecure());
+}
+
+TEST_CASE("DrogonRequest uses the first forwarded proto and host when trusted", "[drogon]") {
+    auto req = makeRequest(::drogon::Get, "/x", "a=1");
+    req->addHeader("Host", "internal:8080");
+    req->addHeader("X-Forwarded-Proto", "https, http");
+    req->addHeader("X-Forwarded-Host", " public.example , internal:8080");
+    const inertia::drogon::DrogonRequest view{req, true};
+    CHECK(view.fullUrl() == "https://public.example/x?a=1");
+    CHECK(view.isSecure());
+}
+
+TEST_CASE("DrogonRequest trusting forwarded headers falls back when they are absent or bad",
+          "[drogon]") {
+    auto plain = makeRequest(::drogon::Get, "/x", "");
+    plain->addHeader("Host", "internal:8080");
+    CHECK(inertia::drogon::DrogonRequest{plain, true}.fullUrl() == "http://internal:8080/x");
+
+    auto bad = makeRequest(::drogon::Get, "/x", "");
+    bad->addHeader("Host", "internal:8080");
+    bad->addHeader("X-Forwarded-Proto", "javascript");
+    bad->addHeader("X-Forwarded-Host", "evil.example/path bad");
+    const inertia::drogon::DrogonRequest view{bad, true};
+    CHECK(view.fullUrl() == "http://internal:8080/x");
+    CHECK_FALSE(view.isSecure());
+
+    auto http = makeRequest(::drogon::Get, "/x", "");
+    http->addHeader("X-Forwarded-Proto", "HTTP");
+    CHECK_FALSE(inertia::drogon::DrogonRequest{http, true}.isSecure());
+}
+
 TEST_CASE("DrogonRequest without a query has a bare path", "[drogon]") {
     const inertia::drogon::DrogonRequest view{makeRequest(::drogon::Get, "/plain", "")};
     CHECK(view.method() == "GET");

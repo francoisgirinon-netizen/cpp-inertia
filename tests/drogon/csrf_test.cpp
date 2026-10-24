@@ -41,6 +41,17 @@ TEST_CASE("a GET sets an unpredictable XSRF-TOKEN cookie readable by scripts", "
     CHECK(isHex(token));
 }
 
+TEST_CASE("by default X-Forwarded-Proto is ignored: the cookie is not Secure over plain http",
+          "[drogon]") {
+    Client client;
+    Request req;
+    req.url = "/ping";
+    req.headers.emplace_back("X-Forwarded-Proto", "https");
+    const auto line = client.send(req).setCookie("XSRF-TOKEN");
+    REQUIRE_FALSE(line.empty());
+    CHECK(line.find("Secure") == std::string::npos);
+}
+
 TEST_CASE("tokens differ between sessions", "[drogon]") {
     Client first;
     Client second;

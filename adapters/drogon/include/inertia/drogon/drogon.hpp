@@ -21,15 +21,20 @@ namespace inertia::drogon {
 // Read-only view of a Drogon request. Not thread safe, like the request it wraps.
 class DrogonRequest final : public RequestView {
   public:
-    explicit DrogonRequest(::drogon::HttpRequestPtr req);
+    // trustForwardedHeaders: take the scheme and host from the first value of X-Forwarded-Proto /
+    // X-Forwarded-Host. Only for servers behind a proxy that sets (and overwrites) them.
+    explicit DrogonRequest(::drogon::HttpRequestPtr req, bool trustForwardedHeaders = false);
 
     [[nodiscard]] std::string_view method() const override;
     [[nodiscard]] std::string url() const override;
     [[nodiscard]] std::string fullUrl() const override;
     [[nodiscard]] std::optional<std::string> header(std::string_view name) const override;
+    // https on the connection or, when forwarded headers are trusted, per X-Forwarded-Proto.
+    [[nodiscard]] bool isSecure() const;
 
   private:
     ::drogon::HttpRequestPtr req_;
+    bool trustForwarded_;
 };
 
 [[nodiscard]] ::drogon::HttpResponsePtr toDrogon(const Response &res);
@@ -84,6 +89,11 @@ struct CsrfOptions {
     // Requests that skip the check: an exact path, or a prefix ending in "*". For endpoints that
     // are called by machines (webhooks) and cannot hold a session token.
     std::vector<std::string> exceptPaths;
+    // Behind a TLS-terminating proxy that sets X-Forwarded-Proto / X-Forwarded-Host: use their
+    // first value for DrogonRequest::fullUrl() (the 409 X-Inertia-Location) and for the Secure
+    // flag of the token cookie. Off by default: a client can forge these headers when the server
+    // is reachable directly.
+    bool trustForwardedHeaders = false;
 };
 
 // Wires an Inertia instance into the application; call once, after app().enableSession() and

@@ -28,6 +28,13 @@ std::atomic<std::shared_ptr<const Inertia>> &installed() {
     return instance;
 }
 
+// CsrfOptions::trustForwardedHeaders of the installed adapter, for the request views that
+// render() and location() build themselves.
+std::atomic<bool> &trustForwarded() {
+    static std::atomic<bool> value{false};
+    return value;
+}
+
 std::shared_ptr<const Inertia> requireInstalled() {
     auto instance = installed().load();
     if (!instance) {
@@ -121,7 +128,7 @@ void attachCsrfCookie(const CsrfOptions &csrf, const ::drogon::HttpRequestPtr &r
     cookie.setPath("/");
     cookie.setHttpOnly(false); // scripts must read it to echo it back in the header
     cookie.setSameSite(::drogon::Cookie::SameSite::kLax);
-    cookie.setSecure(req->isOnSecureConnection());
+    cookie.setSecure(DrogonRequest{req, csrf.trustForwardedHeaders}.isSecure());
     res->addCookie(std::move(cookie));
 }
 
@@ -145,7 +152,7 @@ void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &re
     const std::size_t bodySize = meta.body.size();
     const Response before{.status = status, .headers = meta.headers, .body = {}};
 
-    inertia.finalize(DrogonRequest{req}, meta);
+    inertia.finalize(DrogonRequest{req, trustForwarded().load()}, meta);
 
     if (meta.status != status) {
         res->setStatusCode(static_cast<::drogon::HttpStatusCode>(meta.status));
@@ -179,6 +186,7 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
     }
     auto &app = ::drogon::app();
     const auto options = std::make_shared<const CsrfOptions>(std::move(csrf));
+    trustForwarded().store(options->trustForwardedHeaders);
 
     // Version, CSRF, and the post-handling steps for a response the pre-handling advice produced
     // itself (Drogon does not run post-handling advices for those).
@@ -196,7 +204,7 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
                                           ::drogon::AdviceChainCallback &&next) {
             ::drogon::HttpResponsePtr early;
             try {
-                const DrogonRequest view{req};
+                const DrogonRequest view{req, options->trustForwardedHeaders};
                 if (!req->session()) {
                     // Drogon exposes no way to ask whether sessions are enabled, so a request
                     // without one is the earliest sign. Say so plainly instead of a 419.
@@ -258,7 +266,7 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
         // The session store is only used until Inertia::render returns or its SSR continuation
         // runs; both keep the request alive through the captured pointer below.
         auto store = std::make_shared<DrogonSession>(session);
-        auto view = std::make_shared<DrogonRequest>(req);
+        auto view = std::make_shared<DrogonRequest>(req, trustForwarded().load());
         requireInstalled()->render(
             *view, *store, std::move(component), std::move(props),
             [state, store, view](const Response &res) { state->answer(toDrogon(res)); }, opts);
@@ -272,7 +280,7 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
 }
 
 Response location(const ::drogon::HttpRequestPtr &req, std::string_view url) {
-    return requireInstalled()->location(DrogonRequest{req}, url);
+    return requireInstalled()->location(DrogonRequest{req, trustForwarded().load()}, url);
 }
 
 } // namespace inertia::drogon

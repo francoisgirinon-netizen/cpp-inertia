@@ -77,7 +77,36 @@ std::optional<::drogon::Cookie> parseSetCookie(std::string_view line) {
 
 } // namespace
 
-DrogonRequest::DrogonRequest(::drogon::HttpRequestPtr req) : req_(std::move(req)) {}
+DrogonRequest::DrogonRequest(::drogon::HttpRequestPtr req, bool trustForwardedHeaders)
+    : req_(std::move(req)), trustForwarded_(trustForwardedHeaders) {}
+
+namespace {
+
+std::string_view firstValue(std::string_view list) { return trim(list.substr(0, list.find(','))); }
+
+bool plausibleHost(std::string_view host) {
+    return !host.empty() && std::ranges::all_of(host, [](char c) {
+        return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '.' || c == '-' ||
+               c == ':' || c == '[' || c == ']' || c == '_';
+    });
+}
+
+} // namespace
+
+bool DrogonRequest::isSecure() const {
+    if (trustForwarded_) {
+        if (const auto proto = header("X-Forwarded-Proto")) {
+            const auto value = lower(firstValue(*proto));
+            if (value == "https") {
+                return true;
+            }
+            if (value == "http") {
+                return false;
+            }
+        }
+    }
+    return req_->isOnSecureConnection();
+}
 
 std::string_view DrogonRequest::method() const { return req_->methodString(); }
 
@@ -91,8 +120,15 @@ std::string DrogonRequest::url() const {
 }
 
 std::string DrogonRequest::fullUrl() const {
-    const auto host = header("Host").value_or("localhost");
-    return std::string{req_->isOnSecureConnection() ? "https://" : "http://"} + host + url();
+    std::string host = header("Host").value_or("localhost");
+    if (trustForwarded_) {
+        if (const auto forwarded = header("X-Forwarded-Host")) {
+            if (const auto first = firstValue(*forwarded); plausibleHost(first)) {
+                host = std::string{first};
+            }
+        }
+    }
+    return std::string{isSecure() ? "https://" : "http://"} + host + url();
 }
 
 std::optional<std::string> DrogonRequest::header(std::string_view name) const {
