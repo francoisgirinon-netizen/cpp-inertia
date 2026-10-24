@@ -6,8 +6,13 @@
 # llvm-cov text summary and writes the HTML report to build/coverage/html/index.html.
 # Covered sources: include/inertia, src and adapters/*. Dependencies, tests and build
 # output are ignored.
+#
+# Gate: fails when the total line coverage is below INERTIA_COVERAGE_MIN_LINES (percent).
+# The default below is the one versioned threshold; raise it when coverage improves
+# (override per run with the environment variable).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+readonly MIN_LINES="${INERTIA_COVERAGE_MIN_LINES:-95}"
 readonly TREE=build/coverage
 readonly PROFILES=$TREE/profiles
 readonly IGNORE='(vcpkg_installed|^/usr/|/tests/|/build/)'
@@ -45,3 +50,12 @@ llvm-cov show "${executables[0]}" "${objects[@]}" -instr-profile="$TREE/coverage
     -ignore-filename-regex="$IGNORE" -format=html -output-dir="$TREE/html" \
     -show-line-counts-or-regions
 echo "coverage-report: $PWD/$TREE/html/index.html"
+
+lines=$(llvm-cov export "${executables[0]}" "${objects[@]}" -instr-profile="$TREE/coverage.profdata" \
+    -ignore-filename-regex="$IGNORE" -summary-only \
+    | python3 -I -c 'import json, sys; print(json.load(sys.stdin)["data"][0]["totals"]["lines"]["percent"])')
+if python3 -I -c 'import sys; sys.exit(not float(sys.argv[1]) < float(sys.argv[2]))' "$lines" "$MIN_LINES"; then
+    printf 'coverage-report: FAIL, line coverage %.2f%% is below the required %s%%\n' "$lines" "$MIN_LINES" >&2
+    exit 1
+fi
+printf 'coverage-report: line coverage %.2f%% (required: %s%%)\n' "$lines" "$MIN_LINES"
