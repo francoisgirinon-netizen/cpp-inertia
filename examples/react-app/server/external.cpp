@@ -1,7 +1,18 @@
 #include "routes.hpp"
 #include "support.hpp"
 
+#include <inertia/drogon/drogon.hpp>
 #include <inertia/props.hpp>
+
+#include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
+
+#include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace example {
 

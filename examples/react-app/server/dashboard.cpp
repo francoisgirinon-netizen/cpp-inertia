@@ -1,13 +1,17 @@
 #include "routes.hpp"
 #include "support.hpp"
 
+#include <inertia/json.hpp>
 #include <inertia/props.hpp>
+
+#include <drogon/HttpRequest.h>
 
 #include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 
 namespace example {
 

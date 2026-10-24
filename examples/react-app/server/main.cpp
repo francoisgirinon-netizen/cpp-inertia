@@ -2,6 +2,8 @@
 
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/ports/file_reader.hpp>
+#include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
 #include <drogon/HttpAppFramework.h>
@@ -10,12 +12,14 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 

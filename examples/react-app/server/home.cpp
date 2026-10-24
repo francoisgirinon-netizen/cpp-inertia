@@ -3,6 +3,11 @@
 
 #include <inertia/props.hpp>
 
+#include <drogon/HttpRequest.h>
+
+#include <string>
+#include <utility>
+
 namespace example {
 
 // Home: shared props (registered in main.cpp) and flash messages ride along automatically.
