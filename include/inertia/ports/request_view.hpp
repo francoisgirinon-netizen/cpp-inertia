@@ -17,9 +17,10 @@ class RequestView {
   public:
     virtual ~RequestView() = default;
 
-    [[nodiscard]] virtual std::string_view method() const = 0; // "GET", "POST", ...
-    [[nodiscard]] virtual std::string url() const = 0;         // path + query, exactly as received
-    [[nodiscard]] virtual std::string fullUrl() const = 0;     // scheme://host + url()
+    // The HTTP method in uppercase ("GET", "POST", ...); the core compares it verbatim.
+    [[nodiscard]] virtual std::string_view method() const = 0;
+    [[nodiscard]] virtual std::string url() const = 0;     // path + query, exactly as received
+    [[nodiscard]] virtual std::string fullUrl() const = 0; // scheme://host + url()
     [[nodiscard]] virtual std::optional<std::string>
     header(std::string_view name) const = 0; // case-insensitive
 };

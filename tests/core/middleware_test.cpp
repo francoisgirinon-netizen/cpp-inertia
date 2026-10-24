@@ -243,3 +243,47 @@ TEST_CASE("finalize leaves Vary: * untouched", "[middleware][protocol:vary.alway
     app.finalize(FakeRequest::get("/a"), res);
     REQUIRE(res.header("Vary").value_or("") == "*");
 }
+
+TEST_CASE("a GET Inertia request without X-Inertia-Version gets the version 409",
+          "[middleware][protocol:version.mismatch]") {
+    const auto app = appWithVersion("v2");
+    const auto req = FakeRequest::get("/a?b=1").with("X-Inertia", "true");
+    const Response res = app.handleVersion(req).value_or(Response{});
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").value_or("") == "http://localhost/a?b=1");
+    REQUIRE(res.header("X-Inertia-Version").value_or("") == "v2");
+}
+
+TEST_CASE("fragment redirects with 301 and 307 become 409",
+          "[middleware][protocol:redirect.fragment]") {
+    const Inertia app{Config{}};
+    for (const int status : {301, 307}) {
+        Response res = redirect("/a#b", status);
+        app.finalize(FakeRequest::inertia("/a"), res);
+        REQUIRE(res.status == 409);
+        REQUIRE(res.header("X-Inertia-Redirect").value_or("") == "/a#b");
+        REQUIRE_FALSE(res.header("Location").has_value());
+    }
+}
+
+TEST_CASE("a version 409 keeps its status through finalize and gains Vary",
+          "[middleware][protocol:vary.always]") {
+    const auto app = appWithVersion("v2");
+    const auto req = FakeRequest::inertia("/a", "v1");
+    Response res = app.handleVersion(req).value_or(Response{});
+    app.finalize(req, res);
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").has_value());
+    REQUIRE(res.header("Vary").value_or("") == "X-Inertia");
+}
+
+TEST_CASE("a location 409 keeps its status through finalize and gains Vary",
+          "[middleware][protocol:vary.always]") {
+    const Inertia app{Config{}};
+    const auto req = FakeRequest::inertia("/a");
+    Response res = app.location(req, "https://x.test");
+    app.finalize(req, res);
+    REQUIRE(res.status == 409);
+    REQUIRE(res.header("X-Inertia-Location").value_or("") == "https://x.test");
+    REQUIRE(res.header("Vary").value_or("") == "X-Inertia");
+}

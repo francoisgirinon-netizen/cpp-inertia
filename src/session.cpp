@@ -1,7 +1,5 @@
 #include <inertia/session.hpp>
 
-#include <inertia/headers.hpp>
-
 #include <string>
 #include <string_view>
 #include <utility>
