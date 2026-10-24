@@ -59,6 +59,14 @@ TEST_CASE("DrogonHttpClient reports a timeout", "[drogon]") {
         await([&](auto done) { client.get(base() + "/slow", 100ms, std::move(done)); });
     CHECK(result.status == 0);
     CHECK(result.error.has_value());
+
+    // Drogon keeps a timed-out request (and the client that owns it) alive until the server
+    // answers on its connection. Responses come back in order on that connection, so once a later
+    // request completes the late reply has been consumed and dropped: the client is usable again,
+    // `done` was not called a second time, and nothing is still in flight when the process exits.
+    const auto next = await([&](auto done) { client.get(base() + "/ping", 5s, std::move(done)); });
+    CHECK(next.status == 200);
+    CHECK(next.body == "pong");
 }
 
 TEST_CASE("DrogonHttpClient reports a connection failure", "[drogon]") {
