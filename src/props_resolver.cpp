@@ -246,15 +246,15 @@ class Walker {
         it->second.push_back(path);
     }
 
-    // A deferred prop with rescue() that throws is omitted and reported in rescuedProps. Only
-    // std::exception is rescued; anything else is not a resolver failure we can describe.
+    // A deferred prop with rescue() whose resolver throws anything is omitted and reported in
+    // rescuedProps. Its merge metadata, recorded before the resolver ran, is kept.
     std::optional<Json> resolveClosure(const Prop &prop, const std::string &path) {
         if (!prop.deferGroup() || !prop.rescues()) {
             return resolve(prop.resolver()(), path, true);
         }
         try {
             return resolve(prop.resolver()(), path, true);
-        } catch (const std::exception &) {
+        } catch (...) {
             out_.meta.rescuedProps.push_back(path);
             return std::nullopt;
         }

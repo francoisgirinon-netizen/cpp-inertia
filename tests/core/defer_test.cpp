@@ -65,6 +65,24 @@ TEST_CASE("a rescued deferred prop is omitted and listed in rescuedProps",
     REQUIRE(dumpJson(page["rescuedProps"]) == R"(["f"])");
 }
 
+TEST_CASE("a rescued prop that throws a non-std exception is still rescued",
+          "[defer][protocol:defer.rescue]") {
+    // NOLINTNEXTLINE(bugprone-std-exception-baseclass): the point is a non-std exception
+    const auto thrower = []() -> Prop { throw 42; };
+    const auto page = partialPage({{"f", defer(thrower).rescue()}, {"x", 1}}, "f,x");
+    REQUIRE(dumpJson(page["props"]) == R"({"x":1,"errors":{}})");
+    REQUIRE(dumpJson(page["rescuedProps"]) == R"(["f"])");
+}
+
+TEST_CASE("a rescued merge prop is omitted from props but keeps its merge metadata",
+          "[defer][protocol:defer.rescue]") {
+    const auto page = partialPage(
+        {{"f", defer([]() -> Prop { throw std::runtime_error("boom"); }).merge().rescue()}}, "f");
+    REQUIRE_FALSE(page["props"].contains("f"));
+    REQUIRE(dumpJson(page["rescuedProps"]) == R"(["f"])");
+    REQUIRE(dumpJson(page["mergeProps"]) == R"(["f"])");
+}
+
 TEST_CASE("a throwing deferred prop without rescue propagates", "[defer][protocol:defer.rescue]") {
     REQUIRE_THROWS_AS(
         partialPage({{"f", defer([]() -> Prop { throw std::runtime_error("boom"); })}}, "f"),
