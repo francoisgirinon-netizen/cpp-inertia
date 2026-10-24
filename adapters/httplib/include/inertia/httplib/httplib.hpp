@@ -127,4 +127,18 @@ class HttplibSession final : public SessionStore {
     std::shared_ptr<SessionData> data_;
 };
 
+// The SSR transport on cpp-httplib's blocking client. get() and post() perform the request on the
+// calling thread and call `done` exactly once before returning; nothing throws. The call blocks
+// the request-handling thread (cpp-httplib is thread-per-connection) for up to the SSR timeout:
+// connection, read and write are each bounded by it, and so is the whole exchange.
+// Only http:// URLs work (the adapter is built without TLS); https reports an error. Thread safe:
+// a fresh ::httplib::Client is created per call, so concurrent requests never share a socket.
+class HttplibHttpClient final : public HttpClient {
+  public:
+    void post(std::string url, std::string jsonBody, std::chrono::milliseconds timeout,
+              std::function<void(HttpResult)> done) override;
+    void get(std::string url, std::chrono::milliseconds timeout,
+             std::function<void(HttpResult)> done) override;
+};
+
 } // namespace inertia::httplib
