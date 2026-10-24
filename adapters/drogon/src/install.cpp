@@ -1,9 +1,16 @@
 #include <inertia/drogon/drogon.hpp>
-
 #include <inertia/headers.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
 
 #include <drogon/Cookie.h>
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
+#include <drogon/Session.h>
+#include <drogon/drogon_callbacks.h>
 #include <drogon/utils/Utilities.h>
 #include <trantor/utils/Logger.h>
 
@@ -14,10 +21,12 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia::drogon {
 

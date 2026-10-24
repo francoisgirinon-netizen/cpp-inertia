@@ -4,11 +4,15 @@
 #include <inertia/inertia.hpp>
 
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 // No sessions and CSRF disabled: the adapter must leave plain routes alone.
 namespace inertia::drogon_test {

@@ -1,8 +1,15 @@
+#include <inertia/ports/http_client.hpp>
+
 #include <inertia/drogon/drogon.hpp>
 
+#include <drogon/HttpClient.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 #include <trantor/net/EventLoop.h>
 
 #include <chrono>
+#include <compare>
 #include <functional>
 #include <map>
 #include <memory>

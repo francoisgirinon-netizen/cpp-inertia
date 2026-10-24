@@ -1,6 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "test_server.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 #include <inertia/json.hpp>
 

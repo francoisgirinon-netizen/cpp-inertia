@@ -2,13 +2,19 @@
 
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/props.hpp>
 
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 // A server behind a trusted TLS-terminating proxy.
 namespace inertia::drogon_test {

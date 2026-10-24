@@ -3,6 +3,7 @@
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
 
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>

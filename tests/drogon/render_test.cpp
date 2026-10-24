@@ -1,10 +1,12 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "test_server.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 #include <inertia/json.hpp>
 
 #include <string>
+#include <utility>
+#include <vector>
 
 using PageJson = inertia::Json; // jsoncpp (via Drogon) owns a global ::Json namespace
 using inertia::drogon_test::Client;

@@ -1,13 +1,18 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "test_server.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/ports/http_client.hpp>
 
 #include <chrono>
+#include <compare>
 #include <future>
+#include <optional>
+#include <ratio>
 #include <string>
 #include <thread>
+#include <utility>
 
 using inertia::HttpResult;
 using inertia::drogon::DrogonHttpClient;

@@ -1,14 +1,16 @@
 #include "test_server.hpp"
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/reporters/catch_reporter_event_listener.hpp>
 #include <catch2/reporters/catch_reporter_registrars.hpp>
 
+#include <inertia/headers.hpp>
+
+#include <drogon/Cookie.h>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
-
-#include <inertia/headers.hpp>
+#include <drogon/HttpTypes.h>
+#include <trantor/utils/Logger.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -16,9 +18,9 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <compare>
 #include <cstdint>
 #include <cstring>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>

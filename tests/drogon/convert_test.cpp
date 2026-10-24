@@ -1,11 +1,19 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/response.hpp>
 
+#include <drogon/Cookie.h>
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
+#include <trantor/utils/Date.h>
 
+#include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 

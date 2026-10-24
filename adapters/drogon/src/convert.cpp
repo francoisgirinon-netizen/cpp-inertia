@@ -1,8 +1,12 @@
 #include <inertia/drogon/drogon.hpp>
-
 #include <inertia/headers.hpp>
+#include <inertia/response.hpp>
 
 #include <drogon/Cookie.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
+#include <trantor/utils/Date.h>
 
 #include <algorithm>
 #include <cctype>
@@ -10,8 +14,11 @@
 #include <cstdint>
 #include <ctime>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 

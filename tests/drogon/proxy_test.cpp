@@ -1,8 +1,10 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "test_server.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <string>
+#include <utility>
+#include <vector>
 
 using inertia::drogon_test::Client;
 using inertia::drogon_test::Request;

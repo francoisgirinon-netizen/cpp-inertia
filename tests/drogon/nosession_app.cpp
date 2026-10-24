@@ -2,13 +2,18 @@
 
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/props.hpp>
 
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 // A server whose application forgot app().enableSession(); CSRF stays enabled.
 namespace inertia::drogon_test {

@@ -1,6 +1,10 @@
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/json.hpp>
+
+#include <drogon/Session.h>
 
 #include <any>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
