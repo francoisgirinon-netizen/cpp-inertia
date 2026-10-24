@@ -36,7 +36,8 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 #
 # git/curl/...: fetching; binutils: CMake finds ar/ranlib/nm next to the system toolchain, not next
 # to the conda clang; make/perl/autotools/...: what vcpkg ports (openssl, libuuid, ...) need to
-# build from source; libstdc++-15-dev: the C++ standard library clang compiles against.
+# build from source; libstdc++-15-dev: the C++ standard library clang compiles against; doxygen: the
+# API reference (`docs` target, INERTIA_BUILD_DOCS).
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
@@ -61,7 +62,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         linux-libc-dev=7.0.0-38.38 \
         autoconf=2.72-3.1ubuntu2 \
         automake=1:1.18.1-3build1 \
-        libtool=2.5.4-9
+        libtool=2.5.4-9 \
+        doxygen=1.15.0+ds1-1ubuntu3
 
 # Dev user matching the host UID/GID (drop any stock user/group already holding them).
 RUN (getent passwd "${UID}" | cut -d: -f1 | xargs -r userdel -r || true) \
