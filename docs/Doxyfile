@@ -35,3 +35,9 @@ HAVE_DOT               = NO
 # when no \brief command is written.
 USE_MDFILE_AS_MAINPAGE = docs/mainpage.md
 JAVADOC_AUTOBRIEF      = YES
+
+# Doxygen does not parse the conditional `explicit(false)` constructors, so the macro is removed
+# before parsing. Only the listed macro is expanded.
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = "explicit(x)="
