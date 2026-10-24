@@ -20,6 +20,8 @@ ARG GID=1000
 # reproducible. To bump: choose a new timestamp, look up the candidate of each package in that
 # snapshot (`apt-cache policy <pkg>`), update the pins below, and change this value in the same commit.
 ARG UBUNTU_SNAPSHOT=20261024T000000Z
+# Version of ca-certificates the snapshot holds (see the base RUN below).
+ARG CA_CERTIFICATES_VERSION=20260816ubuntu0.26.04.1
 
 # Keep downloaded .debs in the cache mount: the stock docker-clean hook would delete them.
 RUN rm -f /etc/apt/apt.conf.d/docker-clean \
@@ -28,8 +30,9 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 # The base image has no CA bundle and the snapshot only answers over HTTPS, so ca-certificates is first
 # installed from the plain-HTTP archive, at the version the snapshot holds (the archive keeps only the
 # current version: if this pin fails, the snapshot and the archive have diverged, bump both).
-# The snapshot's Release files outlive their Valid-Until date, hence Check-Valid-Until is off; their
-# signatures are still verified.
+# The snapshot's Release files outlive their Valid-Until date, hence Check-Valid-Until is off, but only
+# for the apt-get update calls that read the snapshot (-o on the command line, no global config file);
+# their signatures are still verified.
 #
 # git/curl/...: fetching; binutils: CMake finds ar/ranlib/nm next to the system toolchain, not next
 # to the conda clang; make/perl/autotools/...: what vcpkg ports (openssl, libuuid, ...) need to
@@ -37,13 +40,13 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates=20260816ubuntu0.26.04.1 \
+    && apt-get install -y --no-install-recommends ca-certificates=${CA_CERTIFICATES_VERSION} \
     && sed -i "s|^URIs: .*|URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/|" \
         /etc/apt/sources.list.d/ubuntu.sources \
-    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99snapshot \
-    && apt-get update \
+    && grep -q "^URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/\$" /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates=20260816ubuntu0.26.04.1 \
+        ca-certificates=${CA_CERTIFICATES_VERSION} \
         git=1:2.53.0-1ubuntu1.1 \
         curl=8.18.0-1ubuntu2.8 \
         zip=3.0-15ubuntu3 \
@@ -131,6 +134,8 @@ FROM toolchain AS playwright
 # Chromium + its system libraries, shared by all users. The Playwright version is read from
 # e2e/package.json (@playwright/test must be an exact version), the single source of truth.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+# --with-deps installs Chromium's system libraries; they resolve from the pinned Ubuntu snapshot
+# (UBUNTU_SNAPSHOT, set in base), not the live archive.
 COPY e2e/package.json /tmp/e2e/package.json
 WORKDIR /opt/playwright-tmp
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -138,7 +143,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/root/.bun/install/cache \
     V="$(python3 -c 'import json; print(json.load(open("/tmp/e2e/package.json"))["devDependencies"]["@playwright/test"])')" \
     && case "$V" in [0-9]*) ;; *) echo "pin an exact @playwright/test version" >&2; exit 1;; esac \
-    && apt-get update \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
     && bunx playwright@"$V" install --with-deps chromium \
     && rm -rf /opt/playwright-tmp /tmp/e2e && chmod -R a+rX /opt/playwright
 WORKDIR /
@@ -156,5 +161,6 @@ ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 # Mount point of the compiler cache volume (a named volume copies the owner of this directory).
 RUN mkdir -p /home/dev/.cache/sccache && chown dev:dev /home/dev/.cache/sccache
 
+# Numeric on purpose: UID/GID come from the build args, so bind-mounted files keep the host owner.
 USER ${UID}:${GID}
 WORKDIR /src
