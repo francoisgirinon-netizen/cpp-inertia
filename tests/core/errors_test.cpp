@@ -56,3 +56,11 @@ TEST_CASE("errors are scoped by bag", "[errors][protocol:errors.bag]") {
     REQUIRE(dumpJson(app.page(FakeRequest::inertia("/"), session, "C", {})["props"]["errors"]) ==
             R"({"signup":{"name":"req"}})");
 }
+
+TEST_CASE("an empty error bag header is treated as absent", "[errors][protocol:errors.bag]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    withErrors(session, {{"name", {"req"}}});
+    const auto req = FakeRequest::inertia("/").with("X-Inertia-Error-Bag", "");
+    REQUIRE(dumpJson(app.page(req, session, "C", {})["props"]["errors"]) == R"({"name":"req"})");
+}

@@ -59,7 +59,7 @@ Json errorsProp(const Json &stored, bool allErrors, const std::optional<std::str
         return shape(stored["default"]);
     }
     for (const auto &[bag, fields] : stored.items()) {
-        const bool header = bag == "default" && bagHeader && !bagHeader->empty();
+        const bool header = bag == "default" && bagHeader;
         out[header ? *bagHeader : bag] = shape(fields);
     }
     return out;
@@ -149,8 +149,12 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     auto resolved = detail::resolveProps(all, ctx);
     // errors stays the last key and wins over a user prop of the same name.
     resolved.props.erase("errors");
+    auto bagHeader = req.header(headers::kErrorBag);
+    if (bagHeader && bagHeader->empty()) {
+        bagHeader.reset(); // an empty header names no bag
+    }
     resolved.props["errors"] = errorsProp(session.pull("inertia.errors").value_or(Json::object()),
-                                          config_.withAllErrors, req.header(headers::kErrorBag));
+                                          config_.withAllErrors, bagHeader);
 
     const bool bigIntegers = opts.preserveBigIntegers.value_or(config_.preserveBigIntegers);
     if (bigIntegers) {
