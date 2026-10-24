@@ -38,14 +38,14 @@ class DiskFileReader final : public inertia::FileReader {
     }
 };
 
-bool ssrEnabled() {
-    const char *flag = secure_getenv("INERTIA_SSR");
-    return flag != nullptr && std::string_view{flag} == "1";
-}
-
 } // namespace
 
 int main() {
+    // Read once, before any server thread starts: std::getenv is not safe against concurrent
+    // environment changes.
+    const char *flag = std::getenv("INERTIA_SSR");
+    const bool ssrEnabled = flag != nullptr && std::string_view{flag} == "1";
+
     auto &app = ::drogon::app();
     app.enableSession(std::chrono::hours(1));
     app.setThreadNum(kThreads);
@@ -66,7 +66,7 @@ int main() {
     // X-Inertia-Version on its next visit, gets a 409 + X-Inertia-Location and does a full reload.
     config.version = inertia::versionFromVite(vite);
     config.vite = std::move(vite);
-    config.ssr.enabled = ssrEnabled(); // INERTIA_SSR=1, with `bun run ssr` listening on :13714
+    config.ssr.enabled = ssrEnabled; // INERTIA_SSR=1, with `bun run ssr` listening on :13714
 
     auto inertiaApp = std::make_shared<inertia::Inertia>(
         std::move(config), std::make_shared<inertia::drogon::DrogonHttpClient>());
