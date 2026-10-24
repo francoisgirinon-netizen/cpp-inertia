@@ -124,46 +124,51 @@
   ],
   "testPresets": [
     {
-      "name": "dev",
-      "configurePreset": "dev",
+      "name": "base",
+      "hidden": true,
       "output": {
         "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
       }
+    },
+    {
+      "name": "dev",
+      "inherits": "base",
+      "configurePreset": "dev"
     },
     {
       "name": "core-only",
-      "configurePreset": "core-only",
-      "output": {
-        "outputOnFailure": true
-      }
+      "inherits": "base",
+      "configurePreset": "core-only"
     },
     {
       "name": "asan",
+      "inherits": "base",
       "configurePreset": "asan",
-      "output": {
-        "outputOnFailure": true
+      "environment": {
+        "ASAN_OPTIONS": "strict_string_checks=1:detect_stack_use_after_return=1",
+        "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"
       }
     },
     {
       "name": "tsan",
+      "inherits": "base",
       "configurePreset": "tsan",
-      "output": {
-        "outputOnFailure": true
+      "environment": {
+        "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
       }
     },
     {
       "name": "tidy",
-      "configurePreset": "tidy",
-      "output": {
-        "outputOnFailure": true
-      }
+      "inherits": "base",
+      "configurePreset": "tidy"
     },
     {
       "name": "release",
-      "configurePreset": "release",
-      "output": {
-        "outputOnFailure": true
-      }
+      "inherits": "base",
+      "configurePreset": "release"
     }
   ],
   "workflowPresets": [
