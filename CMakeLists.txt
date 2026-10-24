@@ -29,32 +29,7 @@ include(ProtocolCoverage)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 
-inertia_add_library(core
-    SOURCES
-        src/headers.cpp
-        src/html.cpp
-        src/inertia.cpp
-        src/props.cpp
-        src/props_resolver.cpp
-        src/session.cpp
-        src/ssr.cpp
-        src/vite.cpp
-        include/inertia/detail/props_resolver.hpp # private: only src/ includes it, never installed
-    HEADERS
-        include/inertia/headers.hpp
-        include/inertia/html.hpp
-        include/inertia/inertia.hpp
-        include/inertia/json.hpp
-        include/inertia/ports/file_reader.hpp
-        include/inertia/ports/http_client.hpp
-        include/inertia/ports/request_view.hpp
-        include/inertia/ports/session_store.hpp
-        include/inertia/props.hpp
-        include/inertia/response.hpp
-        include/inertia/session.hpp
-        include/inertia/ssr.hpp
-        include/inertia/vite.hpp
-    LINK_PUBLIC nlohmann_json::nlohmann_json)
+add_subdirectory(src)
 
 add_subdirectory(adapters/fake)
 if(INERTIA_BUILD_DROGON)
