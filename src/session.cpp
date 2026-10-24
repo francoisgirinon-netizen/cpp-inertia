@@ -1,5 +1,7 @@
 #include <inertia/session.hpp>
 
+#include <inertia/detail/session_keys.hpp>
+
 #include <string>
 #include <string_view>
 #include <utility>
@@ -7,10 +9,7 @@
 namespace inertia {
 
 namespace {
-constexpr std::string_view kErrorsKey = "inertia.errors";
-constexpr std::string_view kClearHistoryKey = "inertia.clear_history";
-constexpr std::string_view kPreserveFragmentKey = "inertia.preserve_fragment";
-constexpr std::string_view kFlashKey = "inertia.flash_data";
+namespace keys = detail::session_keys;
 } // namespace
 
 Response redirect(std::string url, int status) {
@@ -23,7 +22,7 @@ Response redirect(std::string url, int status) {
 Response back(const RequestView &req) { return redirect(req.header("Referer").value_or("/")); }
 
 void withErrors(SessionStore &session, const Errors &errors, std::string_view bag) {
-    Json all = session.get(kErrorsKey).value_or(Json::object());
+    Json all = session.get(keys::kErrors).value_or(Json::object());
     if (!all.is_object()) {
         all = Json::object();
     }
@@ -34,22 +33,22 @@ void withErrors(SessionStore &session, const Errors &errors, std::string_view ba
     for (const auto &[field, messages] : errors) {
         target[field] = messages;
     }
-    session.put(std::string(kErrorsKey), std::move(all));
+    session.put(std::string(keys::kErrors), std::move(all));
 }
 
 void flash(SessionStore &session, std::string key, Json value) {
-    Json data = session.get(kFlashKey).value_or(Json::object());
+    Json data = session.get(keys::kFlash).value_or(Json::object());
     if (!data.is_object()) {
         data = Json::object();
     }
     data[std::move(key)] = std::move(value);
-    session.put(std::string(kFlashKey), std::move(data));
+    session.put(std::string(keys::kFlash), std::move(data));
 }
 
-void clearHistory(SessionStore &session) { session.put(std::string(kClearHistoryKey), true); }
+void clearHistory(SessionStore &session) { session.put(std::string(keys::kClearHistory), true); }
 
 void preserveFragment(SessionStore &session) {
-    session.put(std::string(kPreserveFragmentKey), true);
+    session.put(std::string(keys::kPreserveFragment), true);
 }
 
 } // namespace inertia

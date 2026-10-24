@@ -1,4 +1,5 @@
 #include <inertia/detail/props_resolver.hpp>
+#include <inertia/detail/session_keys.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/vite.hpp>
@@ -159,8 +160,9 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     if (bagHeader && bagHeader->empty()) {
         bagHeader.reset(); // an empty header names no bag
     }
-    resolved.props["errors"] = errorsProp(session.pull("inertia.errors").value_or(Json::object()),
-                                          config_.withAllErrors, bagHeader);
+    resolved.props["errors"] =
+        errorsProp(session.pull(detail::session_keys::kErrors).value_or(Json::object()),
+                   config_.withAllErrors, bagHeader);
 
     const bool bigIntegers = opts.preserveBigIntegers.value_or(config_.preserveBigIntegers);
     if (bigIntegers) {
@@ -176,19 +178,19 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
         page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
     }
     emitMetadata(page, resolved.meta);
-    if (pullFlag(session, "inertia.clear_history")) {
+    if (pullFlag(session, detail::session_keys::kClearHistory)) {
         page["clearHistory"] = true;
     }
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }
-    if (pullFlag(session, "inertia.preserve_fragment")) {
+    if (pullFlag(session, detail::session_keys::kPreserveFragment)) {
         page["preserveFragment"] = true;
     }
     if (bigIntegers) {
         page["preserveBigIntegers"] = true;
     }
-    auto flashData = session.pull("inertia.flash_data");
+    auto flashData = session.pull(detail::session_keys::kFlash);
     if (flashData && flashData->is_object() && !flashData->empty()) {
         if (bigIntegers) {
             wrapBigIntegers(*flashData);
