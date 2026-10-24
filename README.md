@@ -337,7 +337,7 @@ Every preset has configure, build, test and workflow presets of the same name, s
 | --- | --- |
 | `scripts/dev cmake --workflow --preset dev` | Debug build with `-Werror` and every test (unit, conformance on fake, Drogon and cpp-httplib, Drogon and cpp-httplib adapters, `coverage_check`, `core_has_no_adapter_frameworks`, headers self-contained, package consumer tests). |
 | `scripts/dev cmake --workflow --preset core-only` | The core builds and passes without Drogon or cpp-httplib installed. |
-| `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan (UB fails the test). |
+| `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan: the `undefined` group plus `integer` (signed overflow, shifts, implicit conversions), `nullability`, `float-divide-by-zero` and `local-bounds`; any report fails the test. `unsigned-integer-overflow` is excluded because libstdc++ `std::string::compare` wraps on purpose. TypeSanitizer was tried and is not kept: its runtime reports false positives inside libstdc++ `std::tuple`. |
 | `scripts/dev-tsan cmake --workflow --preset tsan` | ThreadSanitizer, with instrumented dependencies (`x64-linux-tsan` triplet). |
 | `scripts/dev cmake --workflow --preset release` | Release build with strict coverage: no `todo` rule left. |
 | `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering. Build the example and `bun run build` in `examples/react-app/frontend` first. |
