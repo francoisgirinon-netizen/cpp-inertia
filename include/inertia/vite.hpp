@@ -54,7 +54,7 @@ class Vite {
 
   private:
     /// Dev-server tags that load the entries from `url`.
-    [[nodiscard]] std::string devTags(const std::string &url) const;
+    [[nodiscard]] std::string devTags(std::string_view url) const;
     /// Production tags built from the manifest.
     [[nodiscard]] std::string prodTags() const;
     /// Raw manifest content, if the file can be read.

@@ -132,7 +132,7 @@ std::string Vite::tags() const {
     return prodTags();
 }
 
-std::string Vite::devTags(const std::string &url) const {
+std::string Vite::devTags(std::string_view url) const {
     std::string out;
     if (cfg_.reactRefresh) {
         out += R"V(<script type="module">import RefreshRuntime from ')V";
