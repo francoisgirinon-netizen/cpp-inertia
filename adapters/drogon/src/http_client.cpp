@@ -1,5 +1,7 @@
 #include <inertia/drogon/drogon.hpp>
 
+#include <trantor/net/EventLoop.h>
+
 #include <chrono>
 #include <functional>
 #include <map>
@@ -41,6 +43,7 @@ struct DrogonHttpClient::Pool {
     struct Entry {
         ::drogon::HttpClientPtr client;
         std::optional<Clock::time_point> lastEviction;
+        std::chrono::milliseconds window{0};
     };
 
     std::mutex mutex;
@@ -57,21 +60,39 @@ struct DrogonHttpClient::Pool {
 
     // Drops `used` from the pool after it timed out, so the next request gets a fresh client.
     // Does nothing when the pool already moved on to another client, or when this origin was
-    // evicted less than `window` ago (a persistently hung server must not cost a connection per
-    // request).
-    void evict(const std::string &origin, const std::weak_ptr<::drogon::HttpClient> &used,
-               std::chrono::milliseconds window) {
+    // evicted less than the window of that earlier eviction ago (the timeout of the request that
+    // caused it): a persistently hung server must not cost a connection per request.
+    // Returns the evicted client, if any. The caller runs inside that client's own timeout
+    // callback, so it must not let the last reference die there: see release().
+    [[nodiscard]] ::drogon::HttpClientPtr evict(const std::string &origin,
+                                                const std::weak_ptr<::drogon::HttpClient> &used,
+                                                std::chrono::milliseconds timeout) {
         const std::scoped_lock lock{mutex};
         const auto it = entries.find(origin);
         if (it == entries.end() || !it->second.client || it->second.client != used.lock()) {
-            return;
+            return nullptr;
         }
         const auto now = Clock::now();
-        if (it->second.lastEviction && now - *it->second.lastEviction < window) {
+        if (it->second.lastEviction && now - *it->second.lastEviction < it->second.window) {
+            return nullptr;
+        }
+        it->second.lastEviction = now;
+        it->second.window = timeout;
+        return std::move(it->second.client);
+    }
+
+    // Releases an evicted client after the current callback has returned. Destroying a
+    // HttpClient from inside one of its own callbacks (on its event loop) would tear down the
+    // object while Drogon is still running its code; queueing the release on the loop defers
+    // it until that code has unwound, whatever Drogon does with the client internally.
+    static void release(::drogon::HttpClientPtr evicted) {
+        if (!evicted) {
             return;
         }
-        it->second.client.reset();
-        it->second.lastEviction = now;
+        if (auto *loop = trantor::EventLoop::getEventLoopOfCurrentThread()) {
+            loop->queueInLoop([holder = std::move(evicted)] {});
+        }
+        // Not on a loop thread (cannot happen for a Drogon callback): the pointer is released here.
     }
 };
 
@@ -114,7 +135,7 @@ void DrogonHttpClient::send(::drogon::HttpMethod method, std::string_view url, s
          used = std::weak_ptr<::drogon::HttpClient>{client},
          timeout](::drogon::ReqResult result, const ::drogon::HttpResponsePtr &res) {
             if (result == ::drogon::ReqResult::Timeout) {
-                pool->evict(origin, used, timeout);
+                Pool::release(pool->evict(origin, used, timeout));
             }
             if (result != ::drogon::ReqResult::Ok || !res) {
                 callback({.status = 0,

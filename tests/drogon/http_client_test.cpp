@@ -102,6 +102,29 @@ TEST_CASE("DrogonHttpClient is not blocked by a hung request after a timeout", "
     waitForLateReply(slowSentAt);
 }
 
+TEST_CASE("DrogonHttpClient evicts at most once per timeout window", "[drogon][window]") {
+    DrogonHttpClient client;
+    const auto slowSentAt = std::chrono::steady_clock::now();
+    // The first timeout (600 ms) evicts the client and opens a 600 ms window.
+    const auto first =
+        await([&](auto done) { client.get(base() + "/slow", 600ms, std::move(done)); });
+    REQUIRE(first.status == 0);
+    // A second timeout (after 100 ms) falls inside that window: it must not evict again.
+    const auto secondSentAt = std::chrono::steady_clock::now();
+    const auto second =
+        await([&](auto done) { client.get(base() + "/slow", 100ms, std::move(done)); });
+    REQUIRE(second.status == 0);
+
+    // So this request is still queued behind the second /slow on the same connection.
+    const auto start = std::chrono::steady_clock::now();
+    const auto next = await([&](auto done) { client.get(base() + "/ping", 5s, std::move(done)); });
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    CHECK(next.status == 200);
+    CHECK(elapsed > inertia::drogon_test::kSlowDelay / 2);
+    waitForLateReply(slowSentAt);
+    waitForLateReply(secondSentAt);
+}
+
 TEST_CASE("DrogonHttpClient reports a connection failure", "[drogon]") {
     DrogonHttpClient client;
     const auto result =
