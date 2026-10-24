@@ -19,6 +19,7 @@ namespace inertia {
 [[nodiscard]] std::string inertiaBody(const Json &page, std::string_view rootId);
 
 struct RootContext {
+    // Custom root templates read the page with ctx.page.get().
     std::reference_wrapper<const Json> page; // non-owning view, short-lived
     std::string head;
     std::string body;
