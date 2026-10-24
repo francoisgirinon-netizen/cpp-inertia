@@ -80,4 +80,9 @@ class Client {
     std::map<std::string, std::string> jar_;
 };
 
+// Sends `request` (the exact bytes, so it can carry a request target that cpp-httplib's own client
+// would normalize) to 127.0.0.1:`port`, and returns everything the server answers until it closes
+// the connection. Include "Connection: close" in the request.
+[[nodiscard]] std::string rawExchange(std::uint16_t port, const std::string &request);
+
 } // namespace inertia::httplib_test

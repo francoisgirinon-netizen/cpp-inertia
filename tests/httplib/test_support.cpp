@@ -2,6 +2,12 @@
 
 #include <inertia/headers.hpp>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <array>
 #include <chrono>
 #include <stdexcept>
 #include <string>
@@ -117,6 +123,42 @@ Reply Client::send(const Request &req) {
         }
     }
     return reply;
+}
+
+std::string rawExchange(std::uint16_t port, const std::string &request) {
+    const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        throw std::runtime_error("socket() failed");
+    }
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): POSIX sockaddr API.
+    if (::connect(fd, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) != 0) {
+        ::close(fd);
+        throw std::runtime_error("connect() failed");
+    }
+    std::size_t sent = 0;
+    while (sent < request.size()) {
+        const auto wrote = ::send(fd, request.data() + sent, request.size() - sent, 0);
+        if (wrote <= 0) {
+            ::close(fd);
+            throw std::runtime_error("send() failed");
+        }
+        sent += static_cast<std::size_t>(wrote);
+    }
+    std::string out;
+    std::array<char, 4096> buffer{};
+    while (true) {
+        const auto got = ::recv(fd, buffer.data(), buffer.size(), 0);
+        if (got <= 0) {
+            break;
+        }
+        out.append(buffer.data(), static_cast<std::size_t>(got));
+    }
+    ::close(fd);
+    return out;
 }
 
 } // namespace inertia::httplib_test

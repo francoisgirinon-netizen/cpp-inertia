@@ -1,9 +1,7 @@
 #include <inertia/httplib/httplib.hpp>
 
-#include <sys/random.h>
+#include "random.hpp"
 
-#include <array>
-#include <cerrno>
 #include <cstddef>
 #include <map>
 #include <mutex>
@@ -57,36 +55,6 @@ namespace {
 constexpr std::size_t kIdBytes = 32;
 constexpr std::size_t kIdLength = kIdBytes * 2;
 
-// Fills `bytes` from the kernel CSPRNG. There is no fallback: a predictable session id is worse
-// than a failed request.
-void secureRandom(std::byte *bytes, std::size_t size) {
-    std::size_t done = 0;
-    while (done < size) {
-        const auto got = ::getrandom(bytes + done, size - done, 0);
-        if (got < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            throw std::runtime_error("getrandom failed: no secure random source for session ids");
-        }
-        done += static_cast<std::size_t>(got);
-    }
-}
-
-std::string newId() {
-    constexpr std::string_view digits = "0123456789abcdef";
-    std::array<std::byte, kIdBytes> bytes{};
-    secureRandom(bytes.data(), bytes.size());
-    std::string id;
-    id.reserve(kIdLength);
-    for (const auto byte : bytes) {
-        const auto value = std::to_integer<unsigned>(byte);
-        id += digits[value >> 4U];
-        id += digits[value & 0xFU];
-    }
-    return id;
-}
-
 } // namespace
 
 MemorySessionStore::MemorySessionStore(MemorySessionOptions options)
@@ -118,7 +86,7 @@ std::size_t MemorySessionStore::size() const {
 MemorySessionStore::Opened MemorySessionStore::open(std::optional<std::string_view> id) {
     const auto at = now();
     // Generated before taking the lock: it may throw, and the syscall needs no protection.
-    std::string fresh = newId();
+    std::string fresh = detail::randomHex(kIdBytes);
 
     const std::scoped_lock lock{mutex_};
     if (at - lastSweep_ >= options_.sweepInterval) {

@@ -5,6 +5,8 @@ inertia_add_library(httplib
         src/convert.cpp
         src/session.cpp
         src/http_client.cpp
+        src/random.cpp
+        src/install.cpp
     HEADERS
         include/inertia/httplib/httplib.hpp
     LINK_PUBLIC inertia::core httplib::httplib)

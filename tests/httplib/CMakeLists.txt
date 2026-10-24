@@ -7,7 +7,12 @@ add_executable(inertia_httplib_tests)
 target_sources(inertia_httplib_tests PRIVATE
     convert_test.cpp
     session_test.cpp
-    http_client_test.cpp)
+    http_client_test.cpp
+    install_test.cpp
+    csrf_test.cpp
+    render_test.cpp
+    concurrent_test.cpp
+    app.cpp)
 target_link_libraries(inertia_httplib_tests PRIVATE inertia_httplib_test_support
                                                     Catch2::Catch2WithMain inertia_warnings)
 catch_discover_tests(inertia_httplib_tests PROPERTIES LABELS httplib)
