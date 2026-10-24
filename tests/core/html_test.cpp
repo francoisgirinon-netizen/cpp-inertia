@@ -23,6 +23,16 @@ TEST_CASE("escapeForScript escapes line separators", "[html]") {
     REQUIRE(escapeForScript(page) == "{\"s\":\"a\\u2028b\\u2029\"}");
 }
 
+TEST_CASE("escapeForScript handles empty and boundary-length inputs", "[html]") {
+    REQUIRE(escapeForScript(Json::array()) == "[]");
+    REQUIRE(escapeForScript(Json{{"s", ""}}) == R"({"s":""})");
+    REQUIRE(escapeForScript(Json{{"s", "/"}}) == R"({"s":"\/"})");
+    // A separator that ends the string is still followed by the closing quote in the JSON text.
+    REQUIRE(escapeForScript(Json{{"s", "\xE2\x80\xA8"}}) == "{\"s\":\"\\u2028\"}");
+    // A three-byte sequence that is not a line separator is copied unchanged.
+    REQUIRE(escapeForScript(Json{{"s", "\xE2\x82\xAC"}}) == "{\"s\":\"\xE2\x82\xAC\"}");
+}
+
 TEST_CASE("dumpJson replaces invalid UTF-8", "[html]") {
     const Json page = {{"s", std::string("\xff")}};
     std::string out;
