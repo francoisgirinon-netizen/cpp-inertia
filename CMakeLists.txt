@@ -82,6 +82,7 @@ if(INERTIA_BUILD_TESTS)
         tests/core/fake_test.cpp
         tests/core/html_test.cpp
         tests/core/page_test.cpp
+        tests/core/consume_test.cpp
         tests/core/props_test.cpp
         tests/core/partial_test.cpp
         tests/core/shared_test.cpp
