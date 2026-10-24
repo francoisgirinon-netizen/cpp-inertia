@@ -54,6 +54,17 @@ TEST_CASE("preserveFragment is emitted once", "[history][protocol:page.preserve-
         app.page(FakeRequest::inertia("/"), session, "C", {}).contains("preserveFragment"));
 }
 
+TEST_CASE("a stored false does not emit clearHistory or preserveFragment",
+          "[history][protocol:page.clear-history][protocol:page.preserve-fragment]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    session.put("inertia.clear_history", false);
+    session.put("inertia.preserve_fragment", false);
+    const auto page = app.page(FakeRequest::inertia("/"), session, "C", {});
+    REQUIRE_FALSE(page.contains("clearHistory"));
+    REQUIRE_FALSE(page.contains("preserveFragment"));
+}
+
 TEST_CASE("encryptHistory follows config and override",
           "[history][protocol:page.encrypt-history]") {
     MemorySession session;

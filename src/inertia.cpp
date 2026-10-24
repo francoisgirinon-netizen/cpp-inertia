@@ -19,6 +19,12 @@ namespace {
 // An Inertia request carries the X-Inertia header.
 bool isInertia(const RequestView &req) { return req.header(headers::kInertia).has_value(); }
 
+// Consumes a session flag; only a stored boolean true counts as set.
+bool pullFlag(SessionStore &session, std::string_view key) {
+    const auto value = session.pull(key);
+    return value && value->is_boolean() && value->get<bool>();
+}
+
 // Top-level keys of the shared props (a dot key contributes its first segment), then "errors",
 // de-duplicated and in order.
 Json sharedKeys(std::span<const std::pair<std::string, Prop>> shared) {
@@ -170,13 +176,13 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
         page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
     }
     emitMetadata(page, resolved.meta);
-    if (session.pull("inertia.clear_history")) {
+    if (pullFlag(session, "inertia.clear_history")) {
         page["clearHistory"] = true;
     }
     if (opts.encryptHistory.value_or(config_.encryptHistory)) {
         page["encryptHistory"] = true;
     }
-    if (session.pull("inertia.preserve_fragment")) {
+    if (pullFlag(session, "inertia.preserve_fragment")) {
         page["preserveFragment"] = true;
     }
     if (bigIntegers) {
