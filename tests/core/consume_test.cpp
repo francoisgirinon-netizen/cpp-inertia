@@ -28,18 +28,19 @@ Props sample() {
 
 TEST_CASE("resolveProps on an rvalue moves the leaf values out", "[consume]") {
     auto props = sample();
-    // Consumed through a reference on purpose: the test then inspects the moved-from source.
-    Props &consumed = props;
-    const auto resolved = resolveProps(std::move(consumed), ResolveContext{});
+    // The address of each heap string is taken before the move. A move keeps it; a copy would
+    // allocate new storage.
+    const auto *leaf = &props[0].second.value().get_ref<const std::string &>();
+    const auto *inner =
+        &props[1].second.children()[0].second.value().get_ref<const std::string &>();
+    const auto *plain = &props[2].second.value()["a"].get_ref<const std::string &>();
+    const auto resolved = resolveProps(std::move(props), ResolveContext{});
     REQUIRE(resolved.props["leaf"] == Json(big()));
     REQUIRE(resolved.props["nested"]["inner"] == Json(big()));
     REQUIRE(resolved.props["plain"]["a"] == Json(big()));
-    // Moved-from JSON is null; a copy would have left the source intact.
-    for (const auto &[key, prop] : props) {
-        INFO(key);
-        REQUIRE(prop.value().is_null());
-        REQUIRE(prop.children().empty());
-    }
+    REQUIRE(&resolved.props["leaf"].get_ref<const std::string &>() == leaf);
+    REQUIRE(&resolved.props["nested"]["inner"].get_ref<const std::string &>() == inner);
+    REQUIRE(&resolved.props["plain"]["a"].get_ref<const std::string &>() == plain);
 }
 
 TEST_CASE("resolveProps on an lvalue leaves the props untouched", "[consume]") {
