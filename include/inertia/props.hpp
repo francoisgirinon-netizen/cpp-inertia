@@ -3,7 +3,9 @@
 #include <inertia/json.hpp>
 
 #include <chrono>
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
 #include <concepts>
+#endif
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -13,6 +15,14 @@
 #include <vector>
 
 namespace inertia {
+
+// The Prop constructors are written twice, with the same semantics: C++20 concepts for the
+// library's own build, enable_if for C++17 consumers (the headers must compile as C++17).
+#if !(defined(__cpp_concepts) && __cpp_concepts >= 201907L && defined(__cpp_conditional_explicit))
+namespace detail {
+template <class T> using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
+} // namespace detail
+#endif
 
 class Prop;
 
@@ -123,26 +133,49 @@ class Prop {
     /// `{{"key", 1}}`.
     /// @tparam T Value type convertible to Json.
     /// @param v Value to send as the prop.
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L && defined(__cpp_conditional_explicit)
     template <class T>
         requires(!std::same_as<std::remove_cvref_t<T>, Prop> && !std::invocable<T &> &&
                  std::constructible_from<Json, T>)
-    explicit(false) Prop(T &&v) : Prop(Json(std::forward<T>(v))) {}
+    explicit(false) Prop(T &&v)
+#else
+    template <class T,
+              std::enable_if_t<!std::is_same_v<detail::RemoveCvRef<T>, Prop> &&
+                                   !std::is_invocable_v<T &> && std::is_constructible_v<Json, T>,
+                               int> = 0>
+    Prop(T &&v)
+#endif
+        : Prop(Json(std::forward<T>(v))) {
+    }
 
     /// Wraps a nullary callable that returns a Prop-convertible value. Implicit so that a Props
     /// list can be written as `{{"key", [] { ... }}}`. The callable runs during the page build,
     /// on the thread that calls Inertia::render() or Inertia::page().
     /// @tparam F Callable type with no arguments.
     /// @param fn Callable that produces the value.
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L && defined(__cpp_conditional_explicit)
     template <class F>
         requires(!std::same_as<std::remove_cvref_t<F>, Prop> && std::invocable<F &> &&
                  std::convertible_to<std::invoke_result_t<F &>, Prop>)
     explicit(false) Prop(F &&fn)
+#else
+    template <class F, std::enable_if_t<!std::is_same_v<detail::RemoveCvRef<F>, Prop> &&
+                                            std::is_invocable_v<F &> &&
+                                            std::is_convertible_v<std::invoke_result_t<F &>, Prop>,
+                                        int> = 0>
+    Prop(F &&fn)
+#endif
         : kind_(Kind::Closure),
-          resolver_([f = std::forward<F>(fn)]() mutable -> Prop { return f(); }) {}
+          resolver_([f = std::forward<F>(fn)]() mutable -> Prop { return f(); }) {
+    }
 
     /// Wraps an already-built JSON value.
     /// @param v Value to send as the prop.
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L && defined(__cpp_conditional_explicit)
     explicit(false) Prop(Json v);
+#else
+    Prop(Json v);
+#endif
 
     /// Marks a merged prop as prepended: the client puts new array items before its current ones.
     /// @return The modified prop.
