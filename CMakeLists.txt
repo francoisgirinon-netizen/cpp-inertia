@@ -11,6 +11,7 @@ if(PROJECT_IS_TOP_LEVEL)
 endif()
 
 option(INERTIA_BUILD_DROGON "Build the Drogon adapter" ON)
+option(INERTIA_BUILD_HTTPLIB "Build the cpp-httplib adapter" ON)
 option(INERTIA_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 include(CMakeDependentOption)
 cmake_dependent_option(INERTIA_BUILD_EXAMPLES "Build examples (needs the Drogon adapter)" OFF
@@ -59,6 +60,9 @@ add_subdirectory(adapters/fake)
 if(INERTIA_BUILD_DROGON)
     add_subdirectory(adapters/drogon)
 endif()
+if(INERTIA_BUILD_HTTPLIB)
+    add_subdirectory(adapters/httplib)
+endif()
 
 if(INERTIA_INSTALL)
     include(InertiaInstall)
@@ -103,6 +107,9 @@ if(INERTIA_BUILD_TESTS)
     if(INERTIA_BUILD_DROGON)
         add_subdirectory(tests/drogon) # before conformance: it defines the Drogon test support
     endif()
+    if(INERTIA_BUILD_HTTPLIB)
+        add_subdirectory(tests/httplib) # before conformance: it defines the httplib test support
+    endif()
     add_subdirectory(tests/conformance)
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -121,10 +128,10 @@ if(INERTIA_BUILD_TESTS)
         inertia_add_package_tests()
     endif()
 
-    add_test(NAME core_has_no_drogon
+    add_test(NAME core_has_no_adapter_frameworks
              COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-                     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCoreNoDrogon.cmake)
-    set_tests_properties(core_has_no_drogon PROPERTIES LABELS meta)
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCoreNoFrameworks.cmake)
+    set_tests_properties(core_has_no_adapter_frameworks PROPERTIES LABELS meta)
 
     # Every public header must compile on its own (the verify targets are not part of `all`).
     add_test(NAME headers_self_contained
@@ -136,6 +143,7 @@ endif()
 if(PROJECT_IS_TOP_LEVEL)
     include(FeatureSummary)
     add_feature_info(drogon INERTIA_BUILD_DROGON "Drogon adapter (inertia::drogon)")
+    add_feature_info(httplib INERTIA_BUILD_HTTPLIB "cpp-httplib adapter (inertia::httplib)")
     add_feature_info(tests INERTIA_BUILD_TESTS "Catch2 tests, conformance suites, coverage_check")
     add_feature_info(examples INERTIA_BUILD_EXAMPLES "React example application")
     add_feature_info(install INERTIA_INSTALL "install rules and package config")

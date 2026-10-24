@@ -3,7 +3,8 @@
 cmake_minimum_required(VERSION 3.31)
 project(inertia_subproject_consumer LANGUAGES CXX)
 
-set(INERTIA_BUILD_DROGON OFF CACHE BOOL "" FORCE) # the core + fake path needs no Drogon
+set(INERTIA_BUILD_DROGON OFF CACHE BOOL "" FORCE) # the core + fake path needs no adapter framework
+set(INERTIA_BUILD_HTTPLIB OFF CACHE BOOL "" FORCE)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(${INERTIA_ROOT} inertia)
 

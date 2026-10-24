@@ -288,7 +288,7 @@ Every preset has configure, build, test and workflow presets of the same name, s
 
 | Command | What it proves |
 | --- | --- |
-| `scripts/dev cmake --workflow --preset dev` | Debug build with `-Werror` and every test (unit, conformance on fake and Drogon, Drogon adapter, `coverage_check`, `core_has_no_drogon`, headers self-contained, package consumer tests). |
+| `scripts/dev cmake --workflow --preset dev` | Debug build with `-Werror` and every test (unit, conformance on fake and Drogon, Drogon adapter, `coverage_check`, `core_has_no_adapter_frameworks`, headers self-contained, package consumer tests). |
 | `scripts/dev cmake --workflow --preset core-only` | The core builds and passes without Drogon installed. |
 | `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan (UB fails the test). |
 | `scripts/dev-tsan cmake --workflow --preset tsan` | ThreadSanitizer, with instrumented dependencies (`x64-linux-tsan` triplet). |
