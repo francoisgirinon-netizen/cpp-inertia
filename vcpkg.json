@@ -11,6 +11,10 @@
       "description": "Drogon adapter, example app and adapter tests",
       "dependencies": ["drogon"]
     },
+    "benchmarks": {
+      "description": "Boost.JSON, for the JSON library comparison benchmark (never used by the library)",
+      "dependencies": ["boost-json"]
+    },
     "httplib": {
       "description": "cpp-httplib adapter and its tests",
       "dependencies": [

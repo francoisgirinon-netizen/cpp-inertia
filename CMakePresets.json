@@ -33,7 +33,8 @@
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "INERTIA_BUILD_BENCHMARKS": "ON"
+        "INERTIA_BUILD_BENCHMARKS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "benchmarks"
       }
     },
     {
@@ -92,7 +93,8 @@
         "INERTIA_BUILD_DROGON": "OFF",
         "INERTIA_BUILD_HTTPLIB": "OFF",
         "INERTIA_INSTALL": "OFF",
-        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON"
+        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON",
+        "VCPKG_MANIFEST_FEATURES": "benchmarks"
       }
     },
     {
