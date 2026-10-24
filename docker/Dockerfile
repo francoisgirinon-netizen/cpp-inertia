@@ -78,10 +78,13 @@ FROM base AS vcpkg
 # Check out the builtin-baseline pinned in vcpkg.json (manifests resolve against the image's vcpkg,
 # so a plain clone of HEAD would drift from it and installs would fail). vcpkg verifies the SHA-512
 # of the vcpkg tool it downloads while bootstrapping.
-ARG VCPKG_BASELINE=65a2c2391af39b773f83f91e0ab6c8ced8f9c727
-RUN git init -q /opt/vcpkg \
+# Only vcpkg.json invalidates the clone: the SHA is read from it, never duplicated here.
+COPY vcpkg.json /tmp/vcpkg.json
+RUN BASELINE="$(python3 -c 'import json; print(json.load(open("/tmp/vcpkg.json"))["builtin-baseline"])')" \
+    && test -n "$BASELINE" \
+    && git init -q /opt/vcpkg \
     && git -C /opt/vcpkg remote add origin https://github.com/microsoft/vcpkg.git \
-    && git -C /opt/vcpkg fetch -q --depth 1 origin "${VCPKG_BASELINE}" \
+    && git -C /opt/vcpkg fetch -q --depth 1 origin "$BASELINE" \
     && git -C /opt/vcpkg checkout -q FETCH_HEAD
 RUN --mount=type=cache,target=/root/.cache/vcpkg-downloads \
     VCPKG_DOWNLOADS=/root/.cache/vcpkg-downloads /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
