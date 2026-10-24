@@ -301,7 +301,7 @@ Every preset has configure, build, test and workflow presets of the same name, s
 - **clang-format** (v23.1.3, the ready-made `pre-commit/mirrors-clang-format` hook) formats the C/C++ files. It runs on the host: no build, no Docker.
 - **clang-tidy** runs on `.cpp` files through `scripts/dev` (Docker). It needs a configured `build/dev` but no build: when `build/dev/compile_commands.json` is missing, the hook configures it itself (`cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON`, examples included) and fails if the configure fails. An existing tree configured without examples is left alone, with a hint.
   The hook lints the staged files only. To lint the whole tree (every tracked `.cpp` except the out-of-tree `tests/package`), run `scripts/dev tools/run-clang-tidy.sh --all`; it takes several minutes and must report nothing. `.clang-tidy` limits diagnostics to the project's own headers (`include/inertia`, `src`, `adapters`, `tests`, `examples` under `/src`), so vcpkg and system headers stay quiet.
-- The tree contains no `NOLINT` comment: a clang-tidy finding is fixed in the code, not silenced.
+- The tree contains no inline clang-tidy suppression comment: a finding is fixed in the code, not silenced.
 - A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
 ## Known limitations
