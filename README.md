@@ -4,6 +4,7 @@ A C++20 implementation of the server side of the [Inertia.js](https://inertiajs.
 
 - **Framework-agnostic core** (`inertia::core`): pure C++ that depends only on nlohmann_json. It builds the page object, resolves props (partial reloads, deferred, merge, once, scroll, ...), renders the first-visit HTML and talks to an SSR server.
 - **Drogon adapter** (`inertia::drogon`): one `install()` call and a `render()` helper.
+- **cpp-httplib adapter** (`inertia::httplib`): the same shape for [cpp-httplib](https://github.com/yhirose/cpp-httplib), with its own in-memory sessions and a blocking SSR client. Optional, like Drogon.
 - **Fake adapter** (`inertia::fake`): in-memory, for tests.
 - **React example** (`examples/react-app`) driven by Playwright with the official client.
 
@@ -63,11 +64,14 @@ The root `.clangd` points clangd at `build/dev/host`. Re-run the script after a 
 Install it (`cmake --install build/dev --prefix <dir>`), then:
 
 ```cmake
-find_package(inertia CONFIG REQUIRED COMPONENTS core drogon)   # components: core, fake, drogon
+find_package(inertia CONFIG REQUIRED COMPONENTS core drogon)   # components: core, fake, drogon, httplib
 target_link_libraries(app PRIVATE inertia::drogon)             # brings inertia::core with it
+# or, for cpp-httplib (find_package(httplib) is done for you):
+# find_package(inertia CONFIG REQUIRED COMPONENTS core httplib)
+# target_link_libraries(app PRIVATE inertia::httplib)
 ```
 
-A package installed without the Drogon adapter (`-DINERTIA_BUILD_DROGON=OFF`) refuses `COMPONENTS drogon` with a clear message. Version compatibility is `SameMinorVersion` while the major version is 0.
+A package installed without an adapter (`-DINERTIA_BUILD_DROGON=OFF`, `-DINERTIA_BUILD_HTTPLIB=OFF`) refuses its component (`COMPONENTS drogon`, `COMPONENTS httplib`) with a clear message. Version compatibility is `SameMinorVersion` while the major version is 0.
 
 ### With `add_subdirectory` or `FetchContent`
 
@@ -78,7 +82,7 @@ FetchContent_MakeAvailable(inertia)
 target_link_libraries(app PRIVATE inertia::drogon)
 ```
 
-As a subproject, tests, examples, install rules and `-Werror` are off. Dependencies (nlohmann_json, and Drogon for the adapter) must be findable by `find_package`; the repository's `vcpkg.json` shows the set.
+As a subproject, tests, examples, install rules and `-Werror` are off. Dependencies (nlohmann_json, and Drogon or cpp-httplib for an adapter) must be findable by `find_package`; the repository's `vcpkg.json` shows the set.
 
 ### A minimal Drogon application
 
@@ -119,6 +123,45 @@ int main() {
 
 `install()` adds a pre-handling advice (asset version mismatch answers 409, CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header, 419 when it fails) and a post-handling advice (`Vary: X-Inertia`, the CSRF cookie). `render()` answers exactly once: JSON for Inertia requests, the HTML page otherwise. Pass `CsrfOptions` to `install()` to rename the cookie/header, disable the check, exempt webhook paths or trust forwarded headers. `install()` can be called once (a second call throws `std::logic_error`); without `app().enableSession()` a CSRF-checked request (mutating, not exempt) and `render()` answer a 500 that says so, while other routes are untouched, and `DrogonSession` throws `std::invalid_argument` for a null session.
 
+### A minimal cpp-httplib application
+
+```cpp
+#include <inertia/httplib/httplib.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/session.hpp>
+
+#include <memory>
+
+int main() {
+    inertia::Config config;
+    config.version = [] { return std::string{"1"}; };
+    auto inertiaApp = std::make_shared<inertia::Inertia>(
+        std::move(config), std::make_shared<inertia::httplib::HttplibHttpClient>());
+    inertiaApp->share("appName", "My app"); // shared props: register before install()
+
+    httplib::Server server;
+    inertia::httplib::install(server, inertiaApp); // before listen(): Inertia is immutable once installed
+
+    server.Get("/users", [](const httplib::Request &req, httplib::Response &res) {
+        inertia::httplib::render(req, res, "Users/Index",
+                                 {{"users", inertia::Json::array({"Ada", "Alan"})}});
+    });
+    server.Post("/users", [](const httplib::Request &, httplib::Response &res) {
+        auto session = inertia::httplib::session(res);              // this request's session
+        inertia::flash(session, "success", "Saved.");
+        inertia::httplib::toHttplib(inertia::redirect("/users"), res);
+    });
+    server.listen("0.0.0.0", 8080);
+}
+```
+
+Same contract as the Drogon adapter, adapted to cpp-httplib's synchronous handlers:
+
+- `install(server, inertia, Options{})` sets the **pre-routing** handler (asset version mismatch answers 409; CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header on every method but GET/HEAD/OPTIONS, constant-time compared, 419 when it fails) and the **post-routing** handler (`Vary: X-Inertia`, the `XSRF-TOKEN` cookie, the session cookie). cpp-httplib runs the post-routing handler for every response, including those the pre-routing handler short-circuited, 404s and 500s. A second `install()` on the same server throws. `Options` carries the `CsrfOptions` (rename cookie/header, disable, exempt webhook paths), `trustForwardedHeaders`, the session store and an error logger.
+- `render(req, res, component, props)` fills `res` before it returns (JSON for Inertia requests, the HTML page otherwise). A prop that throws is logged and answered with a 500; the server keeps serving. `location(req, res, url)` writes the external redirect (409 + `X-Inertia-Location`, or 302). `session(res)` is the request's `SessionStore`.
+- `HttplibRequest{req}` (`RequestView`) takes the URL from the raw request target, so `page.url` is exactly what the client sent. Pass `trustForwardedHeaders = true` in `Options` only behind a reverse proxy that sets or strips `X-Forwarded-Proto` / `X-Forwarded-Host`: `fullUrl()` then uses them (first value of the list) and the cookies become `Secure` for https requests. Off by default, because any client can forge them.
+- **Sessions**: cpp-httplib has none, so `MemorySessionStore` keeps them: a 256-bit random id from `getrandom(2)` (the server refuses to answer if the kernel has no randomness, never falls back), sent in the `inertia_session` cookie (`HttpOnly; SameSite=Lax; Path=/`, plus `Secure` for https). Ids a client sends that are unknown or expired are never adopted. A session is forgotten after an idle TTL (30 minutes by default, `MemorySessionOptions::idleTtl`), swept lazily. Pass your own store through `Options::sessions` to tune it or to inspect it.
+
 ### Prop types cheat-sheet
 
 `Props` is a list of `{name, Prop}`. A `Prop` converts implicitly from any JSON value or from a closure (`[] { return inertia::Prop{...}; }`) that is resolved lazily, only when the prop is included in the response.
@@ -154,7 +197,7 @@ Shared props: `Inertia::share(key, prop)` for constants and `Inertia::shareWith(
 
 ### Session helpers and responses
 
-These take a `SessionStore` (use `inertia::drogon::DrogonSession{req->session()}`) and are consumed by the next page render.
+These take a `SessionStore` (use `inertia::drogon::DrogonSession{req->session()}`, or `inertia::httplib::session(res)` with cpp-httplib) and are consumed by the next page render.
 
 ```cpp
 inertia::drogon::DrogonSession session{req->session()};
@@ -186,7 +229,8 @@ While `public/hot` exists (the Vite dev server writes it, see `examples/react-ap
 
 ```cpp
 config.ssr.enabled = true;            // url "http://127.0.0.1:13714", timeout 1500 ms, exceptPaths
-// pass inertia::drogon::DrogonHttpClient as the second argument of the Inertia constructor
+// pass inertia::drogon::DrogonHttpClient (or inertia::httplib::HttplibHttpClient) as the second
+// argument of the Inertia constructor
 ```
 
 If the SSR server fails or times out, the page falls back to client-side rendering.
@@ -195,11 +239,11 @@ If the SSR server fails or times out, the page falls back to client-side renderi
 
 Ports and adapters.
 
-- The **core** is pure and synchronous (SSR goes through a callback). It talks to the world through ports: `RequestView`, `Response` (a plain value), `SessionStore`, `HttpClient` (async, for SSR) and `FileReader` (Vite manifest, hot file). A CTest check fails if `drogon` ever appears in `include/inertia/` or `src/`.
-- **Adapters** implement the ports for a framework: `adapters/drogon` is the real one, `adapters/fake` is in-memory.
+- The **core** is pure and synchronous (SSR goes through a callback). It talks to the world through ports: `RequestView`, `Response` (a plain value), `SessionStore`, `HttpClient` (async, for SSR) and `FileReader` (Vite manifest, hot file). A CTest check fails if `drogon` or `httplib` ever appears in `include/inertia/` or `src/`.
+- **Adapters** implement the ports for a framework: `adapters/drogon` and `adapters/httplib` are the real ones, `adapters/fake` is in-memory.
 - A **conformance suite** (`tests/conformance`) runs the same HTTP-level protocol scenarios against every adapter.
 
-To write a new adapter (another framework): implement `RequestView` over its request type, `SessionStore` over its session, `HttpClient` over its async client if you want SSR, translate `Response` to and from its response type, and call `Inertia::handleVersion`, `Inertia::render` and `Inertia::finalize` from its hooks. Then add a harness next to `tests/conformance/fake_harness.cpp` and `drogon_harness.cpp` and make the whole suite pass. Props-building code stays portable.
+To write a new adapter (another framework): implement `RequestView` over its request type, `SessionStore` over its session, `HttpClient` over its async client if you want SSR, translate `Response` to and from its response type, and call `Inertia::handleVersion`, `Inertia::render` and `Inertia::finalize` from its hooks. Then add a harness next to `tests/conformance/fake_harness.cpp`, `drogon_harness.cpp` and `httplib_harness.cpp` and make the whole suite pass. Props-building code stays portable.
 
 ## Protocol coverage
 
@@ -288,8 +332,8 @@ Every preset has configure, build, test and workflow presets of the same name, s
 
 | Command | What it proves |
 | --- | --- |
-| `scripts/dev cmake --workflow --preset dev` | Debug build with `-Werror` and every test (unit, conformance on fake and Drogon, Drogon adapter, `coverage_check`, `core_has_no_adapter_frameworks`, headers self-contained, package consumer tests). |
-| `scripts/dev cmake --workflow --preset core-only` | The core builds and passes without Drogon installed. |
+| `scripts/dev cmake --workflow --preset dev` | Debug build with `-Werror` and every test (unit, conformance on fake, Drogon and cpp-httplib, Drogon and cpp-httplib adapters, `coverage_check`, `core_has_no_adapter_frameworks`, headers self-contained, package consumer tests). |
+| `scripts/dev cmake --workflow --preset core-only` | The core builds and passes without Drogon or cpp-httplib installed. |
 | `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan (UB fails the test). |
 | `scripts/dev-tsan cmake --workflow --preset tsan` | ThreadSanitizer, with instrumented dependencies (`x64-linux-tsan` triplet). |
 | `scripts/dev cmake --workflow --preset release` | Release build with strict coverage: no `todo` rule left. |
@@ -313,6 +357,9 @@ Every preset has configure, build, test and workflow presets of the same name, s
 - Drogon's `HttpClient` has no cancel API and does not pipeline, so a timed-out SSR request keeps its connection busy until the server answers. `DrogonHttpClient` therefore drops the origin's pooled client after a timeout (at most once per timeout window), and the next render opens a fresh connection instead of queueing behind the hung one. The abandoned request itself still runs to completion in the background, and a persistently hung SSR server costs one new connection per timeout window. Keep `SsrConfig::timeout` short; the page falls back to client-side rendering when it expires.
 - Behind a TLS-terminating proxy, `DrogonRequest::fullUrl()` (the `X-Inertia-Location` of the 409 sent on an asset version mismatch) and the `Secure` flag of the CSRF cookie follow the connection, so they say `http` by default. Set `CsrfOptions::trustForwardedHeaders = true` to use the first value of `X-Forwarded-Proto` / `X-Forwarded-Host` instead. Only do that when the proxy always sets those headers: a client that reaches the server directly can forge them. The flag is applied to the requests the adapter builds itself (`install()`, `render()`, `location()`); a `DrogonRequest` you construct takes it as a second constructor argument.
 - `toDrogon` turns each `Set-Cookie` into a Drogon cookie, and Drogon keys cookies by name: two cookies with the same name but a different `Path` or `Domain` collapse into one.
-- Only the Drogon adapter is provided. The ports make another framework a small piece of work (see Architecture), but none is shipped.
+- Drogon and cpp-httplib are the only real adapters. The ports make another framework a small piece of work (see Architecture).
+- cpp-httplib adapter: sessions are **in memory and single-process**. They are lost on restart and not shared between processes or hosts (use sticky sessions behind a proxy, or the Drogon adapter, for that). Memory is bounded only by the idle TTL.
+- cpp-httplib adapter: the SSR client is **blocking**. `render()` waits for the SSR server (up to `SsrConfig::timeout`) on the connection's thread, and cpp-httplib serves one connection per thread, so a slow SSR server ties up worker threads. Keep the timeout short and size the thread pool (`Server::new_task_queue`) for it. Only `http://` SSR URLs work: the adapter is built without TLS.
+- cpp-httplib adapter: `install()` takes over the server's pre-routing and post-routing handlers, and the handlers must be registered on the same server before `listen()`.
 - Laravel-specific features (Precognition, previous-URL storage, exception handler) are out of scope: see the `na` rows above.
 - The official Inertia Playwright suite is not reused: its server is a hand-written Express app that builds every page object literally (349 routes), so porting it would test those fixtures rather than this library.
