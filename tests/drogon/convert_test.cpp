@@ -124,6 +124,17 @@ TEST_CASE("toDrogon keeps duplicate headers: list headers are comma-joined", "[d
     CHECK(back.header("Link") == "</a>; rel=preload, </b>; rel=preload");
 }
 
+TEST_CASE("toDrogon does not comma-join single-valued headers: the last one wins", "[drogon]") {
+    inertia::Response res;
+    res.headers.emplace_back("Location", "/a");
+    res.headers.emplace_back("Location", "/b");
+    res.headers.emplace_back("Content-Length", "1");
+    res.headers.emplace_back("content-length", "2");
+    const auto back = inertia::drogon::fromDrogon(inertia::drogon::toDrogon(res));
+    CHECK(back.header("Location") == "/b");
+    CHECK(back.header("Content-Length") == "2");
+}
+
 TEST_CASE("toDrogon keeps every Set-Cookie", "[drogon]") {
     inertia::Response res;
     res.headers.emplace_back("Set-Cookie", "a=1; Path=/");

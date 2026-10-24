@@ -37,6 +37,12 @@ std::string_view trim(std::string_view text) {
     return text;
 }
 
+// Headers whose value is not a comma-separated list.
+bool isSingleValued(std::string_view name) {
+    return headers::iequals(name, "Content-Type") || headers::iequals(name, "Location") ||
+           headers::iequals(name, "Content-Length");
+}
+
 // "Wed, 21 Oct 2026 07:28:00 GMT" (the IMF-fixdate of RFC 9110) -> a date; nullopt otherwise.
 std::optional<trantor::Date> parseHttpDate(std::string_view text) {
     std::tm parts{};
@@ -178,8 +184,8 @@ std::optional<std::string> DrogonRequest::header(std::string_view name) const {
             combined, [&](const auto &entry) { return headers::iequals(entry.first, name); });
         if (same == combined.end()) {
             combined.emplace_back(name, value);
-        } else if (headers::iequals(name, "Content-Type")) {
-            same->second = value; // not a list header: the last one wins
+        } else if (isSingleValued(name)) {
+            same->second = value; // joining would corrupt it: the last one wins
         } else {
             same->second += ", " + value;
         }
