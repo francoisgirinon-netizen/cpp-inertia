@@ -141,19 +141,30 @@ void Inertia::shareOnce(std::string key, Resolver fn) {
 
 Json Inertia::page(const RequestView &req, SessionStore &session, std::string_view component,
                    const Props &props, const RenderOptions &opts) const {
+    return buildPage(req, session, std::string(component), Props(props), opts);
+}
+
+Json Inertia::buildPage(const RequestView &req, SessionStore &session, std::string component,
+                        Props props, const RenderOptions &opts) const {
     Props all = shared_;
     for (const auto &perRequest : perRequest_) {
         auto extra = perRequest(req, session);
         std::ranges::move(extra, std::back_inserter(all));
     }
     const auto sharedCount = all.size();
-    all.insert(all.end(), props.begin(), props.end());
+    std::ranges::move(props, std::back_inserter(all));
 
     auto ctx = detail::makeContext(req, component);
     if (config_.clock) {
         ctx.now = config_.clock();
     }
-    auto resolved = detail::resolveProps(all, ctx);
+    // The keys are read before `all` is consumed below.
+    Json sharedPropKeys;
+    if (config_.exposeSharedPropKeys && sharedCount > 0) {
+        sharedPropKeys = sharedKeys(std::span(all).first(sharedCount));
+    }
+    // `all` holds copies of the shared props, so resolving may consume it.
+    auto resolved = detail::resolveProps(std::move(all), ctx);
     // errors stays the last key and wins over a user prop of the same name.
     resolved.props.erase("errors");
     auto bagHeader = req.header(headers::kErrorBag);
@@ -170,12 +181,12 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     }
 
     Json page = Json::object();
-    page["component"] = std::string(component);
+    page["component"] = std::move(component);
     page["props"] = std::move(resolved.props);
     page["url"] = req.url();
     page["version"] = version();
-    if (config_.exposeSharedPropKeys && sharedCount > 0) {
-        page["sharedProps"] = sharedKeys(std::span(all).first(sharedCount));
+    if (!sharedPropKeys.is_null()) {
+        page["sharedProps"] = std::move(sharedPropKeys);
     }
     emitMetadata(page, resolved.meta);
     if (pullFlag(session, detail::session_keys::kClearHistory)) {
@@ -200,10 +211,9 @@ Json Inertia::page(const RequestView &req, SessionStore &session, std::string_vi
     return page;
 }
 
-void Inertia::render(const RequestView &req, SessionStore &session, std::string_view component,
-                     const Props &props, std::function<void(Response)> done,
-                     const RenderOptions &opts) const {
-    const Json page = this->page(req, session, component, props, opts);
+void Inertia::render(const RequestView &req, SessionStore &session, std::string component,
+                     Props props, std::function<void(Response)> done, RenderOptions opts) const {
+    const Json page = buildPage(req, session, std::move(component), std::move(props), opts);
     Response res;
     res.status = 200;
     if (isInertia(req)) {

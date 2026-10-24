@@ -11,11 +11,11 @@ using namespace inertia::fake;
 
 namespace {
 
-Response renderOne(const Inertia &app, const FakeRequest &req, const Props &props) {
+Response renderOne(const Inertia &app, const FakeRequest &req, Props props) {
     MemorySession session;
     Response out;
     bool called = false;
-    app.render(req, session, "Users/Index", props, [&](Response r) {
+    app.render(req, session, "Users/Index", std::move(props), [&](Response r) {
         out = std::move(r);
         called = true;
     });

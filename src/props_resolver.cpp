@@ -51,18 +51,39 @@ bool isSelfOrDescendant(std::string_view path, std::string_view base) {
            (path.size() > base.size() && path.starts_with(base) && path[base.size()] == '.');
 }
 
-// The children of an existing prop when a dot key is merged into it.
+// The JSON value of a Value prop: moved out of an rvalue, copied from an lvalue.
+Json valueOf(Prop &&prop) { return std::move(prop).takeValue(); }
+Json valueOf(const Prop &prop) { return prop.value(); }
+
+// The members of a JSON object as value props, moved out of `object`.
+Props membersAsProps(Json &&object) {
+    Props children;
+    Json owned = std::move(object);
+    for (auto it = owned.begin(); it != owned.end(); ++it) {
+        children.emplace_back(it.key(), Prop(std::move(it.value())));
+    }
+    return children;
+}
+
+// The children of an existing prop when a dot key is merged into it (or when it is walked).
+Props childrenForMerge(Prop &&existing) {
+    if (existing.kind() == Prop::Kind::Object) {
+        return std::move(existing).takeChildren();
+    }
+    if (existing.kind() == Prop::Kind::Value && existing.value().is_object()) {
+        return membersAsProps(valueOf(std::move(existing)));
+    }
+    return {};
+}
+
 Props childrenForMerge(const Prop &existing) {
     if (existing.kind() == Prop::Kind::Object) {
         return existing.children();
     }
-    Props children;
     if (existing.kind() == Prop::Kind::Value && existing.value().is_object()) {
-        for (const auto &[key, value] : existing.value().items()) {
-            children.emplace_back(key, Prop(Json(value)));
-        }
+        return membersAsProps(valueOf(existing));
     }
-    return children;
+    return {};
 }
 
 Prop mergeInto(const Prop &existing, std::span<const std::string> segments, Prop value);
@@ -108,7 +129,8 @@ class Walker {
     // `bypass` is true below an always prop and below a resolved closure: their children skip
     // the only/except filter. Per-prop classification (defer/merge/once/scroll metadata) belongs
     // here, keyed by `path`.
-    std::optional<Json> resolve(const Prop &prop, const std::string &path, bool bypass) {
+    // An rvalue `prop` is consumed: its JSON value and children are moved into the result.
+    std::optional<Json> resolve(Prop &&prop, const std::string &path, bool bypass) {
         bypass = bypass || prop.isAlways();
         if (prop.isOptional() && !ctx_->partial) {
             return std::nullopt;
@@ -118,7 +140,7 @@ class Walker {
                               (prop.kind() == Prop::Kind::Value && prop.value().is_object());
         if (!bypass && !selected(path)) {
             // An unselected object may still hold always descendants, which bypass the filter.
-            return walkable ? resolveObject(prop, path, false, false) : std::nullopt;
+            return walkable ? resolveObject(std::move(prop), path, false, false) : std::nullopt;
         }
         addMergeMetadata(prop, path);
         if (addOnceMetadata(prop, path)) {
@@ -135,13 +157,13 @@ class Walker {
         switch (prop.kind()) {
         case Prop::Kind::Value:
             if (walkable && !bypass) {
-                return resolveObject(prop, path, false, true);
+                return resolveObject(std::move(prop), path, false, true);
             }
-            return std::optional<Json>(std::in_place, prop.value());
+            return std::optional<Json>(std::in_place, valueOf(std::move(prop)));
         case Prop::Kind::Closure:
             return resolveClosure(prop, path);
         case Prop::Kind::Object:
-            return resolveObject(prop, path, bypass, true);
+            return resolveObject(std::move(prop), path, bypass, true);
         }
         return std::nullopt;
     }
@@ -260,17 +282,17 @@ class Walker {
         }
     }
 
-    std::optional<Json> resolveObject(const Prop &prop, const std::string &path, bool bypass,
+    std::optional<Json> resolveObject(Prop &&prop, const std::string &path, bool bypass,
                                       bool selectedSelf) {
         Json result = Json::object();
-        const Props children = childrenForMerge(prop);
-        for (const auto &[key, child] : children) {
+        Props children = childrenForMerge(std::move(prop));
+        for (auto &[key, child] : children) {
             std::string childPath = path;
             if (!childPath.empty()) {
                 childPath += '.';
             }
             childPath += key;
-            auto value = resolve(child, childPath, bypass);
+            auto value = resolve(std::move(child), childPath, bypass);
             if (value) {
                 result[key] = std::move(*value);
             }
@@ -302,13 +324,18 @@ class Walker {
 } // namespace
 
 Resolved resolveProps(const Props &props, const ResolveContext &ctx) {
+    return resolveProps(Props(props), ctx);
+}
+
+Resolved resolveProps(Props &&props, const ResolveContext &ctx) {
+    Props owned = std::move(props);
     Props normalized;
-    for (const auto &[key, prop] : props) {
-        insertPath(normalized, splitPath(key), prop);
+    for (auto &[key, prop] : owned) {
+        insertPath(normalized, splitPath(key), std::move(prop));
     }
     Walker walker(ctx);
-    for (const auto &[key, prop] : normalized) {
-        auto value = walker.resolve(prop, key, false);
+    for (auto &[key, prop] : normalized) {
+        auto value = walker.resolve(std::move(prop), key, false);
         if (value) {
             walker.result().props[key] = std::move(*value);
         }

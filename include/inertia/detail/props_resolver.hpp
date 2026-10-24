@@ -37,6 +37,10 @@ struct Resolved {
 // Pure function of its arguments: all per-request state lives on the call stack.
 [[nodiscard]] Resolved resolveProps(const Props &props, const ResolveContext &ctx);
 
+// Same result, but JSON leaf values and nested children are moved into the output, so `props` is
+// left moved-from.
+[[nodiscard]] Resolved resolveProps(Props &&props, const ResolveContext &ctx);
+
 // partial is true when the request is an Inertia request whose X-Inertia-Partial-Component
 // equals `component`.
 [[nodiscard]] ResolveContext makeContext(const RequestView &req, std::string_view component);

@@ -92,6 +92,10 @@ class Prop {
     [[nodiscard]] const Json &value() const { return value_; }
     [[nodiscard]] const Resolver &resolver() const { return resolver_; }
     [[nodiscard]] const Props &children() const { return children_; }
+
+    // Move the content out of a prop that is being consumed; the source is left moved-from.
+    [[nodiscard]] Json takeValue() && { return std::move(value_); }
+    [[nodiscard]] Props takeChildren() && { return std::move(children_); }
     [[nodiscard]] bool isOptional() const { return optional_; }
     [[nodiscard]] bool isAlways() const { return always_; }
     [[nodiscard]] const std::optional<std::string> &deferGroup() const { return deferGroup_; }

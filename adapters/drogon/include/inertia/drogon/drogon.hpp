@@ -114,9 +114,9 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf = {
 // app().enableSession() is required). `callback` receives exactly one response, possibly from
 // another thread when SSR is enabled. An exception thrown while resolving props is logged and
 // answered with a 500; the server keeps serving.
-void render(const ::drogon::HttpRequestPtr &req, std::string_view component, const Props &props,
+void render(const ::drogon::HttpRequestPtr &req, std::string component, Props props,
             std::function<void(const ::drogon::HttpResponsePtr &)> &&callback,
-            const RenderOptions &opts = {});
+            RenderOptions opts = {});
 
 // External redirect via the installed Inertia: 409 + X-Inertia-Location for Inertia requests,
 // else a 302.
