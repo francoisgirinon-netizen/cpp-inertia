@@ -1,0 +1,13 @@
+# The image only needs mise.toml; sources are bind-mounted at run time.
+.git
+.idea
+.vscode
+.cache
+build/
+**/build/
+**/node_modules
+**/dist
+**/test-results
+**/public/hot
+**/__pycache__
+docs/
