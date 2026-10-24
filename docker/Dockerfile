@@ -48,7 +48,6 @@ RUN curl -fsSL -o /usr/local/bin/mise \
 
 ENV MISE_DATA_DIR=/opt/mise \
     MISE_CONFIG_DIR=/opt/mise/config \
-    MISE_CACHE_DIR=/root/.cache/mise \
     MISE_YES=1 \
     PATH=/opt/mise/shims:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
