@@ -107,7 +107,8 @@ void dispatch(Call call, Parse parse, std::function<void(R)> done, R fallback) {
         R value = fallback;
         try {
             value = parse(reply);
-        } catch (...) { // NOLINT(bugprone-empty-catch): a malformed reply keeps the fallback
+        } catch (...) {
+            value = fallback; // a malformed reply keeps the fallback
         }
         try {
             state->done(std::move(value));
