@@ -1,3 +1,5 @@
+#include "convert_internal.hpp"
+
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/inertia.hpp>
@@ -156,9 +158,14 @@ bool isManagedElsewhere(std::string_view name) {
 // Runs Inertia::finalize on the response and writes its edits (status, body, headers) back.
 void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &req,
                       const ::drogon::HttpResponsePtr &res) {
-    Response meta = fromDrogon(res);
+    Response meta = detail::responseHead(res);
     const int status = meta.status;
-    const std::size_t bodySize = meta.body.size();
+    // Inertia::finalize only asks whether the body is empty, and may clear it. A one-byte stand-in
+    // answers that without copying a body that can be hundreds of kilobytes.
+    const bool hadBody = !res->body().empty();
+    if (hadBody) {
+        meta.body = " ";
+    }
     const Response before{.status = status, .headers = meta.headers, .body = {}};
 
     inertia.finalize(DrogonRequest{req, trustForwarded().load()}, meta);
@@ -166,8 +173,8 @@ void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &re
     if (meta.status != status) {
         res->setStatusCode(static_cast<::drogon::HttpStatusCode>(meta.status));
     }
-    if (meta.body.size() != bodySize) {
-        res->setBody(meta.body);
+    if (hadBody && meta.body.empty()) {
+        res->setBody(std::string{});
     }
     for (const auto &[name, value] : before.headers) {
         if (!isManagedElsewhere(name) && !meta.header(name)) {
@@ -287,7 +294,7 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
         auto view = std::make_shared<DrogonRequest>(req, trustForwarded().load());
         requireInstalled()->render(
             *view, *store, std::move(component), std::move(props),
-            [state, store, view](const Response &res) { state->answer(toDrogon(res)); }, opts);
+            [state, store, view](Response res) { state->answer(toDrogon(std::move(res))); }, opts);
     } catch (const std::exception &error) {
         LOG_ERROR << "inertia: render failed: " << error.what();
         state->answer(serverError());

@@ -85,6 +85,15 @@ class DrogonRequest final : public RequestView {
 /// @return A new Drogon response carrying the same status, headers and body.
 [[nodiscard]] ::drogon::HttpResponsePtr toDrogon(const Response &res);
 
+/// Converts an Inertia response to a Drogon response, moving its body instead of copying it.
+///
+/// Same conversion as the overload for a const response. Prefer it when the response is not
+/// needed afterwards: a page body can be hundreds of kilobytes.
+///
+/// @param res The Inertia response to convert. Its body is moved from.
+/// @return A new Drogon response carrying the same status, headers and body.
+[[nodiscard]] ::drogon::HttpResponsePtr toDrogon(Response &&res);
+
 /// Converts a Drogon response to an Inertia response.
 ///
 /// Keeps every header line, including each cookie as its own Set-Cookie header, in the order the

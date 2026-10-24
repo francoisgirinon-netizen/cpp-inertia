@@ -113,6 +113,23 @@ TEST_CASE("toDrogon and fromDrogon round-trip status, headers and body", "[drogo
     CHECK(back.header("content-type").value_or("").starts_with("application/json"));
 }
 
+TEST_CASE("toDrogon of an rvalue moves the body into the Drogon response", "[drogon]") {
+    inertia::Response res;
+    res.status = 200;
+    res.body = std::string(4096, 'x');
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("X-Test", "1");
+    const std::string expected = res.body;
+    const char *buffer = res.body.data();
+
+    const auto converted = inertia::drogon::toDrogon(std::move(res));
+    CHECK(converted->body() == expected);
+    CHECK(converted->body().data() == buffer); // the same heap buffer: nothing was copied
+    CHECK(converted->statusCode() == ::drogon::k200OK);
+    CHECK(converted->getHeader("x-test") == "1");
+    CHECK(converted->contentTypeString().starts_with("text/html"));
+}
+
 TEST_CASE("toDrogon keeps statuses unknown to Drogon", "[drogon]") {
     inertia::Response res;
     res.status = 419;

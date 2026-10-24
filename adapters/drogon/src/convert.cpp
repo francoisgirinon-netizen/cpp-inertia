@@ -1,3 +1,5 @@
+#include "convert_internal.hpp"
+
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/response.hpp>
@@ -172,11 +174,13 @@ std::optional<std::string> DrogonRequest::header(std::string_view name) const {
     return it->second;
 }
 
-::drogon::HttpResponsePtr toDrogon(const Response &res) {
+namespace {
+
+// A Drogon response with the status and the headers of `res`, and no body.
+::drogon::HttpResponsePtr toDrogonHead(const Response &res) {
     auto out = ::drogon::HttpResponse::newHttpResponse();
     // The enum is open-ended: codes Drogon has no name for (e.g. 419) are still sent as-is.
     out->setStatusCode(static_cast<::drogon::HttpStatusCode>(res.status));
-    out->setBody(res.body);
     // Drogon keeps one value per header name, so repeated headers are combined into one field
     // with commas (RFC 9110 section 5.3). Cookies are separate objects and stay separate.
     std::vector<std::pair<std::string, std::string>> combined;
@@ -207,10 +211,30 @@ std::optional<std::string> DrogonRequest::header(std::string_view name) const {
     return out;
 }
 
+} // namespace
+
+::drogon::HttpResponsePtr toDrogon(const Response &res) {
+    auto out = toDrogonHead(res);
+    out->setBody(res.body);
+    return out;
+}
+
+::drogon::HttpResponsePtr toDrogon(Response &&res) {
+    auto out = toDrogonHead(res);
+    Response taken = std::move(res);
+    out->setBody(std::move(taken.body));
+    return out;
+}
+
 Response fromDrogon(const ::drogon::HttpResponsePtr &res) {
+    Response out = detail::responseHead(res);
+    out.body = std::string{res->body()};
+    return out;
+}
+
+Response detail::responseHead(const ::drogon::HttpResponsePtr &res) {
     Response out;
     out.status = static_cast<int>(res->statusCode());
-    out.body = std::string{res->body()};
     if (res->contentType() != ::drogon::CT_NONE) {
         out.headers.emplace_back("Content-Type", res->contentTypeString());
     }
