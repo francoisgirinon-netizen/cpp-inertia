@@ -22,7 +22,9 @@ function(inertia_add_library name)
     target_sources(${target}
         PRIVATE ${ARG_SOURCES}
         PUBLIC FILE_SET HEADERS BASE_DIRS ${ARG_BASE_DIR} FILES ${ARG_HEADERS})
-    target_compile_features(${target} PUBLIC cxx_std_20)
+    # Consumers only need C++17 (every public header is C++17); building the library needs C++20.
+    target_compile_features(${target} PUBLIC cxx_std_17)
+    target_compile_features(${target} PRIVATE cxx_std_20)
     if(ARG_LINK_PUBLIC)
         target_link_libraries(${target} PUBLIC ${ARG_LINK_PUBLIC})
     endif()

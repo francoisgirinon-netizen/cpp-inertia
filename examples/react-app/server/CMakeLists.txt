@@ -1,3 +1,7 @@
+# The example is C++20; consumers of the library only need C++17.
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # The pages and the routes: framework-agnostic, written against the inertia core only.
 add_library(inertia_example_routes STATIC)
 target_sources(inertia_example_routes PRIVATE

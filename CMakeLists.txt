@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.31...4.4)
 # which makes every try_compile (FindThreads, needed by Drogon) fail.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 project(inertia VERSION 0.1.0
-        DESCRIPTION "Inertia.js v3 server protocol implementation for C++20"
+        DESCRIPTION "Inertia.js v3 server protocol implementation for C++"
         LANGUAGES CXX)
 
 if(PROJECT_IS_TOP_LEVEL)

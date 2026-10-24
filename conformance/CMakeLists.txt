@@ -37,7 +37,7 @@ foreach(_source IN LISTS _sources)
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${_source}>
         $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${INERTIA_CONFORMANCE_DATADIR}/${_source}>)
 endforeach()
-target_compile_features(inertia_conformance INTERFACE cxx_std_20)
+target_compile_features(inertia_conformance INTERFACE cxx_std_17)
 # Not WithMain: the consumer picks its main().
 target_link_libraries(inertia_conformance INTERFACE inertia::core Catch2::Catch2)
 
