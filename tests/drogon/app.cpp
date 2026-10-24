@@ -11,7 +11,9 @@
 #include <drogon/HttpTypes.h>
 #include <trantor/net/EventLoop.h>
 
+#include <atomic>
 #include <chrono>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -22,15 +24,31 @@
 
 namespace inertia::drogon_test {
 
+namespace {
+
+// Set by GET /break-version?on=1 (cleared by on=0): while set, the version callable throws.
+std::atomic<bool> &versionBroken() {
+    static std::atomic<bool> value{false};
+    return value;
+}
+
+} // namespace
+
 void configureApp() {
     auto &app = ::drogon::app();
     app.enableSession(std::chrono::minutes(10));
 
     Config config;
-    config.version = [] { return std::string("v1"); };
+    config.version = [] {
+        if (versionBroken()) {
+            throw std::runtime_error("version unavailable");
+        }
+        return std::string("v1");
+    };
     // /echo stands in for the SSR server (called by DrogonHttpClient, which sends no CSRF token).
+    // /hook/* covers a wildcard exception rule.
     inertia::drogon::install(std::make_shared<Inertia>(std::move(config)),
-                             {.enabled = true, .exceptPaths = {"/echo"}});
+                             {.enabled = true, .exceptPaths = {"/echo", "/hook/*"}});
 
     using Callback = std::function<void(const ::drogon::HttpResponsePtr &)>;
     const auto registerPage = [&app](const std::string &path, const char *name,
@@ -53,6 +71,31 @@ void configureApp() {
     registerPage("/throws", "Boom", []() -> Props {
         return {{"ok", 1}, {"boom", []() -> Json { throw std::runtime_error("prop failed"); }}};
     });
+    // A value that is not a std::exception: the adapter must still answer 500.
+    registerPage("/throws-value", "Boom", []() -> Props {
+        return {{"boom", []() -> Json { std::rethrow_exception(std::make_exception_ptr(42)); }}};
+    });
+    // A 302 to a URL with a fragment: Inertia asks the client to visit it itself.
+    app.registerHandler("/fragment",
+                        [](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            auto res = ::drogon::HttpResponse::newHttpResponse();
+                            res->setStatusCode(::drogon::k302Found);
+                            res->addHeader("Location", "/page#top");
+                            res->setBody("moved");
+                            std::move(done)(res);
+                        },
+                        {::drogon::Get});
+    app.registerHandler("/break-version",
+                        [text](const ::drogon::HttpRequestPtr &req, Callback &&done) {
+                            versionBroken() = req->getParameter("on") == "1";
+                            std::move(done)(text("broken"));
+                        },
+                        {::drogon::Get});
+    app.registerHandler("/hook/ping",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            std::move(done)(text("hooked"));
+                        },
+                        {::drogon::Post});
     app.registerHandler("/external",
                         [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
                             std::move(done)(inertia::drogon::toDrogon(

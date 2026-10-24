@@ -16,3 +16,7 @@ TEST_CASE("install refuses to run twice", "[drogon]") {
     CHECK_THROWS_AS(inertia::drogon::install(std::make_shared<inertia::Inertia>(std::move(config))),
                     std::logic_error);
 }
+
+TEST_CASE("install refuses a null instance", "[drogon]") {
+    CHECK_THROWS_AS(inertia::drogon::install(nullptr), std::invalid_argument);
+}

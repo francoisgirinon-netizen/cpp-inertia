@@ -36,6 +36,31 @@ TEST_CASE("render answers an Inertia request with the page object", "[drogon]") 
     CHECK(page["version"] == "v1");
 }
 
+TEST_CASE("a non-standard exception from a prop yields 500 and server keeps serving", "[drogon]") {
+    Client client;
+    CHECK(client.send(inertiaGet("/throws-value")).status == 500);
+    CHECK(client.send(inertiaGet("/page")).status == 200);
+}
+
+TEST_CASE("a redirect to a URL with a fragment becomes a 409 X-Inertia-Redirect", "[drogon]") {
+    Client client;
+    const auto reply = client.send(inertiaGet("/fragment"));
+    CHECK(reply.status == 409);
+    CHECK(reply.header("X-Inertia-Redirect") == "/page#top");
+    CHECK(reply.header("Location").empty());
+    CHECK(reply.body.empty());
+}
+
+TEST_CASE("a version callable that throws makes the Inertia request answer 500", "[drogon]") {
+    Client client;
+    CHECK(client.get("/break-version?on=1").status == 200);
+    const auto reply = client.send(inertiaGet("/page"));
+    CHECK(reply.status == 500);
+    CHECK(reply.body.find("Internal Server Error") != std::string::npos);
+    CHECK(client.get("/break-version?on=0").status == 200);
+    CHECK(client.send(inertiaGet("/page")).status == 200);
+}
+
 TEST_CASE("render answers a first visit with HTML", "[drogon]") {
     Client client;
     const auto reply = client.get("/page");

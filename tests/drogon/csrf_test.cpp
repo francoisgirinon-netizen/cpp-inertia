@@ -130,3 +130,10 @@ TEST_CASE("exceptPaths skip the CSRF check", "[drogon]") {
     req.body = "x";
     CHECK(client.send(req).status == 200);
 }
+
+TEST_CASE("a wildcard exceptPath skips the CSRF check for every path under it", "[drogon]") {
+    Client client;
+    const auto reply = client.send(post("/hook/ping"));
+    CHECK(reply.status == 200);
+    CHECK(reply.body == "hooked");
+}
