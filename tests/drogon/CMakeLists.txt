@@ -10,4 +10,4 @@ add_executable(inertia_drogon_tests convert_test.cpp session_test.cpp http_clien
                                     app.cpp)
 target_link_libraries(inertia_drogon_tests PRIVATE inertia_drogon_test_support
                                                    Catch2::Catch2WithMain inertia_warnings)
-catch_discover_tests(inertia_drogon_tests)
+catch_discover_tests(inertia_drogon_tests PROPERTIES LABELS drogon)

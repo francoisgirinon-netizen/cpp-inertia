@@ -25,4 +25,5 @@ function(inertia_register_coverage_check python source_dir)
     endif()
     add_test(NAME coverage_check
              COMMAND ${python} ${source_dir}/tools/coverage_check.py ${_args})
+    set_tests_properties(coverage_check PROPERTIES LABELS meta)
 endfunction()

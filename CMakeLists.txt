@@ -78,6 +78,9 @@ if(INERTIA_BUILD_TESTS)
     enable_testing()
     find_package(Catch2 CONFIG REQUIRED)
     include(Catch)
+    # Discover tests when ctest starts, not by running every test executable at build time (which
+    # would start the Drogon test server, also under the sanitizers).
+    set(CMAKE_CATCH_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
     add_executable(inertia_core_tests tests/core/smoke_test.cpp tests/core/headers_test.cpp
                                   tests/core/fake_test.cpp tests/core/html_test.cpp
                                   tests/core/page_test.cpp
@@ -89,7 +92,7 @@ if(INERTIA_BUILD_TESTS)
                                   tests/core/vite_test.cpp tests/core/ssr_test.cpp)
     target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
                                                      Catch2::Catch2WithMain inertia_warnings)
-    catch_discover_tests(inertia_core_tests)
+    catch_discover_tests(inertia_core_tests PROPERTIES LABELS unit)
     inertia_add_protocol_tests(inertia_core_tests)
 
     if(INERTIA_BUILD_DROGON)
@@ -110,4 +113,11 @@ if(INERTIA_BUILD_TESTS)
     add_test(NAME core_has_no_drogon
              COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                      -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCoreNoDrogon.cmake)
+    set_tests_properties(core_has_no_drogon PROPERTIES LABELS meta)
+
+    # Every public header must compile on its own (the verify targets are not part of `all`).
+    add_test(NAME headers_self_contained
+             COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+                     --target all_verify_interface_header_sets)
+    set_tests_properties(headers_self_contained PROPERTIES LABELS meta)
 endif()
