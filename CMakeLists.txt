@@ -21,16 +21,15 @@ option(INERTIA_COVERAGE_STRICT "Fail coverage_check on todo protocol ids" OFF)
 set(INERTIA_E2E_LIST "" CACHE FILEPATH
     "Output of `playwright test --list`: coverage_check then also requires e2e tests")
 
-include(cmake/Warnings.cmake)
-include(cmake/ProtocolCoverage.cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(Warnings)
+include(InertiaTargets)
+include(ProtocolCoverage)
 
 find_package(nlohmann_json CONFIG REQUIRED)
 
-add_library(inertia_core STATIC)
-add_library(inertia::core ALIAS inertia_core)
-set_target_properties(inertia_core PROPERTIES EXPORT_NAME core VERIFY_INTERFACE_HEADER_SETS ON)
-target_sources(inertia_core
-    PRIVATE
+inertia_add_library(core
+    SOURCES
         src/headers.cpp
         src/html.cpp
         src/inertia.cpp
@@ -40,26 +39,21 @@ target_sources(inertia_core
         src/ssr.cpp
         src/vite.cpp
         include/inertia/detail/props_resolver.hpp # private: only src/ includes it, never installed
-    PUBLIC
-        FILE_SET HEADERS
-        BASE_DIRS include
-        FILES
-            include/inertia/headers.hpp
-            include/inertia/html.hpp
-            include/inertia/inertia.hpp
-            include/inertia/json.hpp
-            include/inertia/ports/file_reader.hpp
-            include/inertia/ports/http_client.hpp
-            include/inertia/ports/request_view.hpp
-            include/inertia/ports/session_store.hpp
-            include/inertia/props.hpp
-            include/inertia/response.hpp
-            include/inertia/session.hpp
-            include/inertia/ssr.hpp
-            include/inertia/vite.hpp)
-target_compile_features(inertia_core PUBLIC cxx_std_20) # inertia::fake and inertia::drogon inherit it
-target_link_libraries(inertia_core PUBLIC nlohmann_json::nlohmann_json)
-target_link_libraries(inertia_core PRIVATE $<BUILD_LOCAL_INTERFACE:inertia_warnings>)
+    HEADERS
+        include/inertia/headers.hpp
+        include/inertia/html.hpp
+        include/inertia/inertia.hpp
+        include/inertia/json.hpp
+        include/inertia/ports/file_reader.hpp
+        include/inertia/ports/http_client.hpp
+        include/inertia/ports/request_view.hpp
+        include/inertia/ports/session_store.hpp
+        include/inertia/props.hpp
+        include/inertia/response.hpp
+        include/inertia/session.hpp
+        include/inertia/ssr.hpp
+        include/inertia/vite.hpp
+    LINK_PUBLIC nlohmann_json::nlohmann_json)
 
 add_subdirectory(adapters/fake)
 if(INERTIA_BUILD_DROGON)
@@ -67,7 +61,7 @@ if(INERTIA_BUILD_DROGON)
 endif()
 
 if(INERTIA_INSTALL)
-    include(cmake/InertiaInstall.cmake)
+    include(InertiaInstall)
 endif()
 
 if(INERTIA_BUILD_EXAMPLES)
@@ -106,7 +100,7 @@ if(INERTIA_BUILD_TESTS)
                    ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 
     if(INERTIA_INSTALL)
-        include(cmake/InertiaPackageTests.cmake)
+        include(InertiaPackageTests)
         inertia_add_package_tests()
     endif()
 
