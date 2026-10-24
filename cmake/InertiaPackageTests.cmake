@@ -27,16 +27,17 @@ function(inertia_add_package_tests)
              COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage})
     set_tests_properties(package.install PROPERTIES FIXTURES_SETUP package_stage)
 
-    # variant name, then the (comma separated) components the consumer requests
-    set(_variants core "core,fake")
+    # variant name, then the (comma separated) components the consumer requests. A name ending in
+    # 17 builds the consumer as C++17 (what the library promises); the others build it as C++20.
+    set(_variants core "core,fake" core17 "core,fake")
     if(TARGET inertia_drogon)
-        list(APPEND _variants drogon "core,drogon")
+        list(APPEND _variants drogon "core,drogon" drogon17 "core,drogon")
     endif()
     if(TARGET inertia_httplib)
-        list(APPEND _variants httplib "core,httplib")
+        list(APPEND _variants httplib "core,httplib" httplib17 "core,httplib")
     endif()
     if(TARGET inertia_conformance)
-        list(APPEND _variants custom "core,conformance")
+        list(APPEND _variants custom "core,conformance" custom17 "core,conformance")
     endif()
     list(LENGTH _variants _count)
     math(EXPR _last "${_count} - 1")
@@ -45,8 +46,14 @@ function(inertia_add_package_tests)
         math(EXPR _j "${_i} + 1")
         list(GET _variants ${_j} _components)
         set(_bin ${PROJECT_BINARY_DIR}/_package/consumer-${_name})
+        set(_standard 20)
+        if(_name MATCHES "17$")
+            set(_standard 17)
+        endif()
         add_test(NAME package.${_name}.configure
                  COMMAND ${CMAKE_COMMAND} -S ${_consumer_src} -B ${_bin} ${_common_args}
+                         -DCMAKE_CXX_STANDARD=${_standard} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+                         -DCMAKE_CXX_EXTENSIONS=OFF
                          -DCMAKE_PREFIX_PATH=${_stage} -DCONSUMER_COMPONENTS=${_components})
         add_test(NAME package.${_name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin})
         add_test(NAME package.${_name}.run COMMAND ${_bin}/consumer)
@@ -82,11 +89,14 @@ function(inertia_add_package_tests)
 
     if(TARGET inertia_conformance)
         # The kit must really run: a consumer that compiled none of the scenarios would pass.
-        add_test(NAME package.custom.runs_scenarios
-                 COMMAND ${PROJECT_BINARY_DIR}/_package/consumer-custom/consumer --list-tests)
-        set_tests_properties(package.custom.runs_scenarios PROPERTIES
-            FIXTURES_REQUIRED package_custom_built
-            PASS_REGULAR_EXPRESSION "[1-9][0-9]* test cases")
+        foreach(_name IN ITEMS custom custom17)
+            add_test(NAME package.${_name}.runs_scenarios
+                     COMMAND ${PROJECT_BINARY_DIR}/_package/consumer-${_name}/consumer --list-tests)
+            set_tests_properties(package.${_name}.runs_scenarios PROPERTIES
+                FIXTURES_REQUIRED package_${_name}_built
+                PASS_REGULAR_EXPRESSION "[1-9][0-9]* test cases"
+                LABELS package)
+        endforeach()
         add_test(NAME package.core_only.refuses_conformance
                  COMMAND ${CMAKE_COMMAND} -S ${_consumer_src}
                          -B ${PROJECT_BINARY_DIR}/_package/consumer-refused-conformance
@@ -96,7 +106,8 @@ function(inertia_add_package_tests)
             FIXTURES_REQUIRED package_stage_core
             PASS_REGULAR_EXPRESSION "without the conformance kit")
         set_tests_properties(package.custom.configure package.custom.build package.custom.run
-                             package.custom.runs_scenarios package.core_only.refuses_conformance
+                             package.custom17.configure package.custom17.build
+                             package.custom17.run package.core_only.refuses_conformance
                              PROPERTIES LABELS package)
     endif()
 
@@ -119,15 +130,18 @@ function(inertia_add_package_tests)
     set_tests_properties(
         package.subproject.configure package.subproject.build package.subproject.flags
         package.install package.core.configure package.core.build package.core.run
+        package.core17.configure package.core17.build package.core17.run
         package.core_only.install package.core_only.refuses_drogon
         package.core_only.refuses_httplib
         PROPERTIES LABELS package)
     if(TARGET inertia_drogon)
         set_tests_properties(package.drogon.configure package.drogon.build package.drogon.run
-                             PROPERTIES LABELS package)
+                             package.drogon17.configure package.drogon17.build
+                             package.drogon17.run PROPERTIES LABELS package)
     endif()
     if(TARGET inertia_httplib)
         set_tests_properties(package.httplib.configure package.httplib.build package.httplib.run
-                             PROPERTIES LABELS package)
+                             package.httplib17.configure package.httplib17.build
+                             package.httplib17.run PROPERTIES LABELS package)
     endif()
 endfunction()
