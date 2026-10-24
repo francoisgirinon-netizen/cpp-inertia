@@ -181,6 +181,24 @@
       "configurePreset": "release"
     }
   ],
+  "packagePresets": [
+    {
+      "name": "tgz",
+      "description": "One TGZ archive with every built component",
+      "configurePreset": "release",
+      "generators": [
+        "TGZ"
+      ]
+    },
+    {
+      "name": "deb",
+      "description": "One .deb per built component",
+      "configurePreset": "release",
+      "generators": [
+        "DEB"
+      ]
+    }
+  ],
   "workflowPresets": [
     {
       "name": "dev",
@@ -281,6 +299,32 @@
         {
           "type": "test",
           "name": "release"
+        }
+      ]
+    },
+    {
+      "name": "package",
+      "description": "Configure, build and test the release preset, then produce the TGZ and the .deb packages",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "release"
+        },
+        {
+          "type": "build",
+          "name": "release"
+        },
+        {
+          "type": "test",
+          "name": "release"
+        },
+        {
+          "type": "package",
+          "name": "tgz"
+        },
+        {
+          "type": "package",
+          "name": "deb"
         }
       ]
     }
