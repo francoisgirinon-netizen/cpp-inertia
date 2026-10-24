@@ -51,14 +51,15 @@
     },
     {
       "name": "asan",
+      "description": "AddressSanitizer + UBSan (undefined plus the integer, nullability, float-divide-by-zero and local-bounds groups); any report aborts. unsigned-integer-overflow is excluded: libstdc++ std::string::compare (basic_string.h _S_compare, reached from Catch2 sortTests) wraps an unsigned subtraction on purpose, and no code of ours can change that",
       "inherits": [
         "base",
         "vcpkg"
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined,integer,nullability,float-divide-by-zero,local-bounds -fno-sanitize-recover=all -fno-sanitize=unsigned-integer-overflow -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined,integer,nullability,float-divide-by-zero,local-bounds -fno-sanitize=unsigned-integer-overflow"
       }
     },
     {
