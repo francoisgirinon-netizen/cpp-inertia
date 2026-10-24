@@ -232,7 +232,7 @@ Json Inertia::buildPage(const RequestView &req, SessionStore &session, std::stri
 
 void Inertia::render(const RequestView &req, SessionStore &session, std::string component,
                      Props props, std::function<void(Response)> done, RenderOptions opts) const {
-    const Json page = buildPage(req, session, std::move(component), std::move(props), opts);
+    Json page = buildPage(req, session, std::move(component), std::move(props), opts);
     Response res;
     res.status = 200;
     if (isInertia(req)) {
@@ -244,28 +244,34 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     std::string viteTags = config_.vite ? config_.vite->tags() : std::string{};
-    // The callback may run after render() returns, so it owns a copy of the page.
+    const std::string path = req.url().substr(0, req.url().find_first_of("?#"));
+    if (!ssr_.shouldRender(path)) {
+        // Nothing outlives this call, so the template reads the page where it is.
+        const RootContext ctx{.page = page,
+                              .head = "",
+                              .body = inertiaBody(page, config_.rootId),
+                              .viteTags = std::move(viteTags)};
+        res.body = config_.rootTemplate(ctx);
+        done(std::move(res));
+        return;
+    }
+    // The SSR reply may arrive after render() has returned, so the continuation owns the page.
+    // It runs exactly once, so it moves what it holds.
+    const auto owned = std::make_shared<const Json>(std::move(page));
     std::function<void(std::optional<SsrResult>)> finish =
-        [rootId = config_.rootId, rootTemplate = config_.rootTemplate, owned = page,
-         base = std::move(res), tags = std::move(viteTags),
-         cb = std::move(done)](std::optional<SsrResult> ssr) {
-            RootContext ctx{.page = owned, .head = "", .body = "", .viteTags = tags};
+        [rootId = config_.rootId, rootTemplate = config_.rootTemplate, owned, base = std::move(res),
+         tags = std::move(viteTags), cb = std::move(done)](std::optional<SsrResult> ssr) mutable {
+            RootContext ctx{.page = *owned, .head = "", .body = "", .viteTags = std::move(tags)};
             if (ssr) {
                 ctx.head = std::move(ssr->head);
                 ctx.body = std::move(ssr->body);
             } else {
-                ctx.body = inertiaBody(owned, rootId);
+                ctx.body = inertiaBody(*owned, rootId);
             }
-            Response out = base;
-            out.body = rootTemplate(ctx);
-            cb(std::move(out));
+            base.body = rootTemplate(ctx);
+            cb(std::move(base));
         };
-    const std::string path = req.url().substr(0, req.url().find_first_of("?#"));
-    if (!ssr_.shouldRender(path)) {
-        finish(std::nullopt);
-        return;
-    }
-    ssr_.render(page, finish);
+    ssr_.render(*owned, std::move(finish));
 }
 
 std::optional<Response> Inertia::handleVersion(const RequestView &req) const {
