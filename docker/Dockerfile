@@ -153,5 +153,8 @@ COPY --from=vcpkg --chown=dev:dev /opt/vcpkg /opt/vcpkg
 
 ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 
+# Mount point of the compiler cache volume (a named volume copies the owner of this directory).
+RUN mkdir -p /home/dev/.cache/sccache && chown dev:dev /home/dev/.cache/sccache
+
 USER ${UID}:${GID}
 WORKDIR /src

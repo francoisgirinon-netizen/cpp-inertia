@@ -19,6 +19,13 @@ x-dev-base: &dev-base
   environment:
     VCPKG_DEFAULT_BINARY_CACHE: /home/dev/.cache/vcpkg/archives
     BUN_INSTALL_CACHE_DIR: /home/dev/.bun/install/cache
+    # Compiler cache (CMake launches every compile through it, see the base configure preset).
+    # Locally it lives in the sccache-cache volume; CI sets SCCACHE_GHA_ENABLED instead.
+    SCCACHE_DIR: /home/dev/.cache/sccache
+    SCCACHE_CACHE_SIZE: 10G
+    SCCACHE_GHA_ENABLED: ${SCCACHE_GHA_ENABLED:-}
+    ACTIONS_RESULTS_URL: ${ACTIONS_RESULTS_URL:-}
+    ACTIONS_RUNTIME_TOKEN: ${ACTIONS_RUNTIME_TOKEN:-}
     INERTIA_TEST_PORT: "18080"
     # Forwarded from the host (`INERTIA_SSR=1 scripts/dev ...`); empty means off.
     INERTIA_SSR: ${INERTIA_SSR:-}
@@ -27,6 +34,7 @@ x-dev-base: &dev-base
     # VCPKG_CACHE_DIR (CI) turns the named volume into a host directory the cache action persists.
     - ${VCPKG_CACHE_DIR:-vcpkg-cache}:/home/dev/.cache/vcpkg
     - bun-cache:/home/dev/.bun/install/cache
+    - ${SCCACHE_CACHE_DIR:-sccache-cache}:/home/dev/.cache/sccache
 
 name: cpp-inertia
 
@@ -50,3 +58,4 @@ services:
 volumes:
   vcpkg-cache:
   bun-cache:
+  sccache-cache:
