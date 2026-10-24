@@ -17,6 +17,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -42,28 +43,40 @@ sockaddr_in loopback(std::uint16_t value) {
 
 // Asks the kernel for a free port. ctest starts one process per test case (and may run them in
 // parallel), so a fixed port would collide; a probed port cannot.
+// sockaddr_in and sockaddr have the same size on Linux, so the generic view is a plain copy.
+static_assert(sizeof(sockaddr_in) == sizeof(sockaddr));
+
+sockaddr toGeneric(const sockaddr_in &addr) {
+    sockaddr generic{};
+    std::memcpy(&generic, &addr, sizeof(generic));
+    return generic;
+}
+
+sockaddr_in fromGeneric(const sockaddr &generic) {
+    sockaddr_in addr{};
+    std::memcpy(&addr, &generic, sizeof(addr));
+    return addr;
+}
+
 std::uint16_t probeFreePort() {
     const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         throw std::runtime_error("socket() failed");
     }
-    auto addr = loopback(0);
-    socklen_t len = sizeof(addr);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): POSIX sockaddr API.
-    auto *generic = reinterpret_cast<sockaddr *>(&addr);
-    if (::bind(fd, generic, sizeof(addr)) != 0 || ::getsockname(fd, generic, &len) != 0) {
+    sockaddr generic = toGeneric(loopback(0));
+    socklen_t len = sizeof(generic);
+    if (::bind(fd, &generic, sizeof(generic)) != 0 || ::getsockname(fd, &generic, &len) != 0) {
         ::close(fd);
         throw std::runtime_error("cannot probe a free port");
     }
     ::close(fd);
-    return ntohs(addr.sin_port);
+    return ntohs(fromGeneric(generic).sin_port);
 }
 
 bool accepts(std::uint16_t value) {
     const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    const auto addr = loopback(value);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): POSIX sockaddr API.
-    const bool ok = ::connect(fd, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) == 0;
+    const sockaddr addr = toGeneric(loopback(value));
+    const bool ok = ::connect(fd, &addr, sizeof(addr)) == 0;
     ::close(fd);
     return ok;
 }
