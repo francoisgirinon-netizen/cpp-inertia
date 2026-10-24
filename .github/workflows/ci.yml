@@ -31,6 +31,30 @@ jobs:
         run: |
           scripts/dev sh -c 'status=0; cmake --workflow --preset asan || status=$?; sccache --show-stats; exit "$status"'
 
+  e2e:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        server: [drogon, httplib]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/dev-env
+      - name: Build the example servers
+        run: |
+          scripts/dev sh -c 'status=0; cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON && cmake --build --preset dev --target inertia_example inertia_example_httplib || status=$?; sccache --show-stats; exit "$status"'
+      - name: Build the front end
+        run: scripts/dev sh -c 'cd examples/react-app/frontend && bun install --frozen-lockfile && bun run build'
+      - name: Run the Playwright suite on the ${{ matrix.server }} adapter
+        env:
+          INERTIA_E2E_SERVER: ${{ matrix.server }}
+        run: scripts/dev sh -c 'cd e2e && bun install --frozen-lockfile && bunx playwright test'
+      - name: Run the Playwright suite with server-side rendering
+        env:
+          INERTIA_E2E_SERVER: ${{ matrix.server }}
+          INERTIA_SSR: "1"
+        run: scripts/dev sh -c 'cd e2e && bunx playwright test'
+
   coverage:
     runs-on: ubuntu-24.04
     steps:
