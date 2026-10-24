@@ -35,9 +35,10 @@ scripts/dev-serve build/dev/examples/react-app/server/inertia_example      # htt
 scripts/dev-serve sh -c 'cd examples/react-app/frontend && bun run dev'    # in one terminal
 scripts/dev-serve build/dev/examples/react-app/server/inertia_example      # in another
 
-# server-side rendering: also start the SSR server and enable it
-scripts/dev-serve sh -c 'cd examples/react-app/frontend && bun run ssr'    # :13714
-INERTIA_SSR=1 scripts/dev-serve build/dev/examples/react-app/server/inertia_example
+# server-side rendering: the SSR server (:13714) must share the container's localhost with the
+# example, so start both from one command (INERTIA_SSR is forwarded from the host)
+INERTIA_SSR=1 scripts/dev-serve sh -c '(cd examples/react-app/frontend && bun run ssr) & \
+  exec build/dev/examples/react-app/server/inertia_example'
 ```
 
 ### CLion
