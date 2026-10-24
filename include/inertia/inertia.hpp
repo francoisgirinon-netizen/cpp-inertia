@@ -59,8 +59,10 @@ class Inertia {
                             std::string_view component, const Props &props,
                             const RenderOptions &opts = {}) const;
 
-    void render(const RequestView &req, SessionStore &session, std::string component, Props props,
-                std::function<void(Response)> done, RenderOptions opts = {}) const;
+    // The page is built before render() returns; `done` may run later (SSR) and owns what it needs.
+    void render(const RequestView &req, SessionStore &session, std::string_view component,
+                const Props &props, std::function<void(Response)> done,
+                const RenderOptions &opts = {}) const;
 
     // Pre-route check: a GET Inertia request whose X-Inertia-Version differs from the current
     // version gets a 409 that asks the client to reload. Any other request yields nullopt.

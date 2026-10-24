@@ -250,8 +250,9 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
         });
 }
 
-void render(const ::drogon::HttpRequestPtr &req, std::string component, Props props,
-            std::function<void(const ::drogon::HttpResponsePtr &)> &&callback, RenderOptions opts) {
+void render(const ::drogon::HttpRequestPtr &req, std::string_view component, const Props &props,
+            std::function<void(const ::drogon::HttpResponsePtr &)> &&callback,
+            const RenderOptions &opts) {
     // The callback must fire exactly once: either Inertia::render completes (possibly later,
     // on another thread, with SSR) or an exception turns into a 500 - never both.
     struct State {
@@ -277,7 +278,7 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
         auto store = std::make_shared<DrogonSession>(session);
         auto view = std::make_shared<DrogonRequest>(req, trustForwarded().load());
         requireInstalled()->render(
-            *view, *store, std::move(component), std::move(props),
+            *view, *store, component, props,
             [state, store, view](const Response &res) { state->answer(toDrogon(res)); }, opts);
     } catch (const std::exception &error) {
         LOG_ERROR << "inertia: render failed: " << error.what();

@@ -64,7 +64,7 @@ void registerVariants() {
                      })
                      .deferred("lazy")},
             };
-            inertia::drogon::render(req, "Variants", std::move(props), std::move(done), options);
+            inertia::drogon::render(req, "Variants", props, std::move(done), options);
         },
         {::drogon::Get});
 }
