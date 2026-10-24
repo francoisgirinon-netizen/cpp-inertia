@@ -21,7 +21,7 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
 # to the conda clang; make/perl/autotools/...: what vcpkg ports (openssl, libuuid, ...) need to
 # build from source; libstdc++-15-dev: the C++ standard library clang compiles against.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         git curl ca-certificates zip unzip tar pkg-config python3 libstdc++-15-dev \
         binutils make perl linux-libc-dev autoconf automake libtool
@@ -60,7 +60,7 @@ COPY mise.toml /opt/mise/config/config.toml
 # compiler's builtin headers (stddef.h, ...).
 ARG CLANG_VERSION=23.1.4
 RUN --mount=type=cache,target=/root/.cache/mise \
-    --mount=type=cache,target=/opt/mise/downloads \
+    --mount=type=cache,target=/opt/mise/conda-packages \
     mise install \
     && B=/opt/mise/installs/clang/${CLANG_VERSION}/bin \
     && ln -s clang-23 "$B/clang++" \
@@ -92,17 +92,19 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg-downloads \
 # ---------------------------------------------------------------- playwright
 FROM toolchain AS playwright
 
-# Chromium + its system libraries, shared by all users. Keep PLAYWRIGHT_VERSION in sync with
-# e2e/package.json (@playwright/test).
-ARG PLAYWRIGHT_VERSION=1.64.1
+# Chromium + its system libraries, shared by all users. The Playwright version is read from
+# e2e/package.json (@playwright/test must be an exact version), the single source of truth.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+COPY e2e/package.json /tmp/e2e/package.json
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/root/.bun/install/cache \
-    apt-get update \
+    V="$(python3 -c 'import json; print(json.load(open("/tmp/e2e/package.json"))["devDependencies"]["@playwright/test"])')" \
+    && case "$V" in [0-9]*) ;; *) echo "pin an exact @playwright/test version" >&2; exit 1;; esac \
+    && apt-get update \
     && mkdir -p /opt/playwright-tmp && cd /opt/playwright-tmp \
-    && bunx playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
-    && cd / && rm -rf /opt/playwright-tmp && chmod -R a+rX /opt/playwright
+    && bunx playwright@"$V" install --with-deps chromium \
+    && cd / && rm -rf /opt/playwright-tmp /tmp/e2e && chmod -R a+rX /opt/playwright
 
 # ---------------------------------------------------------------- dev
 FROM playwright AS dev
