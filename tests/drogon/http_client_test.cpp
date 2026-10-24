@@ -7,6 +7,7 @@
 #include <chrono>
 #include <future>
 #include <string>
+#include <thread>
 
 using inertia::HttpResult;
 using inertia::drogon::DrogonHttpClient;
@@ -23,6 +24,12 @@ template <typename Start> HttpResult await(const Start &start) {
     // Longer than any request timeout used below (at most ten times the /slow delay).
     REQUIRE(future.wait_for(20 * inertia::drogon_test::kSlowDelay) == std::future_status::ready);
     return future.get();
+}
+
+// An evicted client lives on until the server answers its abandoned /slow request. Waiting for
+// that late reply keeps it from being still in flight when the process exits (LeakSanitizer).
+void waitForLateReply(std::chrono::steady_clock::time_point slowSentAt) {
+    std::this_thread::sleep_until(slowSentAt + inertia::drogon_test::kSlowDelay + 300ms);
 }
 
 } // namespace
@@ -56,6 +63,7 @@ TEST_CASE("DrogonHttpClient reuses one connection pool per origin", "[drogon]") 
 
 TEST_CASE("DrogonHttpClient reports a timeout", "[drogon]") {
     DrogonHttpClient client;
+    const auto slowSentAt = std::chrono::steady_clock::now();
     const auto result =
         await([&](auto done) { client.get(base() + "/slow", 100ms, std::move(done)); });
     CHECK(result.status == 0);
@@ -73,10 +81,12 @@ TEST_CASE("DrogonHttpClient reports a timeout", "[drogon]") {
     });
     CHECK(next.status == 200);
     CHECK(next.body == "pong");
+    waitForLateReply(slowSentAt);
 }
 
 TEST_CASE("DrogonHttpClient is not blocked by a hung request after a timeout", "[drogon][hol]") {
     DrogonHttpClient client;
+    const auto slowSentAt = std::chrono::steady_clock::now();
     const auto hung =
         await([&](auto done) { client.get(base() + "/slow", 100ms, std::move(done)); });
     REQUIRE(hung.status == 0);
@@ -89,6 +99,7 @@ TEST_CASE("DrogonHttpClient is not blocked by a hung request after a timeout", "
     CHECK(next.status == 200);
     CHECK(next.body == "pong");
     CHECK(elapsed < inertia::drogon_test::kSlowDelay / 2);
+    waitForLateReply(slowSentAt);
 }
 
 TEST_CASE("DrogonHttpClient reports a connection failure", "[drogon]") {
