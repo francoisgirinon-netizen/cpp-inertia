@@ -98,7 +98,7 @@ COPY mise.toml /opt/mise/config/config.toml
 # conda-forge clang ships neither a clang++ driver nor a configuration that finds Ubuntu's
 # libstdc++: add the driver name (mise does not shim it, hence the /usr/local/bin link) and point
 # its config at the system GCC 15 install and sysroot. clang-tidy (conda:clang-tools) also needs the
-# compiler's builtin headers (stddef.h, ...).
+# compiler's builtin headers (stddef.h, ...); so does include-what-you-use.
 ARG CLANG_VERSION=23.1.4
 RUN --mount=type=cache,target=/root/.cache/mise \
     --mount=type=cache,target=/opt/mise/conda-packages \
@@ -111,6 +111,9 @@ RUN --mount=type=cache,target=/root/.cache/mise \
     && ln -s "$B/clang++" /usr/local/bin/clang++ \
     && ln -s /opt/mise/installs/clang/${CLANG_VERSION}/lib/clang \
         /opt/mise/installs/conda-clang-tools/${CLANG_VERSION}/lib/clang \
+    && mkdir -p /opt/mise/installs/conda-include-what-you-use/0.27/lib \
+    && ln -s /opt/mise/installs/clang/${CLANG_VERSION}/lib/clang \
+        /opt/mise/installs/conda-include-what-you-use/0.27/lib/clang \
     && mise reshim && chmod -R a+rX /opt/mise
 
 # ---------------------------------------------------------------- vcpkg
