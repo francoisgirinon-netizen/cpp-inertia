@@ -20,7 +20,8 @@ template <typename Start> HttpResult await(const Start &start) {
     std::promise<HttpResult> promise;
     auto future = promise.get_future();
     start([&promise](HttpResult result) { promise.set_value(std::move(result)); });
-    REQUIRE(future.wait_for(10s) == std::future_status::ready);
+    // Longer than any request timeout used below (at most ten times the /slow delay).
+    REQUIRE(future.wait_for(20 * inertia::drogon_test::kSlowDelay) == std::future_status::ready);
     return future.get();
 }
 
@@ -61,10 +62,15 @@ TEST_CASE("DrogonHttpClient reports a timeout", "[drogon]") {
     CHECK(result.error.has_value());
 
     // Drogon keeps a timed-out request (and the client that owns it) alive until the server
-    // answers on its connection. Responses come back in order on that connection, so once a later
-    // request completes the late reply has been consumed and dropped: the client is usable again,
-    // `done` was not called a second time, and nothing is still in flight when the process exits.
-    const auto next = await([&](auto done) { client.get(base() + "/ping", 5s, std::move(done)); });
+    // answers on its connection; the late reply is then dropped and `done` is not called a second
+    // time. A request sent right away would be queued behind it on the same connection (Drogon
+    // does not pipeline, depth 0), which is why DrogonHttpClient evicts the client after a
+    // timeout: the next request completes on a fresh connection. The timeout here is generous
+    // (ten times the /slow delay) so that, even if that regressed, the request would complete
+    // once the late reply is consumed instead of timing out and leaving work in flight at exit.
+    const auto next = await([&](auto done) {
+        client.get(base() + "/ping", 10 * inertia::drogon_test::kSlowDelay, std::move(done));
+    });
     CHECK(next.status == 200);
     CHECK(next.body == "pong");
 }
