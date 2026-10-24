@@ -40,7 +40,7 @@ test('page JSON in the script element escapes slash, < and > yet parses to the o
   await expect(page.getByLabel('Search')).toHaveValue('<b>')
 })
 
-test('the root element id is the default app and matches data-page [protocol:html.root-id]', async ({
+test('the default root element id is app and matches data-page [protocol:html.root-id]', async ({
   page,
 }) => {
   await page.goto('/')
@@ -113,9 +113,9 @@ test('page.bigint: integers beyond 2^53 arrive as {"$bigint"} and keep their dig
   expect(text).toContain('"$bigint":"9007199254740993"')
   expect(JSON.parse(text).preserveBigIntegers).toBe(true)
 
-  // The client reads the same markup without rounding the number to 9007199254740992.
+  // The client decodes $bigint into a real BigInt: the page dump renders it with the `n` suffix.
   await page.goto('/variants')
   const dump = await page.getByTestId('props').textContent()
-  expect(dump).toContain('9007199254740993')
+  expect(dump).toContain('"id":"9007199254740993n"')
 })
 
