@@ -100,6 +100,11 @@ if(INERTIA_BUILD_TESTS)
     cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL inertia_register_coverage_check
                    ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR})
 
+    if(INERTIA_INSTALL)
+        include(cmake/InertiaPackageTests.cmake)
+        inertia_add_package_tests()
+    endif()
+
     add_test(NAME core_has_no_drogon
              COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                      -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCoreNoDrogon.cmake)
