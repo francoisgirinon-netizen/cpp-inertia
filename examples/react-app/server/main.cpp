@@ -39,7 +39,7 @@ class DiskFileReader final : public inertia::FileReader {
 };
 
 bool ssrEnabled() {
-    const char *flag = std::getenv("INERTIA_SSR"); // NOLINT(concurrency-mt-unsafe): startup only
+    const char *flag = secure_getenv("INERTIA_SSR");
     return flag != nullptr && std::string_view{flag} == "1";
 }
 
