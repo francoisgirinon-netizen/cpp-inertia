@@ -129,3 +129,12 @@ TEST_CASE("big integers are preserved when enabled", "[bigint][protocol:page.big
         off.page(FakeRequest::inertia("/"), session, "C", {{"a", big}}, bigints(true));
     REQUIRE(over["props"]["a"]["$bigint"] == "9007199254740993");
 }
+
+TEST_CASE("flash replaces a non-object flash store", "[flash]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    session.put("inertia.flash_data", 5);
+    flash(session, "ok", 1);
+    REQUIRE(dumpJson(app.page(FakeRequest::inertia("/"), session, "C", {})["flash"]) ==
+            R"({"ok":1})");
+}

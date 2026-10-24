@@ -70,3 +70,23 @@ TEST_CASE("an empty error bag header is treated as absent", "[errors][protocol:e
     const auto req = FakeRequest::inertia("/").with("X-Inertia-Error-Bag", "");
     REQUIRE(dumpJson(app.page(req, session, "C", {})["props"]["errors"]) == R"({"name":"req"})");
 }
+
+TEST_CASE("withErrors replaces a non-object errors store", "[errors]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    session.put("inertia.errors", "garbage");
+    withErrors(session, {{"name", {"req"}}});
+    REQUIRE(dumpJson(app.page(FakeRequest::inertia("/"), session, "C", {})["props"]["errors"]) ==
+            R"({"name":"req"})");
+}
+
+TEST_CASE("withErrors merges new fields into a bag that already holds errors", "[errors]") {
+    const Inertia app{Config{}};
+    MemorySession session;
+    withErrors(session, {{"name", {"req"}}});
+    withErrors(session, {{"email", {"email"}}});
+    const auto errors = app.page(FakeRequest::inertia("/"), session, "C", {})["props"]["errors"];
+    REQUIRE(errors["name"] == "req");
+    REQUIRE(errors["email"] == "email");
+    REQUIRE(errors.size() == 2);
+}
