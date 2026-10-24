@@ -66,7 +66,24 @@ function(inertia_add_package_tests)
         FIXTURES_REQUIRED package_stage_core
         PASS_REGULAR_EXPRESSION "without the Drogon adapter")
 
+    # add_subdirectory consumption: tests, examples, install rules and -Werror stay off.
+    set(_sub ${PROJECT_BINARY_DIR}/_package/consumer-subproject)
+    add_test(NAME package.subproject.configure
+             COMMAND ${CMAKE_COMMAND} -S ${PROJECT_SOURCE_DIR}/tests/subproject -B ${_sub}
+                     ${_common_args} -DINERTIA_ROOT=${PROJECT_SOURCE_DIR})
+    add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub})
+    add_test(NAME package.subproject.flags
+             COMMAND ${CMAKE_COMMAND} -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
+                     -P ${PROJECT_SOURCE_DIR}/tests/subproject/check_flags.cmake)
+    set_tests_properties(package.subproject.configure PROPERTIES
+        FIXTURES_SETUP package_subproject_configured)
+    set_tests_properties(package.subproject.build PROPERTIES
+        FIXTURES_REQUIRED package_subproject_configured FIXTURES_SETUP package_subproject_built)
+    set_tests_properties(package.subproject.flags PROPERTIES
+        FIXTURES_REQUIRED package_subproject_built)
+
     set_tests_properties(
+        package.subproject.configure package.subproject.build package.subproject.flags
         package.install package.core.configure package.core.build package.core.run
         package.core_only.install package.core_only.refuses_drogon
         PROPERTIES LABELS package)
