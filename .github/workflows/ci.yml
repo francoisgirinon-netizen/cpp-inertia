@@ -55,3 +55,32 @@ jobs:
         run: pipx install pre-commit==4.7.0
       - name: Run every hook on the whole tree
         run: pre-commit run --all-files --show-diff-on-failure
+
+  commits:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pre-commit
+        run: pipx install pre-commit==4.7.0
+      - name: Check every commit message of the range
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          if [ -z "${BASE//0/}" ]; then
+            # new branch: no previous tip, check the commits that main does not have
+            range="origin/main..$HEAD"
+          else
+            range="$BASE..$HEAD"
+          fi
+          status=0
+          for sha in $(git rev-list --reverse "$range"); do
+            git log -1 --format=%B "$sha" > "$RUNNER_TEMP/message"
+            echo "::group::$(git log -1 --format='%h %s' "$sha")"
+            pre-commit run conventional-pre-commit --hook-stage commit-msg \
+              --commit-msg-filename "$RUNNER_TEMP/message" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
