@@ -25,6 +25,7 @@ test('a search reload sends X-Inertia-Partial-Data and gets only the requested p
 test('a partial request for a different component is treated as a full visit [protocol:partial.component-match]', async ({
   request,
 }) => {
+  // Server-contract check: the UI never sends a partial request naming another component.
   const matching = await inertiaGet(request, '/users', {
     'X-Inertia-Partial-Component': 'Users/Index',
     'X-Inertia-Partial-Data': 'users',

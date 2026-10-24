@@ -33,6 +33,7 @@ test('an encryptHistory page keeps its props unreadable in the browser history [
   page,
   request,
 }) => {
+  // Server-contract check: the JSON flag is wire-only, the UI cannot observe it.
   expect(await (await inertiaGet(request, '/history')).json()).toMatchObject({ encryptHistory: true })
   expect(await (await inertiaGet(request, '/users')).json()).not.toHaveProperty('encryptHistory')
 

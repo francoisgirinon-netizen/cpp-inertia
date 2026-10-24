@@ -38,6 +38,7 @@ test('a revisit sends X-Inertia-Except-Once-Props and the server skips the remem
 test('a partial reload ignores the except-once header [protocol:once.partial-ignores-header]', async ({
   request,
 }) => {
+  // Server-contract check: the UI cannot send a partial reload with X-Inertia-Except-Once-Props.
   const res = await inertiaGet(request, '/dashboard', {
     'X-Inertia-Except-Once-Props': 'plans',
     'X-Inertia-Partial-Component': 'Dashboard',

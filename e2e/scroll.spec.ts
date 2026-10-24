@@ -51,6 +51,7 @@ test('loading the next page asks to append and merges it into the list [protocol
 test('a reset scroll prop is flagged and loses its merge label [protocol:scroll.reset]', async ({
   request,
 }) => {
+  // Server-contract check: the UI cannot send X-Inertia-Reset for a scroll prop.
   const res = await inertiaGet(request, '/feed?page=2', {
     'X-Inertia-Partial-Component': 'Feed',
     'X-Inertia-Partial-Data': 'items',
