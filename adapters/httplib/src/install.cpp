@@ -1,5 +1,6 @@
 #include "random.hpp"
 
+#include <inertia/attributes.hpp>
 #include <inertia/httplib/httplib.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/json.hpp>
@@ -132,7 +133,7 @@ std::optional<std::string> requestCookie(const ::httplib::Request &req, std::str
 }
 
 // Compares without exiting early on the first differing byte.
-bool constantTimeEquals(std::string_view a, std::string_view b) {
+bool constantTimeEquals(std::string_view a, std::string_view b) INERTIA_NONALLOCATING {
     if (a.size() != b.size()) {
         return false;
     }
@@ -144,7 +145,7 @@ bool constantTimeEquals(std::string_view a, std::string_view b) {
     return diff == 0;
 }
 
-bool isSafeMethod(std::string_view method) {
+bool isSafeMethod(std::string_view method) INERTIA_NONALLOCATING {
     return method == "GET" || method == "HEAD" || method == "OPTIONS";
 }
 

@@ -1,5 +1,6 @@
 #include "convert_internal.hpp"
 
+#include <inertia/attributes.hpp>
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/inertia.hpp>
@@ -89,7 +90,7 @@ std::string tokenOf(const ::drogon::SessionPtr &session) {
 }
 
 // Compares without exiting early on the first differing byte.
-bool constantTimeEquals(std::string_view a, std::string_view b) {
+bool constantTimeEquals(std::string_view a, std::string_view b) INERTIA_NONALLOCATING {
     if (a.size() != b.size()) {
         return false;
     }
@@ -101,7 +102,7 @@ bool constantTimeEquals(std::string_view a, std::string_view b) {
     return diff == 0;
 }
 
-bool isSafeMethod(std::string_view method) {
+bool isSafeMethod(std::string_view method) INERTIA_NONALLOCATING {
     return method == "GET" || method == "HEAD" || method == "OPTIONS";
 }
 

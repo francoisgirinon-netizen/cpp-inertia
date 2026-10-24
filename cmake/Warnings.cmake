@@ -10,7 +10,8 @@ set(_inertia_common_warnings
 
 set(_inertia_clang_warnings
     -Wshadow-all -Wcomma -Wunreachable-code-aggressive -Wrange-loop-analysis
-    -Wmissing-prototypes -Wdeprecated -Wthread-safety -Wdocumentation)
+    -Wmissing-prototypes -Wdeprecated -Wthread-safety -Wdocumentation
+    -Wfunction-effects)
 
 set(_inertia_gcc_warnings
     -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast)

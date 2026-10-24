@@ -1,5 +1,6 @@
 #include <inertia/vite.hpp>
 
+#include <inertia/attributes.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 
@@ -23,7 +24,7 @@ namespace {
 constexpr std::string_view kWhitespace = " \t\r\n";
 
 // FNV-1a 64-bit hash of the raw bytes.
-std::uint64_t fnv1a64(std::string_view data) {
+std::uint64_t fnv1a64(std::string_view data) INERTIA_NONALLOCATING {
     constexpr std::uint64_t kOffsetBasis = 0xcbf29ce484222325ULL;
     constexpr std::uint64_t kPrime = 0x100000001b3ULL;
     std::uint64_t hash = kOffsetBasis;

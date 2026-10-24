@@ -1,5 +1,6 @@
 #include <inertia/detail/props_resolver.hpp>
 
+#include <inertia/attributes.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/props.hpp>
 
@@ -47,7 +48,7 @@ std::string joinPath(std::initializer_list<std::string_view> parts) {
 }
 
 // True when `path` equals `base` or is a descendant of it.
-bool isSelfOrDescendant(std::string_view path, std::string_view base) {
+bool isSelfOrDescendant(std::string_view path, std::string_view base) INERTIA_NONALLOCATING {
     return path == base ||
            (path.size() > base.size() && path.starts_with(base) && path[base.size()] == '.');
 }

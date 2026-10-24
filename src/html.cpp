@@ -1,5 +1,7 @@
 #include <inertia/html.hpp>
 
+#include <inertia/attributes.hpp>
+
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -14,7 +16,8 @@ namespace {
 
 // The escape sequence for the text that starts at raw[i], or empty when raw[i] is kept as is.
 // `length` receives how many bytes of raw the sequence replaces.
-std::string_view escapeAt(std::string_view raw, std::size_t i, std::size_t &length) {
+std::string_view escapeAt(std::string_view raw, std::size_t i,
+                          std::size_t &length) INERTIA_NONALLOCATING {
     length = 1;
     switch (raw[i]) {
     case '/':
@@ -54,7 +57,9 @@ void appendEscaped(std::string &out, std::string_view raw) {
 }
 
 // Room for the escaped form of a dumped page: the escapes of a typical page add under 12 %.
-std::size_t escapedCapacity(std::size_t rawSize) { return rawSize + rawSize / 8; }
+std::size_t escapedCapacity(std::size_t rawSize) INERTIA_NONALLOCATING {
+    return rawSize + rawSize / 8;
+}
 
 } // namespace
 

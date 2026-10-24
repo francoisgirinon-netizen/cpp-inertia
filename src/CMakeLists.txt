@@ -11,6 +11,7 @@ inertia_add_library(core
         ${PROJECT_SOURCE_DIR}/include/inertia/detail/props_resolver.hpp # private: only src/ includes it, never installed
     BASE_DIR ${PROJECT_SOURCE_DIR}/include
     HEADERS
+        ${PROJECT_SOURCE_DIR}/include/inertia/attributes.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/headers.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/html.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/inertia.hpp

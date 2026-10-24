@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -45,6 +47,6 @@ inline constexpr std::string_view kVary = "Vary";
 /// @param a First string.
 /// @param b Second string.
 /// @return `true` when both strings match, ignoring ASCII case.
-[[nodiscard]] bool iequals(std::string_view a, std::string_view b);
+[[nodiscard]] bool iequals(std::string_view a, std::string_view b) INERTIA_NONALLOCATING;
 
 } // namespace inertia::headers

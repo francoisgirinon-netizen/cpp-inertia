@@ -1,8 +1,8 @@
+#include <inertia/attributes.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/response.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -11,9 +11,11 @@ namespace inertia {
 
 namespace {
 
-bool isListSpace(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
+bool isListSpace(char c) INERTIA_NONALLOCATING {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
 
-std::string_view trim(std::string_view text) {
+std::string_view trim(std::string_view text) INERTIA_NONALLOCATING {
     while (!text.empty() && isListSpace(text.front())) {
         text.remove_prefix(1);
     }
@@ -23,7 +25,11 @@ std::string_view trim(std::string_view text) {
     return text;
 }
 
-char toLowerAscii(char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }
+// ASCII only, like the comparison it serves: std::tolower depends on the C locale, and cannot be
+// called from a function that must not allocate.
+char toLowerAscii(char c) INERTIA_NONALLOCATING {
+    return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+}
 
 } // namespace
 
@@ -49,7 +55,7 @@ std::vector<std::string> parseList(const std::optional<std::string> &raw) {
     return items;
 }
 
-bool iequals(std::string_view a, std::string_view b) {
+bool iequals(std::string_view a, std::string_view b) INERTIA_NONALLOCATING {
     return std::ranges::equal(a, b,
                               [](char x, char y) { return toLowerAscii(x) == toLowerAscii(y); });
 }

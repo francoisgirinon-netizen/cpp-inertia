@@ -1,5 +1,6 @@
 #include <inertia/ssr.hpp>
 
+#include <inertia/attributes.hpp>
 #include <inertia/html.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/http_client.hpp>
@@ -20,9 +21,9 @@ namespace inertia {
 
 namespace {
 
-bool matches(const std::string &pattern, std::string_view path) {
+bool matches(const std::string &pattern, std::string_view path) INERTIA_NONALLOCATING {
     if (!pattern.empty() && pattern.back() == '*') {
-        return path.starts_with(std::string_view(pattern).substr(0, pattern.size() - 1));
+        return path.starts_with(std::string_view(pattern.data(), pattern.size() - 1));
     }
     return path == pattern;
 }

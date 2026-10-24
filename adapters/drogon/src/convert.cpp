@@ -1,5 +1,6 @@
 #include "convert_internal.hpp"
 
+#include <inertia/attributes.hpp>
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/headers.hpp>
 #include <inertia/response.hpp>
@@ -47,7 +48,7 @@ std::string_view trim(std::string_view text) {
 }
 
 // Headers whose value is not a comma-separated list.
-bool isSingleValued(std::string_view name) {
+bool isSingleValued(std::string_view name) INERTIA_NONALLOCATING {
     return headers::iequals(name, "Content-Type") || headers::iequals(name, "Location") ||
            headers::iequals(name, "Content-Length");
 }
