@@ -28,3 +28,10 @@ if(TARGET inertia_drogon)
                                                   inertia_warnings)
     inertia_enable_iwyu(inertia_example)
 endif()
+
+if(TARGET inertia_httplib)
+    add_executable(inertia_example_httplib httplib_main.cpp)
+    target_link_libraries(inertia_example_httplib PRIVATE inertia_example_routes inertia::httplib
+                                                          inertia_warnings)
+    inertia_enable_iwyu(inertia_example_httplib)
+endif()
