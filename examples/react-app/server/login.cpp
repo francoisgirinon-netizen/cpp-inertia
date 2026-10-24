@@ -22,6 +22,7 @@ void registerLogin() {
             const auto body = jsonBody(req);
             const auto password = body.value("password", std::string{});
             auto session = sessionOf(req);
+            // Demo only: the password is a hard-coded literal. A real app checks a salted hash.
             if (password != "secret") {
                 inertia::withErrors(
                     session, {{"password", std::vector<std::string>{"The password is wrong."}}},
