@@ -160,12 +160,76 @@ class CoverageCheckTest(unittest.TestCase):
         self.assertIn("unknown e2e protocol tag: nope.x", result.stdout)
 
     def test_e2e_must_be_boolean(self):
-        matrix = self.dir / "bad.toml"
-        matrix.write_text(rule("a.b", status="done").replace(
-            'status = "done"', 'status = "done"\ne2e = "yes"'), encoding="utf-8")
+        matrix = self.matrix(rule("a.b", status="done").replace(
+            'status = "done"', 'status = "done"\ne2e = "yes"'))
         result = self.run_check(matrix, [self.tags("a.b")])
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("invalid e2e for rule a.b", result.stdout)
+
+    def test_missing_pinned_version_fails(self):
+        matrix = self.write("matrix.toml", rule("a.b", status="done"))
+        result = self.run_check(matrix, [self.tags("a.b")])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("inertia_react_version", result.stdout)
+
+    def test_non_string_pinned_version_fails(self):
+        matrix = self.write(
+            "matrix.toml", "inertia_react_version = 391\n\n" + rule("a.b", status="done")
+        )
+        result = self.run_check(matrix, [self.tags("a.b")])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("inertia_react_version", result.stdout)
+
+    def test_matrix_without_rules_fails(self):
+        matrix = self.write("matrix.toml", 'inertia_react_version = "3.9.1"\n')
+        result = self.run_check(matrix, [self.tags()])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("no [[rule]] entries", result.stdout)
+
+    def test_duplicate_ids_fail(self):
+        matrix = self.matrix(rule("a.b", status="todo"), rule("a.b", status="todo"))
+        result = self.run_check(matrix, [self.tags()])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("duplicate rule: a.b", result.stdout)
+
+    def test_missing_required_field_fails(self):
+        text = rule("a.b", status="todo").replace('behavior = "behavior of a.b"\n', "")
+        matrix = self.matrix(text)
+        result = self.run_check(matrix, [self.tags()])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("missing field behavior in rule: a.b", result.stdout)
+
+    def test_malformed_toml_is_a_clean_error(self):
+        matrix = self.write("matrix.toml", 'inertia_react_version = "3.9.1"\n[[rule\n')
+        result = self.run_check(matrix, [self.tags()])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("cannot read matrix", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_unreadable_tags_file_is_a_clean_error(self):
+        matrix = self.matrix(rule("a.b", status="todo"))
+        result = self.run_check(matrix, [self.dir / "missing-tags.txt"])
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("cannot read tags file", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_failing_tags_from_executable_fails(self):
+        exe = self.dir / "broken_tests"
+        exe.write_text(f"#!{sys.executable}\nimport sys\nsys.exit(3)\n", encoding="utf-8")
+        os.chmod(exe, 0o755)
+        matrix = self.matrix(rule("a.b", status="todo"))
+        cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix), "--tags-from", str(exe)]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("--list-tags exited with 3", result.stdout)
+
+    def test_missing_tags_from_executable_fails(self):
+        matrix = self.matrix(rule("a.b", status="todo"))
+        cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix),
+               "--tags-from", str(self.dir / "no-such-exe")]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("cannot run", result.stdout)
 
     def run_markdown(self, matrix):
         cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix), "--markdown"]

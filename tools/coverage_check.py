@@ -92,6 +92,17 @@ def tags_from_exe(exe, problems):
     return tags_from_text(result.stdout)
 
 
+def matrix_problems(data, rules):
+    """Problems with the matrix header and rule list, independent of any test tags."""
+    problems = []
+    pinned = data.get("inertia_react_version")
+    if not isinstance(pinned, str) or not pinned.strip():
+        problems.append("missing or non-string inertia_react_version in matrix")
+    if not rules:
+        problems.append("no [[rule]] entries in matrix")
+    return problems
+
+
 def check(rules, tags, strict, problems, e2e_tags=None, warnings=None):
     """Append a message to `problems` for every violation; return counts.
 
@@ -142,9 +153,17 @@ def main(argv):
     problems = []
     try:
         with open(args.matrix, "rb") as handle:
-            rules = tomllib.load(handle).get("rule", [])
+            data = tomllib.load(handle)
     except (OSError, tomllib.TOMLDecodeError) as err:
         print(f"cannot read matrix {args.matrix}: {err}")
+        return 1
+
+    rules = data.get("rule", [])
+    header_problems = matrix_problems(data, rules)
+    if header_problems:
+        for problem in header_problems:
+            print(problem)
+        print(f"protocol coverage check failed: {len(header_problems)} problem(s)")
         return 1
 
     if args.markdown:
@@ -153,8 +172,12 @@ def main(argv):
 
     tags = set()
     for path in args.tags_file:
-        with open(path, encoding="utf-8") as handle:
-            tags |= tags_from_text(handle.read())
+        try:
+            with open(path, encoding="utf-8") as handle:
+                tags |= tags_from_text(handle.read())
+        except (OSError, UnicodeDecodeError) as err:
+            print(f"cannot read tags file {path}: {err}")
+            return 1
     for exe in args.tags_from:
         tags |= tags_from_exe(exe, problems)
 
