@@ -383,7 +383,7 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 | `test` | `cmake --workflow --preset dev` |
 | `asan` | `cmake --workflow --preset asan` |
 | `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 95% lines). The HTML report is the `coverage-html` artifact of the run. |
-| `lint` | configures `build/dev` (examples on), then `pre-commit run --all-files` (clang-format, clang-tidy, actionlint) |
+| `lint` | configures `build/dev` (examples on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
 | `commits` | every commit message of the push or pull request range against Conventional Commits |
 
 Third-party actions are pinned to a full commit SHA.
