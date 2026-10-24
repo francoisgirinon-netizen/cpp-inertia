@@ -463,7 +463,7 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 | `test` | `cmake --workflow --preset dev` |
 | `asan` | `cmake --workflow --preset asan` |
 | `e2e` | matrix `server: [drogon, httplib]`: builds the example servers and the front end, then runs the Playwright suite against that adapter, in client mode and with `INERTIA_SSR=1` |
-| `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 95% lines). The HTML report is the `coverage-html` artifact of the run. |
+| `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 96% lines). The HTML report is the `coverage-html` artifact of the run. |
 | `lint` | configures `build/dev` (examples and IWYU on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then builds the tree with `INERTIA_IWYU=ON` (include-what-you-use, no tests), then builds the `docs` target with `INERTIA_BUILD_DOCS=ON` (Doxygen with warnings as errors, so an undocumented public API fails the job), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
 | `commits` | every commit message of the push or pull request range against Conventional Commits |
 

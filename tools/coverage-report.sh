@@ -12,7 +12,7 @@
 # (override per run with the environment variable).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-readonly MIN_LINES="${INERTIA_COVERAGE_MIN_LINES:-95}"
+readonly MIN_LINES="${INERTIA_COVERAGE_MIN_LINES:-96}"
 readonly TREE=build/coverage
 readonly PROFILES=$TREE/profiles
 readonly IGNORE='(vcpkg_installed|^/usr/|/tests/|/build/)'
