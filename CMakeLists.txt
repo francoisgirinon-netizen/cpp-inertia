@@ -18,6 +18,8 @@ cmake_dependent_option(INERTIA_BUILD_EXAMPLES "Build examples (needs the Drogon 
 option(INERTIA_INSTALL "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
 option(INERTIA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(INERTIA_COVERAGE_STRICT "Fail coverage_check on todo protocol ids" OFF)
+set(INERTIA_E2E_LIST "" CACHE FILEPATH
+    "Output of `playwright test --list`: coverage_check then also requires e2e tests")
 
 include(cmake/Warnings.cmake)
 include(cmake/ProtocolCoverage.cmake)
@@ -97,8 +99,8 @@ if(INERTIA_BUILD_TESTS)
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     # Deferred so that every test target registered in later subdirectories is included.
-    cmake_language(DEFER DIRECTORY ${CMAKE_SOURCE_DIR} CALL inertia_register_coverage_check
-                   ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR})
+    cmake_language(DEFER DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} CALL inertia_register_coverage_check
+                   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 
     if(INERTIA_INSTALL)
         include(cmake/InertiaPackageTests.cmake)

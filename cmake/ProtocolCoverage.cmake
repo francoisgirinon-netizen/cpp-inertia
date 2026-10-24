@@ -12,9 +12,12 @@ function(inertia_register_coverage_check python source_dir)
     foreach(_target IN LISTS _targets)
         list(APPEND _args --tags-from $<TARGET_FILE:${_target}>)
     endforeach()
-    # Optional: configure with INERTIA_E2E_LIST=<file from `playwright test --list`> to also
-    # require an e2e test for every rule marked e2e = true. Playwright itself never runs here.
-    if(DEFINED ENV{INERTIA_E2E_LIST} AND NOT "$ENV{INERTIA_E2E_LIST}" STREQUAL "")
+    # Optional: configure with -DINERTIA_E2E_LIST=<file> (or the environment variable of the same
+    # name) with the output of `playwright test --list` to also require an e2e test for every
+    # rule marked e2e = true. Playwright itself never runs here.
+    if(INERTIA_E2E_LIST)
+        list(APPEND _args --e2e-list ${INERTIA_E2E_LIST})
+    elseif(NOT "$ENV{INERTIA_E2E_LIST}" STREQUAL "")
         list(APPEND _args --e2e-list $ENV{INERTIA_E2E_LIST})
     endif()
     if(INERTIA_COVERAGE_STRICT)
