@@ -3,6 +3,7 @@
 #include <drogon/HttpClient.h>
 #include <trantor/net/EventLoopThread.h>
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -17,6 +18,9 @@ namespace inertia::drogon_test {
 // Implemented by each test executable: enables sessions, installs the adapter and registers the
 // handlers. Called once, on the main thread, before the server starts.
 void configureApp();
+
+// How long GET /slow takes to answer.
+inline constexpr std::chrono::milliseconds kSlowDelay{1000};
 
 // The port of the running server (127.0.0.1).
 [[nodiscard]] std::uint16_t port();

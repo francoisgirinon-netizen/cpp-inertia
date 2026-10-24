@@ -5,6 +5,7 @@
 
 #include <drogon/HttpAppFramework.h>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -104,12 +105,13 @@ void configureApp() {
                             std::move(done)(text("pong"));
                         },
                         {::drogon::Get});
-    // GET /slow answers after one second.
+    // GET /slow answers after kSlowDelay.
     app.registerHandler("/slow",
                         [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
                             auto reply = std::make_shared<Callback>(std::move(done));
                             ::drogon::app().getLoop()->runAfter(
-                                1.0, [reply, text] { (*reply)(text("late")); });
+                                std::chrono::duration<double>(kSlowDelay).count(),
+                                [reply, text] { (*reply)(text("late")); });
                         },
                         {::drogon::Get});
 }

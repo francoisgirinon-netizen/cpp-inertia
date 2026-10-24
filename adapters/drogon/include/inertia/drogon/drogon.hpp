@@ -9,8 +9,7 @@
 
 #include <chrono>
 #include <functional>
-#include <map>
-#include <mutex>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -52,6 +51,10 @@ class DrogonSession final : public SessionStore {
 
 // The SSR transport: one ::drogon::HttpClient per origin, created on first use and shared by every
 // request. Callbacks run on the client's event-loop thread.
+// Drogon cannot cancel a request and does not pipeline, so a hung SSR server would stall every
+// later request queued on the same connection. After a timeout the origin's client is therefore
+// dropped from the pool (at most once per timeout window) and the next request opens a fresh
+// connection; the old client lives on until Drogon is done with its pending request.
 class DrogonHttpClient final : public HttpClient {
   public:
     // nullptr: use the application's event loop.
@@ -65,11 +68,12 @@ class DrogonHttpClient final : public HttpClient {
   private:
     void send(::drogon::HttpMethod method, std::string_view url, std::string body,
               std::chrono::milliseconds timeout, std::function<void(HttpResult)> done);
-    [[nodiscard]] ::drogon::HttpClientPtr clientFor(const std::string &origin);
+
+    // Shared with the in-flight callbacks, which may outlive this object.
+    struct Pool;
 
     trantor::EventLoop *loop_;
-    std::mutex mutex_;
-    std::map<std::string, ::drogon::HttpClientPtr> clients_; // guarded by mutex_
+    std::shared_ptr<Pool> pool_;
 };
 
 struct CsrfOptions {

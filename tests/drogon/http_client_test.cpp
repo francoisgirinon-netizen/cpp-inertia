@@ -69,6 +69,22 @@ TEST_CASE("DrogonHttpClient reports a timeout", "[drogon]") {
     CHECK(next.body == "pong");
 }
 
+TEST_CASE("DrogonHttpClient is not blocked by a hung request after a timeout", "[drogon][hol]") {
+    DrogonHttpClient client;
+    const auto hung =
+        await([&](auto done) { client.get(base() + "/slow", 100ms, std::move(done)); });
+    REQUIRE(hung.status == 0);
+
+    // The timed-out request still occupies its connection (Drogon cannot cancel it and does not
+    // pipeline), so a follow-up on that connection would wait for the whole /slow delay.
+    const auto start = std::chrono::steady_clock::now();
+    const auto next = await([&](auto done) { client.get(base() + "/ping", 5s, std::move(done)); });
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    CHECK(next.status == 200);
+    CHECK(next.body == "pong");
+    CHECK(elapsed < inertia::drogon_test::kSlowDelay / 2);
+}
+
 TEST_CASE("DrogonHttpClient reports a connection failure", "[drogon]") {
     DrogonHttpClient client;
     const auto result =
