@@ -356,6 +356,16 @@ Run `pre-commit install` once after cloning: it installs both the pre-commit and
   Without the database the hook fails and says so; it never skips silently. The hook is configured with `--all-lines` (every diagnostic of a staged file, not only those on changed lines). To lint the whole tree (every tracked `.cpp` except the out-of-tree `tests/package`), run `pre-commit run clang-tidy --all-files`; it takes a few minutes and must report nothing. `.clang-tidy` limits diagnostics to the project's own headers (`include/inertia`, `src`, `adapters`, `tests`, `examples`), so vcpkg and system headers stay quiet. `ExcludeHeaderFilterRegex` keeps the build trees (`build`, `vcpkg_installed`, `.cache`) out, wherever the clone lives.
 - **hadolint** (v2.15.1, the ready-made `hadolint-docker` hook, image pinned to the same tag) lints `docker/Dockerfile`. It runs in Docker.
 - **dclint** (`zavoloklom/dclint:3.1.0`, a local hook because the upstream project ships no pre-commit hook) lints `compose.yaml`. It runs in Docker.
+- **include-what-you-use** is not a pre-commit hook: it is the CMake option `INERTIA_IWYU` (OFF by default). When ON, the compilation of the project's own targets (libraries, tests, conformance executables, example) runs include-what-you-use 0.27 (same LLVM major as clang, pinned in `mise.toml`) and fails on any suggestion; dependencies and embedding projects are never touched, because the command is set per target by `inertia_enable_iwyu()` (`cmake/InertiaIwyu.cmake`), not through `CMAKE_CXX_INCLUDE_WHAT_YOU_USE`. The `lint` CI job enforces it. To enable it locally, put this in a `CMakeUserPresets.json` (not tracked), configure with `scripts/dev cmake --preset dev-iwyu` and build `build/dev` as usual (`scripts/dev cmake --build build/dev`):
+  ```json
+  {
+    "version": 10,
+    "configurePresets": [
+      { "name": "dev-iwyu", "inherits": "dev", "cacheVariables": { "INERTIA_IWYU": "ON" } }
+    ]
+  }
+  ```
+  Third-party quirks (nlohmann implementation headers, Catch2, Drogon, libstdc++ range algorithms) and the `<inertia/...>` spelling of the project's own headers are mapped in `.iwyu.imp`; the sources carry no `keep`, `no_include` or `no_forward_declare` pragma. The only pragma is `IWYU pragma: export` in `inertia/json.hpp`, which deliberately exposes nlohmann/json. IWYU only reports on a `.cpp` and its own header, so a header-only header is checked through the sources that include it.
 - The tree contains no inline clang-tidy suppression comment: a finding is fixed in the code, not silenced.
 - A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
@@ -394,7 +404,7 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 | `test` | `cmake --workflow --preset dev` |
 | `asan` | `cmake --workflow --preset asan` |
 | `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 95% lines). The HTML report is the `coverage-html` artifact of the run. |
-| `lint` | configures `build/dev` (examples on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
+| `lint` | configures `build/dev` (examples and IWYU on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then builds the tree with `INERTIA_IWYU=ON` (include-what-you-use, no tests), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
 | `commits` | every commit message of the push or pull request range against Conventional Commits |
 
 Third-party actions are pinned to a full commit SHA.
