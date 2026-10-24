@@ -98,8 +98,9 @@ struct CsrfOptions {
 
 // Wires an Inertia instance into the application; call once, after app().enableSession() and
 // before app().run(). A second call throws std::logic_error. Drogon cannot report whether
-// sessions are enabled, so a request that arrives without one is answered with a 500 that says
-// to call app().enableSession() (instead of a confusing 419).
+// sessions are enabled, so when CSRF is enabled a mutating request (not exempt) that arrives
+// without one is answered with a 500 that says to call app().enableSession() (instead of a
+// confusing 419). Other requests are left alone; render() reports the missing session itself.
 //  - pre-handling advice: Inertia::handleVersion (a version mismatch answers 409 here), then, for
 //    every method but GET/HEAD/OPTIONS, the CSRF check: the header must equal the token kept in
 //    the session (constant-time comparison), else the answer is 419 ("page expired");

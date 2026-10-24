@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-// A server whose application forgot app().enableSession().
+// A server whose application forgot app().enableSession(); CSRF stays enabled.
 namespace inertia::drogon_test {
 
 void configureApp() {
@@ -26,6 +26,11 @@ void configureApp() {
                                         std::move(done)(res);
                                     },
                                     {::drogon::Get, ::drogon::Post});
+    ::drogon::app().registerHandler("/page",
+                                    [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
+                                        inertia::drogon::render(req, "Page", {}, std::move(done));
+                                    },
+                                    {::drogon::Get});
 }
 
 } // namespace inertia::drogon_test

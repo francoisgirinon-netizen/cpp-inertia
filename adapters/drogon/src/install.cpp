@@ -179,14 +179,17 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
     if (!inertia) {
         throw std::invalid_argument("inertia::drogon::install() needs an Inertia instance");
     }
+    // The trust flag is set before the instance is published, so render()/location() never see
+    // an installed adapter with a stale flag; a rejected second call puts the old value back.
+    const bool previousTrust = trustForwarded().exchange(csrf.trustForwardedHeaders);
     std::shared_ptr<const Inertia> none;
     if (!installed().compare_exchange_strong(none, inertia)) {
+        trustForwarded().store(previousTrust);
         throw std::logic_error("inertia::drogon::install() was already called: the adapter can be "
                                "installed only once per process");
     }
     auto &app = ::drogon::app();
     const auto options = std::make_shared<const CsrfOptions>(std::move(csrf));
-    trustForwarded().store(options->trustForwardedHeaders);
 
     // Version, CSRF, and the post-handling steps for a response the pre-handling advice produced
     // itself (Drogon does not run post-handling advices for those).
@@ -205,19 +208,23 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
             ::drogon::HttpResponsePtr early;
             try {
                 const DrogonRequest view{req, options->trustForwardedHeaders};
-                if (!req->session()) {
-                    // Drogon exposes no way to ask whether sessions are enabled, so a request
-                    // without one is the earliest sign. Say so plainly instead of a 419.
-                    static std::atomic<bool> reported{false};
-                    if (!reported.exchange(true)) {
-                        LOG_ERROR << kSessionsDisabled;
-                    }
-                    early = serverError(kSessionsDisabled);
-                } else if (auto versionMismatch = inertia->handleVersion(view)) {
+                if (auto versionMismatch = inertia->handleVersion(view)) {
                     early = toDrogon(*versionMismatch);
                 } else if (options->enabled && !isSafeMethod(view.method()) &&
-                           !isExempt(*options, req->path()) && !csrfMatches(*options, req)) {
-                    early = pageExpired();
+                           !isExempt(*options, req->path())) {
+                    if (!req->session()) {
+                        // Drogon exposes no way to ask whether sessions are enabled, so a
+                        // request without one is the earliest sign. Say so plainly instead of
+                        // a 419. Only the CSRF check needs the session: other routes are left
+                        // alone.
+                        static std::atomic<bool> reported{false};
+                        if (!reported.exchange(true)) {
+                            LOG_ERROR << kSessionsDisabled;
+                        }
+                        early = serverError(kSessionsDisabled);
+                    } else if (!csrfMatches(*options, req)) {
+                        early = pageExpired();
+                    }
                 }
                 if (early) {
                     afterHandling(req, early);
@@ -261,7 +268,9 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
     try {
         const auto session = req->session();
         if (!session) {
-            throw std::logic_error("sessions are disabled: call app().enableSession()");
+            LOG_ERROR << "inertia: render failed: " << kSessionsDisabled;
+            state->answer(serverError(kSessionsDisabled));
+            return;
         }
         // The session store is only used until Inertia::render returns or its SSR continuation
         // runs; both keep the request alive through the captured pointer below.

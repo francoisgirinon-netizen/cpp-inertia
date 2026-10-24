@@ -106,7 +106,7 @@ int main() {
 }
 ```
 
-`install()` adds a pre-handling advice (asset version mismatch answers 409, CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header, 419 when it fails) and a post-handling advice (`Vary: X-Inertia`, the CSRF cookie). `render()` answers exactly once: JSON for Inertia requests, the HTML page otherwise. Pass `CsrfOptions` to `install()` to rename the cookie/header, disable the check, exempt webhook paths or trust forwarded headers. `install()` can be called once (a second call throws `std::logic_error`); without `app().enableSession()` every request is answered with a 500 that says so, and `DrogonSession` throws `std::invalid_argument` for a null session.
+`install()` adds a pre-handling advice (asset version mismatch answers 409, CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header, 419 when it fails) and a post-handling advice (`Vary: X-Inertia`, the CSRF cookie). `render()` answers exactly once: JSON for Inertia requests, the HTML page otherwise. Pass `CsrfOptions` to `install()` to rename the cookie/header, disable the check, exempt webhook paths or trust forwarded headers. `install()` can be called once (a second call throws `std::logic_error`); without `app().enableSession()` a CSRF-checked request (mutating, not exempt) and `render()` answer a 500 that says so, while other routes are untouched, and `DrogonSession` throws `std::invalid_argument` for a null session.
 
 ### Prop types cheat-sheet
 

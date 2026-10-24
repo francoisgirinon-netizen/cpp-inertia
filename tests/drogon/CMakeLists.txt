@@ -30,6 +30,16 @@ target_link_libraries(inertia_drogon_nosession_tests PRIVATE inertia_drogon_test
                                                              Catch2::Catch2WithMain inertia_warnings)
 catch_discover_tests(inertia_drogon_nosession_tests PROPERTIES LABELS drogon)
 
+add_executable(inertia_drogon_nosession_nocsrf_tests)
+target_sources(inertia_drogon_nosession_nocsrf_tests PRIVATE
+    nosession_nocsrf_test.cpp
+    $<TARGET_OBJECTS:inertia_drogon_test_support>
+    nosession_nocsrf_app.cpp)
+target_link_libraries(inertia_drogon_nosession_nocsrf_tests PRIVATE inertia_drogon_test_support
+                                                                    Catch2::Catch2WithMain
+                                                                    inertia_warnings)
+catch_discover_tests(inertia_drogon_nosession_nocsrf_tests PROPERTIES LABELS drogon)
+
 add_executable(inertia_drogon_proxy_tests)
 target_sources(inertia_drogon_proxy_tests PRIVATE
     proxy_test.cpp

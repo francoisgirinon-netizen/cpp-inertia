@@ -7,16 +7,27 @@
 using inertia::drogon_test::Client;
 using inertia::drogon_test::Request;
 
-TEST_CASE("without app().enableSession() every request fails fast and says why", "[drogon]") {
+// Sessions off, CSRF enabled (the default).
+TEST_CASE("without sessions, safe plain routes still work", "[drogon]") {
     Client client;
-    const auto get = client.get("/ping");
-    CHECK(get.status == 500);
-    CHECK(get.body.find("enableSession") != std::string::npos);
+    const auto reply = client.get("/ping");
+    CHECK(reply.status == 200);
+    CHECK(reply.body == "pong");
+}
 
+TEST_CASE("without sessions, a mutating request fails with a clear error, not a 419", "[drogon]") {
+    Client client;
     Request post;
     post.method = "POST";
     post.url = "/ping";
     const auto reply = client.send(post);
-    CHECK(reply.status == 500); // not a confusing 419
+    CHECK(reply.status == 500);
+    CHECK(reply.body.find("enableSession") != std::string::npos);
+}
+
+TEST_CASE("without sessions, render answers a clear 500", "[drogon]") {
+    Client client;
+    const auto reply = client.get("/page");
+    CHECK(reply.status == 500);
     CHECK(reply.body.find("enableSession") != std::string::npos);
 }
