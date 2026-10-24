@@ -44,7 +44,7 @@ services:
     # Loopback only: the dev servers are not reachable from the network.
     ports:
       - '127.0.0.1:5173:5173'   # Vite dev server (listens on 0.0.0.0 inside the container)
-      - '127.0.0.1:8080:8080'   # Drogon example server
+      - '127.0.0.1:8081:8081'   # Drogon example server
       - '127.0.0.1:13714:13714' # Inertia SSR server
     <<: *dev-base
 

@@ -21,7 +21,7 @@ scripts/dev bash                                  # an interactive shell in the 
 ```
 
 - `scripts/dev <cmd...>` runs `<cmd>` in the `cpp-inertia-dev` container as your UID/GID, with the repository mounted at `/src`. Hooks and builds go through it.
-- `scripts/dev-serve <cmd...>` is the same with the ports published (8080 Drogon, 5173 Vite, 13714 SSR). Use it for anything that serves.
+- `scripts/dev-serve <cmd...>` is the same with the ports published (8081 Drogon, 5173 Vite, 13714 SSR). Use it for anything that serves. The published ports bind to 127.0.0.1 only, so they are not reachable from the LAN; the example is at http://127.0.0.1:8081.
 - `scripts/dev-tsan <cmd...>` uses a service with a relaxed seccomp profile, needed only by ThreadSanitizer: `scripts/dev-tsan cmake --workflow --preset tsan`.
 
 Run the example application:
@@ -30,7 +30,7 @@ Run the example application:
 # production mode: build the server and the front end, then serve
 scripts/dev sh -c 'cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON && cmake --build --preset dev \
   && cd examples/react-app/frontend && bun install && bun run build'
-scripts/dev-serve build/dev/examples/react-app/server/inertia_example      # http://localhost:8080
+scripts/dev-serve build/dev/examples/react-app/server/inertia_example      # http://127.0.0.1:8081
 
 # development mode with hot reload: Vite writes public/hot, the server then emits dev tags
 scripts/dev-serve sh -c 'cd examples/react-app/frontend && bun run dev'    # in one terminal

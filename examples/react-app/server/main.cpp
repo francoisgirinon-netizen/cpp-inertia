@@ -20,7 +20,7 @@
 namespace {
 
 constexpr std::string_view kPublicDir = INERTIA_EXAMPLE_PUBLIC_DIR;
-constexpr unsigned short kPort = 8080;
+constexpr unsigned short kPort = 8081;
 constexpr int kThreads = 4; // some demo resolvers sleep, so keep a few workers
 
 // Reads the Vite manifest and the dev-server hot file from disk.

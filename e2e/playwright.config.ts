@@ -13,11 +13,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
-  use: { baseURL: 'http://127.0.0.1:8080' },
+  use: { baseURL: 'http://127.0.0.1:8081' },
   webServer: [
     {
       command: example,
-      url: 'http://127.0.0.1:8080/',
+      url: 'http://127.0.0.1:8081/',
       env: { INERTIA_SSR: ssr ? '1' : '0' },
       reuseExistingServer: false,
       timeout: 30_000,
