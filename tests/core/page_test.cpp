@@ -110,6 +110,19 @@ TEST_CASE("invalid UTF-8 prop does not throw", "[page]") {
     REQUIRE(res.status == 200);
 }
 
+TEST_CASE("invalid UTF-8 prop on the JSON path is replaced by U+FFFD", "[page]") {
+    const Inertia app{Config{}};
+    const auto res = renderOne(app, FakeRequest::inertia("/"), {{"s", std::string("\xff")}});
+    REQUIRE(res.status == 200);
+    REQUIRE(res.body.find("\xEF\xBF\xBD") != std::string::npos);
+}
+
+TEST_CASE("an HTML response does not carry X-Inertia", "[html][protocol:json.response]") {
+    const Inertia app{Config{}};
+    const auto res = renderOne(app, FakeRequest::get("/users"), {{"a", 1}});
+    REQUIRE_FALSE(res.header("X-Inertia").has_value());
+}
+
 TEST_CASE("finalize adds Vary: X-Inertia", "[page][protocol:vary.always]") {
     const Inertia app{Config{}};
     const auto req = FakeRequest::get("/");
