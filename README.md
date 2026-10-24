@@ -45,6 +45,17 @@ INERTIA_SSR=1 scripts/dev-serve sh -c '(cd examples/react-app/frontend && bun ru
 
 Use CLion's Docker toolchain (Settings > Build, Execution, Deployment > Toolchains > Docker) with the image `cpp-inertia-dev:latest` (built by `docker compose build`) and a container setting that mounts the project at `/src`. Select the `dev` CMake preset; it needs `VCPKG_ROOT=/opt/vcpkg`, which the image already sets. The `.clang-format` and `.clang-tidy` files are picked up automatically.
 
+### Host tools (clangd, Serena, IDEs)
+
+The container's `build/dev/compile_commands.json` uses container paths (`/src/...`), which host tools cannot open. Configure once, then convert it to a host-path database:
+
+```sh
+scripts/dev cmake --preset dev              # writes build/dev/compile_commands.json
+python3 tools/host-compile-commands.py      # writes build/dev/host/compile_commands.json
+```
+
+The root `.clangd` points clangd at `build/dev/host`. Re-run the script after a reconfigure. It needs only python3 on the host, and it fails with the configure hint when the input is missing.
+
 ## Using the library
 
 ### With `find_package`
