@@ -35,14 +35,17 @@ void registerPosts() {
         // How many `latest` entries the client already shows. The new entry gets id newest + 100,
         // so each prepend adds the next id (100, 101, ...) as long as only this button adds them.
         const int newest = intParam(req, "newest", 0);
+        const bool edit = intParam(req, "edit", 0) == 1; // re-send the last post, edited
         const int step = std::max(intParam(req, "step", 1), 1);
         return inertia::Props{
-            // Page 2 and later re-send the last post of the page before, edited, so the matchOn
-            // reload carries an id the client already shows and must replace, not duplicate.
-            {"posts", inertia::Prop{[page] {
+            // With edit=1, page 2 and later re-send the last post of the page before, edited, so
+            // the
+            // matchOn reload carries an id the client already shows and must replace, not
+            // duplicate.
+            {"posts", inertia::Prop{[page, edit] {
                           auto posts = inertia::Json::array();
                           const int first = (page - 1) * kPageSize + 1;
-                          if (page > 1) {
+                          if (page > 1 && edit) {
                               posts.push_back(post(first - 1, " (edited)"));
                           }
                           for (int id = first; id <= page * kPageSize; ++id) {

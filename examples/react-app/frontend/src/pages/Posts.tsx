@@ -20,6 +20,9 @@ export default function Posts({ posts, latest, page, settings, thread }: Props) 
 
   // `posts` is merged (appended), so only the new page travels over the wire.
   const loadMore = () => router.reload({ only: ['posts', 'page'], data: { page: page + 1 } })
+  // Same page, but the server also re-sends its last post edited: matchOn replaces it in place.
+  const editAndLoadMore = () =>
+    router.reload({ only: ['posts', 'page'], data: { page: page + 1, edit: 1 } })
   // `latest` is prepended: new entries show up before the existing ones. `newest` is the number
   // of entries already shown; the server derives the new id from it (see posts.cpp).
   const addLatest = () => router.reload({ only: ['latest'], data: { newest: latest.length } })
@@ -53,6 +56,7 @@ export default function Posts({ posts, latest, page, settings, thread }: Props) 
       <button onClick={addTag}>Add tag</button>
       <button onClick={growThread}>Grow thread</button>
       <button onClick={loadMore}>Load more</button>
+      <button onClick={editAndLoadMore}>Edit and reload</button>
       <button onClick={addLatest}>Prepend latest</button>
       <button onClick={reset}>Reset</button>
     </Layout>

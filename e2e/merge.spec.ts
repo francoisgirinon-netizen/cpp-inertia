@@ -20,12 +20,12 @@ test('a merge prop appends the next page to the list already on screen [protocol
   )
   const body = await res.json()
   expect(body.mergeProps).toContain('posts')
-  // Post 3 is re-sent (edited) for matchOn to replace; the other three are the new page.
-  expect(body.props.posts.map((post) => post.id)).toEqual([3, 4, 5, 6])
+  // Only the new page travels over the wire.
+  expect(body.props.posts.map((post) => post.id)).toEqual([4, 5, 6])
   await expect(titles(page, 'posts')).toHaveText([
     'Post 1',
     'Post 2',
-    'Post 3 (edited)',
+    'Post 3',
     'Post 4',
     'Post 5',
     'Post 6',
@@ -97,7 +97,7 @@ test('matchOn keys travel in matchPropsOn so the client replaces entries with th
   const res = await visitDuring(
     page,
     '/posts',
-    () => page.getByRole('button', { name: 'Load more' }).click(),
+    () => page.getByRole('button', { name: 'Edit and reload' }).click(),
     'GET',
     'posts,page',
   )
