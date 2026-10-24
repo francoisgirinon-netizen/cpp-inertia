@@ -194,3 +194,37 @@ TEST_CASE("HttplibHttpClient accepts a URL whose authority is followed by a quer
     CHECK(result.status == 404);
     CHECK_FALSE(result.error.has_value());
 }
+
+TEST_CASE("HttplibHttpClient rejects a port that is not a valid number", "[httplib]") {
+    HttplibHttpClient client;
+    for (const char *url : {"http://127.0.0.1:99999/x", "http://127.0.0.1:abc/x"}) {
+        const auto result = await([&](auto done) { client.get(url, 1s, std::move(done)); });
+        CHECK(result.status == 0);
+        CHECK(result.error.has_value());
+    }
+}
+
+TEST_CASE("HttplibHttpClient rejects a URL with no host before its path or query", "[httplib]") {
+    HttplibHttpClient client;
+    for (const char *url : {"http:///x", "http://?x=1", "http://#x"}) {
+        const auto result = await([&](auto done) { client.get(url, 1s, std::move(done)); });
+        CHECK(result.status == 0);
+        CHECK(result.error.has_value());
+    }
+}
+
+TEST_CASE("HttplibHttpClient splits the target at the fragment and keeps the query", "[httplib]") {
+    HttplibHttpClient client;
+    const auto fetch = [&](const std::string &url) {
+        return await([&](auto done) { client.get(url, 5s, std::move(done)); });
+    };
+    CHECK(fetch(base() + "/target").body == "/target");
+    CHECK(fetch(base() + "/target#frag").body == "/target");
+    CHECK(fetch(base() + "/target?q=1#frag").body == "/target?q=1");
+    // An empty query is dropped by cpp-httplib when it builds the request line.
+    CHECK(fetch(base() + "/target?").body == "/target");
+    // No path and no query: the request goes to "/", which the peer does not route.
+    CHECK(fetch(base()).status == 404);
+    CHECK(fetch(base() + "#frag").status == 404);
+    CHECK(fetch(base() + "?q=1#frag").status == 404);
+}
