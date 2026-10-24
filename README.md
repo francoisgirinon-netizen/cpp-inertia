@@ -1,6 +1,6 @@
 # cpp-inertia
 
-A C++20 implementation of the server side of the [Inertia.js](https://inertiajs.com) v3 protocol.
+A C++ implementation of the server side of the [Inertia.js](https://inertiajs.com) v3 protocol.
 
 - **Framework-agnostic core** (`inertia::core`): pure C++ that depends only on nlohmann_json. It builds the page object, resolves props (partial reloads, deferred, merge, once, scroll, ...), renders the first-visit HTML and talks to an SSR server.
 - **Drogon adapter** (`inertia::drogon`): one `install()` call and a `render()` helper.
@@ -64,6 +64,12 @@ python3 tools/host-compile-commands.py      # writes build/dev/host/compile_comm
 ```
 
 The root `.clangd` points clangd at `build/dev/host`. Re-run the script after a reconfigure. It needs only python3 on the host, and it fails with the configure hint when the input is missing.
+
+## Requirements
+
+- **Using the library** needs a C++17 compiler: every installed header (core, ports, fake, Drogon and cpp-httplib adapters, conformance kit) and the conformance kit's sources compile as C++17. This is enforced by the `headers_cxx17` test and by the `package.*17` consumer tests, which build the installed package with `CMAKE_CXX_STANDARD=17`.
+- **Building the library** (its own sources) needs a C++20 compiler. The only compiler tested is clang 23.1.4 with libstdc++ 15; other compilers are not verified.
+- CMake 3.31 or later, and nlohmann_json. The adapters need Drogon or cpp-httplib, the conformance kit needs Catch2.
 
 ## Using the library
 
