@@ -20,14 +20,19 @@ foreach(_inertia_component IN LISTS inertia_FIND_COMPONENTS)
     elseif(_inertia_component STREQUAL "drogon")
         if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/inertia-drogon-targets.cmake")
             find_dependency(Drogon CONFIG)
+            # Drogon's FindFilesystem leaves CMAKE_CXX_STANDARD defined but empty when the
+            # consumer had none, which makes the consumer's targets invalid.
+            if(DEFINED CMAKE_CXX_STANDARD AND CMAKE_CXX_STANDARD STREQUAL "")
+                unset(CMAKE_CXX_STANDARD)
+            endif()
             include("${CMAKE_CURRENT_LIST_DIR}/inertia-drogon-targets.cmake")
             set(inertia_drogon_FOUND TRUE)
         else()
-            set(inertia_drogon_NOT_FOUND_MESSAGE
+            set(inertia_NOT_FOUND_MESSAGE
                 "inertia was installed without the Drogon adapter (configured with INERTIA_BUILD_DROGON=OFF)")
         endif()
     else()
-        set(inertia_${_inertia_component}_NOT_FOUND_MESSAGE
+        set(inertia_NOT_FOUND_MESSAGE
             "unknown inertia component '${_inertia_component}' (available: core, fake, drogon)")
     endif()
 endforeach()
