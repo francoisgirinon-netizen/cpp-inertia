@@ -299,8 +299,12 @@ Every preset has configure, build, test and workflow presets of the same name, s
 `pre-commit run --all-files` runs the commit hooks:
 
 - **clang-format** (v23.1.3, the ready-made `pre-commit/mirrors-clang-format` hook) formats the C/C++ files. It runs on the host: no build, no Docker.
-- **clang-tidy** runs on `.cpp` files through `scripts/dev` (Docker). It needs a configured `build/dev` but no build: when `build/dev/compile_commands.json` is missing, the hook configures it itself (`cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON`, examples included) and fails if the configure fails. An existing tree configured without examples is left alone, with a hint.
-  The hook lints the staged files only. To lint the whole tree (every tracked `.cpp` except the out-of-tree `tests/package`), run `scripts/dev tools/run-clang-tidy.sh --all`; it takes several minutes and must report nothing. `.clang-tidy` limits diagnostics to the project's own headers (`include/inertia`, `src`, `adapters`, `tests`, `examples` under `/src`), so vcpkg and system headers stay quiet.
+- **clang-tidy** (v23.1.3 wheel, the ready-made `cpp-linter/cpp-linter-hooks` hook) runs on the host on `.cpp` files, with the exact flags of each file from `build/dev/host/compile_commands.json`. That database is the container one with its `/src` paths rewritten to host paths. Generate it once per clone, and again after adding or removing a source file:
+  ```sh
+  scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON   # configure only, no build
+  python3 tools/host-compile-commands.py
+  ```
+  Without the database the hook fails and says so; it never skips silently. The hook is configured with `--all-lines` (every diagnostic of a staged file, not only those on changed lines). To lint the whole tree (every tracked `.cpp` except the out-of-tree `tests/package`), run `pre-commit run clang-tidy --all-files`; it takes a few minutes and must report nothing. `.clang-tidy` limits diagnostics to the project's own headers (`include/inertia`, `src`, `adapters`, `tests`, `examples`), so vcpkg and system headers stay quiet; keep the clone outside a directory named `src`, `tests` or `examples`, which would make that filter match everything.
 - The tree contains no inline clang-tidy suppression comment: a finding is fixed in the code, not silenced.
 - A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
