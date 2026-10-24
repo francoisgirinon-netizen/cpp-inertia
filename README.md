@@ -280,12 +280,11 @@ Every preset has configure, build, test and workflow presets of the same name, s
 | `scripts/dev cmake --workflow --preset core-only` | The core builds and passes without Drogon installed. |
 | `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan (UB fails the test). |
 | `scripts/dev-tsan cmake --workflow --preset tsan` | ThreadSanitizer, with instrumented dependencies (`x64-linux-tsan` triplet). |
-| `scripts/dev cmake --workflow --preset tidy` | clang-tidy on every translation unit, warnings are errors. |
 | `scripts/dev cmake --workflow --preset release` | Release build with strict coverage: no `todo` rule left. |
 | `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering. Build the example and `bun run build` in `examples/react-app/frontend` first. |
 | `python3 -m unittest discover -s tools/tests` | The Python tools (`coverage_check.py`, `check-inertia-version.py`, README table). Also run by CTest as `tools_unit_tests`. |
 
-`pre-commit run --all-files` runs the commit hooks, all through `scripts/dev`: clang-format on C++ files, clang-tidy on `.cpp` files (using `build/dev/compile_commands.json`) and a Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
+`pre-commit run --all-files` runs the commit hooks, all through `scripts/dev`: clang-format on C++ files, clang-tidy on `.cpp` files (run in Docker; it only needs a configured `build/dev`, i.e. `scripts/dev cmake --preset dev`, no build) and a Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
 ## Known limitations
 
