@@ -55,9 +55,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
       - name: Configure the dev tree with the examples (compile database for clang-tidy)
-        run: scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON
+        run: scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON -DINERTIA_IWYU=ON
       - name: Rewrite the compile database for the runner
         run: python3 tools/host-compile-commands.py
+      - name: Build with include-what-you-use (no tests)
+        run: scripts/dev sh -c 'status=0; cmake --build --preset dev || status=$?; sccache --show-stats; exit "$status"'
       - name: Install pre-commit
         run: pipx install pre-commit==4.7.0
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
