@@ -5,6 +5,7 @@
 #include <inertia/vite.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <span>
@@ -16,6 +17,11 @@
 namespace inertia {
 
 namespace {
+
+// Every key a page can carry: component, props, url, version, sharedProps, the 9 metadata keys of
+// emitMetadata, the 4 history/bigint flags and flash. Reserved up front so that adding keys never
+// reallocates the page, which would deep-copy the props object (see detail::reserveMembers).
+constexpr std::size_t kMaxPageKeys = 18;
 
 // An Inertia request carries the X-Inertia header.
 bool isInertia(const RequestView &req) { return req.header(headers::kInertia).has_value(); }
@@ -181,6 +187,7 @@ Json Inertia::buildPage(const RequestView &req, SessionStore &session, std::stri
     }
 
     Json page = Json::object();
+    detail::reserveMembers(page, kMaxPageKeys);
     page["component"] = std::move(component);
     page["props"] = std::move(resolved.props);
     page["url"] = req.url();

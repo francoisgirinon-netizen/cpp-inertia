@@ -286,6 +286,7 @@ class Walker {
                                       bool selectedSelf) {
         Json result = Json::object();
         Props children = childrenForMerge(std::move(prop));
+        reserveMembers(result, children.size());
         for (auto &[key, child] : children) {
             std::string childPath = path;
             if (!childPath.empty()) {
@@ -334,6 +335,8 @@ Resolved resolveProps(Props &&props, const ResolveContext &ctx) {
         insertPath(normalized, splitPath(key), std::move(prop));
     }
     Walker walker(ctx);
+    // One extra slot for the "errors" key that Inertia appends to every page.
+    reserveMembers(walker.result().props, normalized.size() + 1);
     for (auto &[key, prop] : normalized) {
         auto value = walker.resolve(std::move(prop), key, false);
         if (value) {

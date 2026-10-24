@@ -5,6 +5,7 @@
 #include <inertia/props.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -40,6 +41,13 @@ struct Resolved {
 // Same result, but JSON leaf values and nested children are moved into the output, so `props` is
 // left moved-from.
 [[nodiscard]] Resolved resolveProps(Props &&props, const ResolveContext &ctx);
+
+// Reserves room for `count` members of a JSON object. ordered_json stores its members as
+// pair<const std::string, Json>, which is not nothrow-movable, so a growing object copies every
+// member value deeply on each reallocation; reserving up front keeps insertions as moves.
+inline void reserveMembers(Json &object, std::size_t count) {
+    object.get_ref<Json::object_t &>().reserve(count);
+}
 
 // partial is true when the request is an Inertia request whose X-Inertia-Partial-Component
 // equals `component`.
