@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/dev-env
+      - name: Configure, build and test (dev)
+        run: scripts/dev cmake --workflow --preset dev
+
+  asan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/dev-env
+      - name: Configure, build and test (asan, ubsan)
+        run: scripts/dev cmake --workflow --preset asan
+
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/dev-env
+      - name: Configure, build and test (coverage)
+        run: scripts/dev cmake --workflow --preset coverage
+      - name: Report and enforce the minimum line coverage
+        run: scripts/dev tools/coverage-report.sh
+      - name: Upload the HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-html
+          path: build/coverage/html
+          if-no-files-found: error
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/dev-env
+      - name: Install pre-commit
+        run: pipx install pre-commit==4.7.0
+      - name: Run every hook on the whole tree
+        run: pre-commit run --all-files --show-diff-on-failure

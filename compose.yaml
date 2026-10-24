@@ -24,7 +24,8 @@ x-dev-base: &dev-base
     INERTIA_SSR: ${INERTIA_SSR:-}
   volumes:
     - .:/src
-    - vcpkg-cache:/home/dev/.cache/vcpkg
+    # VCPKG_CACHE_DIR (CI) turns the named volume into a host directory the cache action persists.
+    - ${VCPKG_CACHE_DIR:-vcpkg-cache}:/home/dev/.cache/vcpkg
     - bun-cache:/home/dev/.bun/install/cache
 
 name: cpp-inertia
