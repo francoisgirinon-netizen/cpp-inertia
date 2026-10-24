@@ -1,6 +1,7 @@
 [tools]
 clang = "23.1.4"
 "conda:clang-tools" = "23.1.4"
+"conda:llvm-tools" = "23.1.4"
 cmake = "4.4.4"
 ninja = "1.13.2"
 bun = "1.4.4"
