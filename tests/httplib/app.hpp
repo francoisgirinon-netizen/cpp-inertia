@@ -4,6 +4,7 @@
 
 #include <inertia/httplib/httplib.hpp>
 
+#include <cstdint>
 #include <memory>
 
 namespace inertia::httplib_test {

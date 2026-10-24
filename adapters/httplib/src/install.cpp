@@ -1,14 +1,19 @@
-#include <inertia/httplib/httplib.hpp>
-
-#include <inertia/headers.hpp>
-
 #include "random.hpp"
+
+#include <inertia/httplib/httplib.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/json.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
+
+#include <httplib.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <cstddef>
 #include <exception>
+#include <functional>
 #include <future>
 #include <iostream>
 #include <map>

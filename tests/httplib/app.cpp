@@ -1,13 +1,20 @@
 #include "app.hpp"
 
 #include <inertia/inertia.hpp>
+#include <inertia/json.hpp>
+#include <inertia/props.hpp>
+
+#include <httplib.h>
 
 #include <chrono>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace inertia::httplib_test {
 

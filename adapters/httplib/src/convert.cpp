@@ -1,6 +1,8 @@
-#include <inertia/httplib/httplib.hpp>
-
 #include <inertia/headers.hpp>
+#include <inertia/httplib/httplib.hpp>
+#include <inertia/response.hpp>
+
+#include <httplib.h>
 
 #include <algorithm>
 #include <cctype>
@@ -8,6 +10,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace inertia::httplib {
 

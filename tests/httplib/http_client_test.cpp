@@ -1,12 +1,17 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "test_support.hpp"
 
+#include <catch2/catch_test_macros.hpp>
+
 #include <inertia/httplib/httplib.hpp>
+#include <inertia/ports/http_client.hpp>
+
+#include <httplib.h>
 
 #include <atomic>
 #include <chrono>
+#include <compare>
 #include <future>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>

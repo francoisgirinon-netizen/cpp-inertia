@@ -3,6 +3,8 @@ add_library(inertia_httplib_test_support STATIC test_support.cpp)
 target_include_directories(inertia_httplib_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(inertia_httplib_test_support PUBLIC inertia::httplib inertia_warnings)
 
+inertia_enable_iwyu(inertia_httplib_test_support)
+
 add_executable(inertia_httplib_tests)
 target_sources(inertia_httplib_tests PRIVATE
     convert_test.cpp
@@ -15,4 +17,5 @@ target_sources(inertia_httplib_tests PRIVATE
     app.cpp)
 target_link_libraries(inertia_httplib_tests PRIVATE inertia_httplib_test_support
                                                     Catch2::Catch2WithMain inertia_warnings)
+inertia_enable_iwyu(inertia_httplib_tests)
 catch_discover_tests(inertia_httplib_tests PROPERTIES LABELS httplib)

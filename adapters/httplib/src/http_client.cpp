@@ -1,4 +1,8 @@
+#include <inertia/ports/http_client.hpp>
+
 #include <inertia/httplib/httplib.hpp>
+
+#include <httplib.h>
 
 #include <algorithm>
 #include <chrono>

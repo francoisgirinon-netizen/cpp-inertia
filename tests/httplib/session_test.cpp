@@ -1,11 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/httplib/httplib.hpp>
+#include <inertia/json.hpp>
 
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <thread>
