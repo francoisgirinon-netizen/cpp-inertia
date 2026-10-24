@@ -1,10 +1,17 @@
 # ThreadSanitizer suppressions for the test run (see TSAN_OPTIONS in the tsan test preset).
 #
-# trantor (Drogon's network library, v1.5.28) shutdown race: EventLoop::quit() wakes a loop through
-# its eventfd while the loop's thread, which already saw the quit flag, exits and closes that
-# eventfd in ~EventLoop (thread-local destructor). It happens once per Drogon test executable, at
-# the end of the run, and lives entirely in the dependency (the report shows either the close of the
-# eventfd or the freeing of the loop, against quit()). Only stacks that contain one of these two
-# trantor functions are matched, so races in this project's code are still reported.
+# trantor (Drogon's network library, v1.5.28) shutdown race: Drogon's own main-loop thread runs
+# EventLoop::quit() on each IO loop (wakeup through its eventfd, read of the loop's thread id) while
+# that loop's thread, which already saw the quit flag, exits and destroys its EventLoop in a
+# thread-local destructor (close of the eventfd, free of the object). The test harness cannot order
+# this: quit() is issued by Drogon's thread, not ours, and queueing it on the loop is the same call.
+# It is seen once per Drogon test executable, at the very end of the run, in some runs only.
+#
+# Caveat: TSan matches a `race:` entry when ANY frame of either stack matches. These two entries
+# can therefore also hide a race on one of this project's objects that is destroyed or touched
+# during that same loop teardown (for example a captured lambda in a queued functor). Only the
+# shutdown race above has been observed. To re-check, remove the entries (or the suppressions=
+# option in CMakePresets.json) and run `scripts/dev-tsan ctest --preset tsan` a few times: any
+# report other than the EventLoop::quit / ~EventLoop pair is a real finding.
 race:trantor::EventLoop::~EventLoop
 race:trantor::EventLoop::quit
