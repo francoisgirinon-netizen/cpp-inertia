@@ -104,12 +104,13 @@ void dispatch(Call call, Parse parse, std::function<void(R)> done, R fallback) {
         if (state->fired.exchange(true)) {
             return;
         }
-        R value = fallback;
-        try {
-            value = parse(reply);
-        } catch (...) {
-            value = fallback; // a malformed reply keeps the fallback
-        }
+        R value = [&]() -> R {
+            try {
+                return parse(reply);
+            } catch (...) {
+                return fallback; // a malformed reply keeps the fallback
+            }
+        }();
         try {
             state->done(std::move(value));
         } catch (...) {
