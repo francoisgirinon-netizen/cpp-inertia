@@ -106,7 +106,7 @@ int main() {
 }
 ```
 
-`install()` adds a pre-handling advice (asset version mismatch answers 409, CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header, 419 when it fails) and a post-handling advice (`Vary: X-Inertia`, the CSRF cookie). `render()` answers exactly once: JSON for Inertia requests, the HTML page otherwise. Pass `CsrfOptions` to `install()` to rename the cookie/header, disable the check or exempt webhook paths.
+`install()` adds a pre-handling advice (asset version mismatch answers 409, CSRF check with the `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header, 419 when it fails) and a post-handling advice (`Vary: X-Inertia`, the CSRF cookie). `render()` answers exactly once: JSON for Inertia requests, the HTML page otherwise. Pass `CsrfOptions` to `install()` to rename the cookie/header, disable the check, exempt webhook paths or trust forwarded headers. `install()` can be called once (a second call throws `std::logic_error`); without `app().enableSession()` every request is answered with a 500 that says so, and `DrogonSession` throws `std::invalid_argument` for a null session.
 
 ### Prop types cheat-sheet
 
@@ -293,8 +293,8 @@ Every preset has configure, build, test and workflow presets of the same name, s
 
 ## Known limitations
 
-- Drogon's `HttpClient` has no cancel API. A hung SSR server therefore keeps its request until the SSR timeout, and renders queued behind it on the same client wait too. Keep `SsrConfig::timeout` short; the page falls back to client-side rendering when it expires.
-- `DrogonRequest::fullUrl()` is built from the connection's scheme and the `Host` header and ignores `X-Forwarded-Proto` / `X-Forwarded-Host`. Behind a TLS-terminating proxy the absolute URL the library produces (the `X-Inertia-Location` of the 409 sent on an asset version mismatch) therefore starts with `http://`. Implement your own `RequestView` if you need forwarded headers.
+- Drogon's `HttpClient` has no cancel API and does not pipeline, so a timed-out SSR request keeps its connection busy until the server answers. `DrogonHttpClient` therefore drops the origin's pooled client after a timeout (at most once per timeout window), and the next render opens a fresh connection instead of queueing behind the hung one. The abandoned request itself still runs to completion in the background, and a persistently hung SSR server costs one new connection per timeout window. Keep `SsrConfig::timeout` short; the page falls back to client-side rendering when it expires.
+- Behind a TLS-terminating proxy, `DrogonRequest::fullUrl()` (the `X-Inertia-Location` of the 409 sent on an asset version mismatch) and the `Secure` flag of the CSRF cookie follow the connection, so they say `http` by default. Set `CsrfOptions::trustForwardedHeaders = true` to use the first value of `X-Forwarded-Proto` / `X-Forwarded-Host` instead. Only do that when the proxy always sets those headers: a client that reaches the server directly can forge them. The flag is applied to the requests the adapter builds itself (`install()`, `render()`, `location()`); a `DrogonRequest` you construct takes it as a second constructor argument.
 - Only the Drogon adapter is provided. The ports make another framework a small piece of work (see Architecture), but none is shipped.
 - Laravel-specific features (Precognition, previous-URL storage, exception handler) are out of scope: see the `na` rows above.
 - The official Inertia Playwright suite is not reused: its server is a hand-written Express app that builds every page object literally (349 routes), so porting it would test those fixtures rather than this library.
