@@ -135,3 +135,35 @@ TEST_CASE("fromHttplib reads status, body and headers back", "[httplib]") {
     CHECK(std::ranges::count_if(res.headers,
                                 [](const auto &h) { return h.first == "Set-Cookie"; }) == 2);
 }
+
+TEST_CASE("HttplibRequest ignores a Host that cannot be an authority", "[httplib]") {
+    for (const char *bad : {"evil host", "a/b", "user@host", "ho st:80", ""}) {
+        auto req = makeRequest("GET", "/x");
+        req.headers.emplace("Host", bad);
+        CHECK(inertia::httplib::HttplibRequest{req}.fullUrl() == "http://localhost/x");
+    }
+    auto good = makeRequest("GET", "/x");
+    good.headers.emplace("Host", "[::1]:8080");
+    CHECK(inertia::httplib::HttplibRequest{good}.fullUrl() == "http://[::1]:8080/x");
+}
+
+TEST_CASE("HttplibRequest turns an absolute-form target into an origin-relative url", "[httplib]") {
+    const auto url = [](const std::string &target) {
+        const auto req = makeRequest("GET", target);
+        return inertia::httplib::HttplibRequest{req}.url();
+    };
+    CHECK(url("http://evil.example/x?y=1") == "/x?y=1");
+    CHECK(url("HTTPS://evil.example:8443/a/b") == "/a/b");
+    CHECK(url("http://evil.example") == "/");
+    CHECK(url("http://evil.example?x=1") == "/?x=1");
+    CHECK(url("http://evil.example#frag") == "/");
+    CHECK(url("/plain?x=1") == "/plain?x=1");
+}
+
+TEST_CASE("an asterisk target stays an asterisk and is not glued onto the host", "[httplib]") {
+    auto req = makeRequest("OPTIONS", "*");
+    req.headers.emplace("Host", "real.test");
+    const inertia::httplib::HttplibRequest view{req};
+    CHECK(view.url() == "*");
+    CHECK(view.fullUrl() == "http://real.test");
+}

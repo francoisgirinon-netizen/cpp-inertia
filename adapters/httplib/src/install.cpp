@@ -31,14 +31,36 @@ constexpr std::size_t kTokenBytes = 32;
 
 // What the pre-routing handler learned about a request, handed to the route handler and to the
 // post-routing handler through the response's user data (cpp-httplib's own per-request slot).
+//
+// The session is opened lazily (only a handler that asks for it, or a CSRF check, starts one), so
+// requests that never touch it cost no memory and get no cookie.
+struct SessionSlot {
+    std::optional<std::string> incomingId; // from the cookie, not yet looked up
+    bool opened = false;
+    std::string id;
+    std::shared_ptr<SessionData> data;
+    bool announce = false; // the client must be told the id (new or rotated)
+};
+
 struct RequestState {
     std::shared_ptr<const Inertia> inertia;
     std::shared_ptr<const Options> options;
-    std::string sessionId;
-    std::shared_ptr<SessionData> session;
-    bool newSession = false;
+    std::shared_ptr<SessionSlot> slot;
     bool secure = false;
 };
+
+SessionSlot &ensureSession(const RequestState &state) {
+    auto &slot = *state.slot;
+    if (!slot.opened) {
+        auto opened = state.options->sessions->open(
+            slot.incomingId ? std::optional<std::string_view>{*slot.incomingId} : std::nullopt);
+        slot.id = std::move(opened.id);
+        slot.data = std::move(opened.data);
+        slot.announce = opened.created;
+        slot.opened = true;
+    }
+    return slot;
+}
 
 const std::string &stateKey() {
     static const std::string key = "inertia.httplib.state";
@@ -158,7 +180,7 @@ void addSetCookie(::httplib::Response &res, std::string line) {
 // Sets the token cookie unless the client already presents the current token.
 void attachCsrfCookie(const CsrfOptions &csrf, const ::httplib::Request &req,
                       const RequestState &state, ::httplib::Response &res) {
-    HttplibSession session{state.session};
+    HttplibSession session{state.slot->data};
     const auto token = tokenOf(session);
     if (constantTimeEquals(requestCookie(req, csrf.cookie).value_or(""), token)) {
         return;
@@ -257,58 +279,64 @@ void install(::httplib::Server &server, const std::shared_ptr<const Inertia> &in
     }
     const auto shared = std::make_shared<const Options>(std::move(options));
 
-    server.set_pre_routing_handler([inertia, shared, token](const ::httplib::Request &req,
-                                                            ::httplib::Response &res) {
-        try {
-            const HttplibRequest view{req, shared->trustForwardedHeaders};
-            const auto cookie = requestCookie(req, shared->sessions->cookieName());
-            auto opened = shared->sessions->open(cookie ? std::optional<std::string_view>{*cookie}
-                                                        : std::nullopt);
-            RequestState state{.inertia = inertia,
-                               .options = shared,
-                               .sessionId = std::move(opened.id),
-                               .session = std::move(opened.data),
-                               .newSession = opened.created,
-                               .secure = view.isSecure()};
+    server.set_pre_routing_handler(
+        [inertia, shared, token](const ::httplib::Request &req, ::httplib::Response &res) {
+            try {
+                const HttplibRequest view{req, shared->trustForwardedHeaders};
+                RequestState state{.inertia = inertia,
+                                   .options = shared,
+                                   .slot = std::make_shared<SessionSlot>(),
+                                   .secure = view.isSecure()};
+                state.slot->incomingId = requestCookie(req, shared->sessions->cookieName());
 
-            std::optional<Response> early = inertia->handleVersion(view);
-            if (!early && shared->csrf.enabled && !isSafeMethod(view.method()) &&
-                !isExempt(shared->csrf, req.path) &&
-                !csrfMatches(shared->csrf, req, HttplibSession{state.session})) {
-                early = pageExpired();
-            }
-            res.user_data.set(stateKey(), std::move(state));
-            if (!early) {
+                std::optional<Response> early = inertia->handleVersion(view);
+                if (!early && shared->csrf.enabled && !isSafeMethod(view.method()) &&
+                    !isExempt(shared->csrf, req.path) &&
+                    !csrfMatches(shared->csrf, req, HttplibSession{ensureSession(state).data})) {
+                    early = pageExpired(); // the session exists now, so the answer carries a token
+                }
+                res.user_data.set(stateKey(), std::move(state));
+                if (early) {
+                    // cpp-httplib still runs the post-routing handler for this response.
+                    toHttplib(*early, res);
+                    return ::httplib::Server::HandlerResponse::Handled;
+                }
+                if (shared->preRouting) {
+                    return shared->preRouting(req, res);
+                }
                 return ::httplib::Server::HandlerResponse::Unhandled;
+            } catch (const std::exception &error) {
+                logError(*shared, std::string{"pre-routing failed: "} + error.what());
+                toHttplib(serverError(), res);
             }
-            // cpp-httplib still runs the post-routing handler for this response.
-            toHttplib(*early, res);
-        } catch (const std::exception &error) {
-            logError(*shared, std::string{"pre-routing failed: "} + error.what());
-            toHttplib(serverError(), res);
-        }
-        return ::httplib::Server::HandlerResponse::Handled;
-    });
+            return ::httplib::Server::HandlerResponse::Handled;
+        });
 
-    server.set_post_routing_handler([shared, token](const ::httplib::Request &req,
-                                                    ::httplib::Response &res) {
-        try {
-            const auto *state = res.user_data.get<RequestState>(stateKey());
-            if (state == nullptr) {
-                return; // rejected before routing (malformed request): nothing to add
+    server.set_post_routing_handler(
+        [shared, token](const ::httplib::Request &req, ::httplib::Response &res) {
+            try {
+                if (shared->postRouting) {
+                    shared->postRouting(req, res); // before Inertia's step: finalize stays last
+                }
+                const auto *state = res.user_data.get<RequestState>(stateKey());
+                if (state == nullptr) {
+                    return; // rejected before routing (malformed request): nothing to add
+                }
+                const auto &slot = *state->slot;
+                if (slot.opened) {
+                    if (slot.announce) {
+                        addSetCookie(res, shared->sessions->cookieHeader(slot.id, state->secure));
+                    }
+                    if (shared->csrf.enabled) {
+                        attachCsrfCookie(shared->csrf, req, *state, res);
+                    }
+                }
+                finalizeResponse(*state->inertia,
+                                 HttplibRequest{req, shared->trustForwardedHeaders}, res);
+            } catch (const std::exception &error) {
+                logError(*shared, std::string{"post-routing failed: "} + error.what());
             }
-            if (state->newSession) {
-                addSetCookie(res, shared->sessions->cookieHeader(state->sessionId, state->secure));
-            }
-            if (shared->csrf.enabled) {
-                attachCsrfCookie(shared->csrf, req, *state, res);
-            }
-            finalizeResponse(*state->inertia, HttplibRequest{req, shared->trustForwardedHeaders},
-                             res);
-        } catch (const std::exception &error) {
-            logError(*shared, std::string{"post-routing failed: "} + error.what());
-        }
-    });
+        });
 }
 
 void render(const ::httplib::Request &req, ::httplib::Response &res, std::string component,
@@ -332,7 +360,7 @@ void render(const ::httplib::Request &req, ::httplib::Response &res, std::string
     Response answer;
     try {
         const HttplibRequest view{req, state.options->trustForwardedHeaders};
-        HttplibSession session{state.session};
+        HttplibSession session{ensureSession(state).data};
         state.inertia->render(
             view, session, std::move(component), std::move(props),
             [pending](Response response) { pending->answer(std::move(response)); }, opts);
@@ -355,7 +383,17 @@ void location(const ::httplib::Request &req, ::httplib::Response &res, std::stri
 }
 
 HttplibSession session(const ::httplib::Response &res) {
-    return HttplibSession{requireState(res).session};
+    return HttplibSession{ensureSession(requireState(res)).data};
+}
+
+void regenerateSession(const ::httplib::Response &res) {
+    const auto &state = requireState(res);
+    auto &slot = ensureSession(state);
+    auto rotated = state.options->sessions->rotate(slot.id);
+    slot.id = std::move(rotated.id);
+    slot.data = std::move(rotated.data);
+    slot.announce = true;
+    (void)HttplibSession{slot.data}.pull(kTokenKey); // a new session gets a new CSRF token
 }
 
 } // namespace inertia::httplib

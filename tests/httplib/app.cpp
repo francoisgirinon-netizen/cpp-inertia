@@ -81,7 +81,19 @@ App::App(inertia::httplib::Options options) {
     raw.Patch("/submit", submit);
     raw.Delete("/submit", submit);
     raw.Get("/empty", [](const Req &, Res &res) { res.status = 200; });
-    raw.Get("/ping", [](const Req &, Res &res) { text(res, "pong"); });
+    raw.Get("/ping", [](const Req &, Res &res) { text(res, "pong"); }); // never touches the session
+    // Touches the session, so it gets the session and XSRF cookies (like any rendered page).
+    raw.Get("/token", [](const Req &, Res &res) {
+        (void)inertia::httplib::session(res);
+        text(res, "token");
+    });
+    // Stores a value, then rotates the session id (what a login handler does).
+    raw.Get("/regenerate", [](const Req &, Res &res) {
+        auto session = inertia::httplib::session(res);
+        session.put("k", 7);
+        inertia::httplib::regenerateSession(res);
+        text(res, "rotated");
+    });
     raw.Get("/slow", [](const Req &, Res &res) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         text(res, "late");

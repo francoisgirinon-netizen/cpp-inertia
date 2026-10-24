@@ -30,11 +30,14 @@ class HttplibRequest final : public RequestView {
     explicit HttplibRequest(const ::httplib::Request &req, bool trustForwardedHeaders = false);
 
     [[nodiscard]] std::string_view method() const override;
-    // The request target exactly as received (path and raw query). A request that was not parsed
-    // off the wire (no raw target) falls back to its decoded path and re-encoded parameters.
+    // The request target exactly as received (path and raw query). An absolute-form target
+    // ("GET http://host/x") is reduced to its origin-relative part ("/x"); the asterisk form
+    // ("OPTIONS *") stays "*" and fullUrl() then is just scheme://host. A request that was not
+    // parsed off the wire (no raw target) falls back to its decoded path and re-encoded params.
     [[nodiscard]] std::string url() const override;
     [[nodiscard]] std::string fullUrl() const override;
-    // Several header lines of one name are joined with ", ".
+    // Several header lines of one name are joined with ", ". fullUrl() ignores a Host header that
+    // cannot be a URL authority (spaces, '/', '@', ...) and uses "localhost" instead.
     [[nodiscard]] std::optional<std::string> header(std::string_view name) const override;
 
     // True when a trusted X-Forwarded-Proto says https. The server itself speaks plain HTTP.
@@ -144,6 +147,8 @@ class HttplibSession final : public SessionStore {
 // calling thread and call `done` exactly once before returning; nothing throws. The call blocks
 // the request-handling thread (cpp-httplib is thread-per-connection) for up to the SSR timeout:
 // connection, read and write are each bounded by it, and so is the whole exchange.
+// `done` runs on the calling thread: an exception it throws is not caught here and propagates out
+// of get()/post() (the client's own failures never do), so `done` must not throw.
 // Only http:// URLs work (the adapter is built without TLS); https reports an error. Thread safe:
 // a fresh ::httplib::Client is created per call, so concurrent requests never share a socket.
 class HttplibHttpClient final : public HttpClient {
@@ -171,6 +176,20 @@ struct Options {
     bool trustForwardedHeaders = false;
     // Where sessions live; null creates a MemorySessionStore with default options.
     std::shared_ptr<MemorySessionStore> sessions = nullptr;
+    // Your own pre-routing and post-routing logic. cpp-httplib has a single slot for each, and
+    // install() occupies both, so NEVER call Server::set_pre_routing_handler or
+    // set_post_routing_handler yourself after install(): that silently switches off the version
+    // check, CSRF, session cookies and Vary finalization. Use these hooks instead.
+    //  - preRouting runs after Inertia's own pre-routing step and only when that step did not
+    //    answer (a 409 or 419 never reaches it). Return Handled to answer the request yourself;
+    //    the response is then finalized like any other.
+    //  - postRouting runs before Inertia's post-routing step, so Inertia's cookies and
+    //    Inertia::finalize (Vary) always see the final response.
+    // Exceptions thrown by a hook are logged; in preRouting they turn into a 500.
+    std::function<::httplib::Server::HandlerResponse(const ::httplib::Request &,
+                                                     ::httplib::Response &)>
+        preRouting = nullptr;
+    std::function<void(const ::httplib::Request &, ::httplib::Response &)> postRouting = nullptr;
     // Receives the adapter's error messages (a failed handler, a failed render); null writes them
     // to stderr. Called from request-handling threads.
     std::function<void(std::string_view)> logError = nullptr;
@@ -179,7 +198,10 @@ struct Options {
 // Wires an Inertia instance into a cpp-httplib server. Call once per server, before listen() and
 // after the instance is fully configured (shared props registered). Throws std::logic_error when
 // the server already has an installation, std::invalid_argument for a null instance. Replaces any
-// pre-routing and post-routing handler already set on the server.
+// pre-routing and post-routing handler already set on the server (pass them as Options::preRouting
+// / postRouting to keep them), and must be the last to set those two handlers: see Options.
+// Sessions are created lazily: a request whose handler never calls session() or render(), and that
+// needs no CSRF check, gets no session and no cookie.
 //  - pre-routing: opens the session (cookie `inertia_session`), then Inertia::handleVersion (a
 //    version mismatch answers 409 here), then, for every method but GET/HEAD/OPTIONS, the CSRF
 //    check: the header must equal the token kept in the session (constant-time comparison), else
@@ -203,7 +225,13 @@ void render(const ::httplib::Request &req, ::httplib::Response &res, std::string
 // Inertia requests, else a 302.
 void location(const ::httplib::Request &req, ::httplib::Response &res, std::string_view url);
 
-// The Inertia session of the request being handled (the one the session cookie names).
+// The Inertia session of the request being handled (the one the session cookie names). The first
+// call of a request starts the session when the client has none (or an unknown id).
 [[nodiscard]] HttplibSession session(const ::httplib::Response &res);
+
+// Gives the request's session a new random id (same data, old id dead) and a new CSRF token, and
+// emits the new cookies. Call it when privileges change, e.g. right after a successful login, so
+// that an id planted before the login (session fixation) is worthless.
+void regenerateSession(const ::httplib::Response &res);
 
 } // namespace inertia::httplib

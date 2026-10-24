@@ -59,7 +59,7 @@ TEST_CASE("concurrent requests of one session agree on a single CSRF token", "[h
     App app;
     // Establish the session first; every thread then presents the same session cookie.
     auto first = app.client();
-    const auto reply = first.get("/ping");
+    const auto reply = first.get("/token");
     const auto token = reply.cookieValue("XSRF-TOKEN");
     const auto sessionId = reply.cookieValue("inertia_session");
     REQUIRE_FALSE(token.empty());

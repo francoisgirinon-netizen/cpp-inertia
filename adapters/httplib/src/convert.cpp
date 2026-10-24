@@ -37,8 +37,23 @@ HttplibRequest::HttplibRequest(const ::httplib::Request &req, bool trustForwarde
 std::string_view HttplibRequest::method() const { return method_; }
 
 std::string HttplibRequest::url() const {
-    if (!req_->target.empty()) {
-        return req_->target;
+    const std::string_view target = req_->target;
+    if (target == "*") {
+        return "*";
+    }
+    if (headers::iequals(target.substr(0, 7), "http://") ||
+        headers::iequals(target.substr(0, 8), "https://")) {
+        // Absolute-form: keep only what follows the authority.
+        auto rest = target.substr(target.find("://") + 3);
+        const auto start = rest.find_first_of("/?#");
+        if (start == std::string_view::npos) {
+            return "/";
+        }
+        rest = rest.substr(start, rest.find('#', start) - start);
+        return rest.empty() ? "/" : (rest.front() == '?' ? "/" : "") + std::string{rest};
+    }
+    if (!target.empty()) {
+        return std::string{target};
     }
     std::string out = req_->path.empty() ? "/" : req_->path;
     char separator = '?';
@@ -82,9 +97,11 @@ std::string HttplibRequest::fullUrl() const {
         }
     }
     if (host.empty()) {
-        host = header("Host").value_or("localhost");
+        const auto sent = header("Host");
+        host = sent && isPlainAuthority(*sent) ? *sent : "localhost";
     }
-    return std::string{isSecure() ? "https://" : "http://"} + host + url();
+    const auto path = url();
+    return std::string{isSecure() ? "https://" : "http://"} + host + (path == "*" ? "" : path);
 }
 
 void toHttplib(const Response &from, ::httplib::Response &to) {

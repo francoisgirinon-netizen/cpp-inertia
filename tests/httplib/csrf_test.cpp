@@ -33,7 +33,7 @@ bool isHex(const std::string &text) {
 TEST_CASE("a GET sets an unpredictable XSRF-TOKEN cookie readable by scripts", "[httplib]") {
     App app;
     auto client = app.client();
-    const auto reply = client.get("/ping");
+    const auto reply = client.get("/token");
     const auto line = reply.setCookie("XSRF-TOKEN");
     REQUIRE_FALSE(line.empty());
     CHECK(line.find("HttpOnly") == std::string::npos);
@@ -49,8 +49,8 @@ TEST_CASE("tokens differ between sessions", "[httplib]") {
     App app;
     auto first = app.client();
     auto second = app.client();
-    const auto a = first.get("/ping").cookieValue("XSRF-TOKEN");
-    const auto b = second.get("/ping").cookieValue("XSRF-TOKEN");
+    const auto a = first.get("/token").cookieValue("XSRF-TOKEN");
+    const auto b = second.get("/token").cookieValue("XSRF-TOKEN");
     CHECK_FALSE(a.empty());
     CHECK(a != b);
 }
@@ -58,21 +58,21 @@ TEST_CASE("tokens differ between sessions", "[httplib]") {
 TEST_CASE("the cookie is not re-sent while the client already holds the token", "[httplib]") {
     App app;
     auto client = app.client();
-    CHECK_FALSE(client.get("/ping").setCookie("XSRF-TOKEN").empty());
-    CHECK(client.get("/ping").setCookie("XSRF-TOKEN").empty());
+    CHECK_FALSE(client.get("/token").setCookie("XSRF-TOKEN").empty());
+    CHECK(client.get("/token").setCookie("XSRF-TOKEN").empty());
 }
 
 TEST_CASE("a POST without the token header is rejected with 419", "[httplib]") {
     App app;
     auto client = app.client();
-    (void)client.get("/ping");
+    (void)client.get("/token");
     CHECK(client.send(post("/submit")).status == 419);
 }
 
 TEST_CASE("a POST with a wrong token is rejected with 419", "[httplib]") {
     App app;
     auto client = app.client();
-    const auto token = client.get("/ping").cookieValue("XSRF-TOKEN");
+    const auto token = client.get("/token").cookieValue("XSRF-TOKEN");
     REQUIRE_FALSE(token.empty());
     auto wrong = token;
     wrong.back() = wrong.back() == '0' ? '1' : '0';
@@ -84,7 +84,7 @@ TEST_CASE("a POST with a wrong token is rejected with 419", "[httplib]") {
 TEST_CASE("a POST with the matching token passes, for every mutating verb", "[httplib]") {
     App app;
     auto client = app.client();
-    const auto token = client.get("/ping").cookieValue("XSRF-TOKEN");
+    const auto token = client.get("/token").cookieValue("XSRF-TOKEN");
     REQUIRE_FALSE(token.empty());
     for (const char *verb : {"POST", "PUT", "PATCH", "DELETE"}) {
         const auto reply = client.send(post("/submit", token, verb));
@@ -104,8 +104,8 @@ TEST_CASE("a token from another session is rejected", "[httplib]") {
     App app;
     auto owner = app.client();
     auto other = app.client();
-    const auto stolen = owner.get("/ping").cookieValue("XSRF-TOKEN");
-    (void)other.get("/ping");
+    const auto stolen = owner.get("/token").cookieValue("XSRF-TOKEN");
+    (void)other.get("/token");
     CHECK(other.send(post("/submit", stolen)).status == 419);
 }
 
@@ -119,7 +119,7 @@ TEST_CASE("a first request that is a POST gets 419 plus a token that works on re
     CHECK(client.send(post("/submit", token)).status == 200);
 }
 
-TEST_CASE("a short-circuited 409 also carries the token cookie", "[httplib]") {
+TEST_CASE("a short-circuited 409 is finalized but starts no session", "[httplib]") {
     App app;
     auto client = app.client();
     Request req;
@@ -127,7 +127,8 @@ TEST_CASE("a short-circuited 409 also carries the token cookie", "[httplib]") {
     req.headers = {{"X-Inertia", "true"}, {"X-Inertia-Version", "stale"}};
     const auto reply = client.send(req);
     CHECK(reply.status == 409);
-    CHECK_FALSE(reply.cookieValue("XSRF-TOKEN").empty());
+    CHECK(reply.header("Vary").find("X-Inertia") != std::string::npos);
+    CHECK(reply.cookieValue("XSRF-TOKEN").empty());
 }
 
 TEST_CASE("exceptPaths skip the CSRF check", "[httplib]") {
@@ -153,7 +154,7 @@ TEST_CASE("CSRF can be disabled, and then no cookie is sent", "[httplib]") {
     options.csrf.enabled = false;
     App app{std::move(options)};
     auto client = app.client();
-    const auto reply = client.get("/ping");
+    const auto reply = client.get("/token");
     CHECK(reply.setCookie("XSRF-TOKEN").empty());
     CHECK(client.send(post("/submit")).status == 200);
 }
@@ -164,7 +165,7 @@ TEST_CASE("the cookie and header names are configurable", "[httplib]") {
     options.csrf.header = "X-My-Token";
     App app{std::move(options)};
     auto client = app.client();
-    const auto token = client.get("/ping").cookieValue("MY-TOKEN");
+    const auto token = client.get("/token").cookieValue("MY-TOKEN");
     REQUIRE_FALSE(token.empty());
     Request req = post("/submit");
     req.headers.emplace_back("X-My-Token", token);

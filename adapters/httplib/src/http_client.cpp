@@ -23,14 +23,17 @@ std::optional<SplitUrl> splitUrl(std::string_view url) {
     if (schemeEnd == std::string_view::npos || schemeEnd == 0) {
         return std::nullopt;
     }
-    const auto pathStart = url.find('/', schemeEnd + 3);
+    const auto pathStart = url.find_first_of("/?#", schemeEnd + 3);
     const auto origin = url.substr(0, pathStart);
-    if (origin.size() <= schemeEnd + 3 || origin.find(' ') != std::string_view::npos) {
-        return std::nullopt;
+    if (origin.size() <= schemeEnd + 3 || origin.find_first_of(" @") != std::string_view::npos) {
+        return std::nullopt; // no host, whitespace, or userinfo (which cpp-httplib would misparse)
     }
-    return SplitUrl{
-        .origin = std::string{origin},
-        .path = pathStart == std::string_view::npos ? "/" : std::string{url.substr(pathStart)}};
+    std::string path = "/";
+    if (pathStart != std::string_view::npos) {
+        auto rest = url.substr(pathStart, url.find('#', pathStart) - pathStart);
+        path = (rest.empty() || rest.front() == '?' ? "/" : "") + std::string{rest};
+    }
+    return SplitUrl{.origin = std::string{origin}, .path = std::move(path)};
 }
 
 HttpResult failure(std::string message) {

@@ -134,7 +134,8 @@ TEST_CASE("HttplibHttpClient reports a connection failure", "[httplib]") {
 
 TEST_CASE("HttplibHttpClient rejects a malformed URL without throwing", "[httplib]") {
     HttplibHttpClient client;
-    for (const char *url : {"not a url", "", "http://", "://x/y", "http://bad host/x"}) {
+    for (const char *url : {"not a url", "", "http://", "://x/y", "http://bad host/x",
+                            "http://user:pw@127.0.0.1/x"}) {
         const auto result = await([&](auto done) { client.get(url, 1s, std::move(done)); });
         CHECK(result.status == 0);
         CHECK(result.error.has_value());
@@ -179,4 +180,12 @@ TEST_CASE("HttplibHttpClient is usable from many threads at once", "[httplib]") 
         thread.join();
     }
     CHECK(ok == 60);
+}
+
+TEST_CASE("HttplibHttpClient accepts a URL whose authority is followed by a query", "[httplib]") {
+    HttplibHttpClient client;
+    const auto result = await([&](auto done) { client.get(base() + "?a=1", 5s, std::move(done)); });
+    // The server has no "/" route: reaching it (404) proves the URL was split correctly.
+    CHECK(result.status == 404);
+    CHECK_FALSE(result.error.has_value());
 }
