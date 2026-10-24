@@ -32,6 +32,9 @@ function(inertia_add_package_tests)
     if(TARGET inertia_drogon)
         list(APPEND _variants drogon "core,drogon")
     endif()
+    if(TARGET inertia_httplib)
+        list(APPEND _variants httplib "core,httplib")
+    endif()
     list(LENGTH _variants _count)
     math(EXPR _last "${_count} - 1")
     foreach(_i RANGE 0 ${_last} 2)
@@ -52,7 +55,7 @@ function(inertia_add_package_tests)
             FIXTURES_REQUIRED package_${_name}_built)
     endforeach()
 
-    # A package installed without the Drogon adapter must refuse COMPONENTS drogon, clearly.
+    # A package installed without an adapter must refuse its component, clearly.
     add_test(NAME package.core_only.install
              COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage_core}
                      --component inertia_core)
@@ -65,6 +68,14 @@ function(inertia_add_package_tests)
     set_tests_properties(package.core_only.refuses_drogon PROPERTIES
         FIXTURES_REQUIRED package_stage_core
         PASS_REGULAR_EXPRESSION "without the Drogon adapter")
+
+    add_test(NAME package.core_only.refuses_httplib
+             COMMAND ${CMAKE_COMMAND} -S ${_consumer_src}
+                     -B ${PROJECT_BINARY_DIR}/_package/consumer-refused-httplib ${_common_args}
+                     -DCMAKE_PREFIX_PATH=${_stage_core} -DCONSUMER_COMPONENTS=core,httplib)
+    set_tests_properties(package.core_only.refuses_httplib PROPERTIES
+        FIXTURES_REQUIRED package_stage_core
+        PASS_REGULAR_EXPRESSION "without the cpp-httplib adapter")
 
     # add_subdirectory consumption: tests, examples, install rules and -Werror stay off.
     set(_sub ${PROJECT_BINARY_DIR}/_package/consumer-subproject)
@@ -86,9 +97,14 @@ function(inertia_add_package_tests)
         package.subproject.configure package.subproject.build package.subproject.flags
         package.install package.core.configure package.core.build package.core.run
         package.core_only.install package.core_only.refuses_drogon
+        package.core_only.refuses_httplib
         PROPERTIES LABELS package)
     if(TARGET inertia_drogon)
         set_tests_properties(package.drogon.configure package.drogon.build package.drogon.run
+                             PROPERTIES LABELS package)
+    endif()
+    if(TARGET inertia_httplib)
+        set_tests_properties(package.httplib.configure package.httplib.build package.httplib.run
                              PROPERTIES LABELS package)
     endif()
 endfunction()

@@ -9,6 +9,9 @@ set(_inertia_installed core fake)
 if(TARGET inertia_drogon)
     list(APPEND _inertia_installed drogon)
 endif()
+if(TARGET inertia_httplib)
+    list(APPEND _inertia_installed httplib)
+endif()
 
 foreach(_component IN LISTS _inertia_installed)
     install(TARGETS inertia_${_component}
