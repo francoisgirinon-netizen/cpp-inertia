@@ -32,7 +32,8 @@
         "vcpkg"
       ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "INERTIA_BUILD_BENCHMARKS": "ON"
       }
     },
     {
@@ -78,6 +79,23 @@
       }
     },
     {
+      "name": "bench",
+      "description": "Release build of the benchmarks only: core and fake adapter, no tests, no frameworks (see benchmarks/)",
+      "inherits": [
+        "base",
+        "vcpkg"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "INERTIA_BUILD_BENCHMARKS": "ON",
+        "INERTIA_BUILD_TESTS": "OFF",
+        "INERTIA_BUILD_DROGON": "OFF",
+        "INERTIA_BUILD_HTTPLIB": "OFF",
+        "INERTIA_INSTALL": "OFF",
+        "VCPKG_MANIFEST_NO_DEFAULT_FEATURES": "ON"
+      }
+    },
+    {
       "name": "coverage",
       "description": "Clang source-based line coverage (see tools/coverage-report.sh)",
       "inherits": [
@@ -119,6 +137,10 @@
     {
       "name": "tsan",
       "configurePreset": "tsan"
+    },
+    {
+      "name": "bench",
+      "configurePreset": "bench"
     },
     {
       "name": "coverage",
