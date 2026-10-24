@@ -57,3 +57,7 @@ install(FILES ${PROJECT_BINARY_DIR}/inertiaConfig.cmake
               ${PROJECT_BINARY_DIR}/inertiaConfigVersion.cmake
         DESTINATION ${INERTIA_INSTALL_CMAKEDIR}
         COMPONENT inertia_core)
+
+install(FILES ${PROJECT_SOURCE_DIR}/LICENSE ${PROJECT_SOURCE_DIR}/README.md
+        DESTINATION ${CMAKE_INSTALL_DOCDIR}
+        COMPONENT inertia_core)

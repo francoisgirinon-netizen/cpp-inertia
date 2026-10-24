@@ -58,6 +58,7 @@ endif()
 
 if(INERTIA_INSTALL)
     include(InertiaInstall)
+    include(InertiaPackaging)
 endif()
 
 if(INERTIA_BUILD_EXAMPLES)
