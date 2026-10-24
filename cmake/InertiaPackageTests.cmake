@@ -35,6 +35,9 @@ function(inertia_add_package_tests)
     if(TARGET inertia_httplib)
         list(APPEND _variants httplib "core,httplib")
     endif()
+    if(TARGET inertia_conformance)
+        list(APPEND _variants custom "core,conformance")
+    endif()
     list(LENGTH _variants _count)
     math(EXPR _last "${_count} - 1")
     foreach(_i RANGE 0 ${_last} 2)
@@ -76,6 +79,26 @@ function(inertia_add_package_tests)
     set_tests_properties(package.core_only.refuses_httplib PROPERTIES
         FIXTURES_REQUIRED package_stage_core
         PASS_REGULAR_EXPRESSION "without the cpp-httplib adapter")
+
+    if(TARGET inertia_conformance)
+        # The kit must really run: a consumer that compiled none of the scenarios would pass.
+        add_test(NAME package.custom.runs_scenarios
+                 COMMAND ${PROJECT_BINARY_DIR}/_package/consumer-custom/consumer --list-tests)
+        set_tests_properties(package.custom.runs_scenarios PROPERTIES
+            FIXTURES_REQUIRED package_custom_built
+            PASS_REGULAR_EXPRESSION "[1-9][0-9]* test cases")
+        add_test(NAME package.core_only.refuses_conformance
+                 COMMAND ${CMAKE_COMMAND} -S ${_consumer_src}
+                         -B ${PROJECT_BINARY_DIR}/_package/consumer-refused-conformance
+                         ${_common_args} -DCMAKE_PREFIX_PATH=${_stage_core}
+                         -DCONSUMER_COMPONENTS=core,conformance)
+        set_tests_properties(package.core_only.refuses_conformance PROPERTIES
+            FIXTURES_REQUIRED package_stage_core
+            PASS_REGULAR_EXPRESSION "without the conformance kit")
+        set_tests_properties(package.custom.configure package.custom.build package.custom.run
+                             package.custom.runs_scenarios package.core_only.refuses_conformance
+                             PROPERTIES LABELS package)
+    endif()
 
     # add_subdirectory consumption: tests, examples, install rules and -Werror stay off.
     set(_sub ${PROJECT_BINARY_DIR}/_package/consumer-subproject)
