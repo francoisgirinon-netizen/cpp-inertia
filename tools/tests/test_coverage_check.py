@@ -197,6 +197,20 @@ class CoverageCheckTest(unittest.TestCase):
         result = self.run_markdown(self.dir / "missing.toml")
         self.assertEqual(result.returncode, 1)
 
+    def test_readme_coverage_table_is_up_to_date(self):
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        start, end = "<!-- coverage:start -->", "<!-- coverage:end -->"
+        self.assertIn(start, readme)
+        self.assertIn(end, readme)
+        section = readme.split(start, 1)[1].split(end, 1)[0].strip()
+        generated = self.run_markdown(REPO / "docs" / "protocol-coverage.toml").stdout.strip()
+        self.assertEqual(
+            section,
+            generated,
+            "README coverage table is stale: python3 tools/coverage_check.py "
+            "--matrix docs/protocol-coverage.toml --markdown",
+        )
+
     def test_repository_matrix_is_consistent(self):
         matrix = REPO / "docs" / "protocol-coverage.toml"
         with open(matrix, "rb") as handle:
