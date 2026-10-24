@@ -54,6 +54,50 @@ class CheckInertiaVersionTest(unittest.TestCase):
         self.run_tool(fetch)
         self.assertEqual(seen, ["https://registry.npmjs.org/@inertiajs/react/latest"])
 
+    def test_numeric_components_compare_as_integers(self):
+        self.matrix.write_text('inertia_react_version = "3.9.9"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.9.10"))
+        self.assertEqual(code, 1)
+        self.assertIn("new @inertiajs/react 3.9.10 available", output)
+
+    def test_pinned_ahead_of_latest_exits_0_with_distinct_message(self):
+        self.matrix.write_text('inertia_react_version = "3.10.0"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.9.10"))
+        self.assertEqual(code, 0)
+        self.assertIn(
+            "@inertiajs/react pinned 3.10.0 is ahead of the latest published 3.9.10", output
+        )
+        self.assertNotIn("new @inertiajs/react", output)
+
+    def test_prerelease_latest_is_older_than_pinned_release(self):
+        self.matrix.write_text('inertia_react_version = "3.10.0"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.10.0-rc.1"))
+        self.assertEqual(code, 0)
+        self.assertIn("is ahead of the latest published 3.10.0-rc.1", output)
+
+    def test_stable_latest_is_newer_than_pinned_prerelease(self):
+        self.matrix.write_text('inertia_react_version = "3.9.1-beta.1"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.9.1"))
+        self.assertEqual(code, 1)
+        self.assertIn("new @inertiajs/react 3.9.1 available", output)
+
+    def test_different_prereleases_of_same_core_are_flagged_conservatively(self):
+        self.matrix.write_text('inertia_react_version = "3.10.0-rc.1"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.10.0-rc.2"))
+        self.assertEqual(code, 1)
+        self.assertIn("new @inertiajs/react 3.10.0-rc.2 available", output)
+
+    def test_unparseable_latest_version_exits_2(self):
+        code, output = self.run_tool(lambda url: registry_reply("latest-ish"))
+        self.assertEqual(code, 2)
+        self.assertIn("unparseable version", output)
+
+    def test_unparseable_pinned_version_exits_2(self):
+        self.matrix.write_text('inertia_react_version = "three"\n', encoding="utf-8")
+        code, output = self.run_tool(lambda url: registry_reply("3.9.1"))
+        self.assertEqual(code, 2)
+        self.assertIn("unparseable version", output)
+
     def test_network_failure_exits_2(self):
         def fetch(url):
             raise OSError("no network")
