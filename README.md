@@ -252,6 +252,51 @@ config.ssr.enabled = true;            // url "http://127.0.0.1:13714", timeout 1
 
 If the SSR server fails or times out, the page falls back to client-side rendering.
 
+## Packaging
+
+```sh
+scripts/dev sh -c 'cmake --workflow --preset package'
+```
+
+The `package` workflow configures the `release` preset, builds it, runs its tests, then runs CPack twice (the `tgz` and `deb` package presets). The packages land in `build/release`:
+
+- `inertia-<version>-<system>-<arch>.tar.gz`: one archive with every built component, under a top directory of the same name. Unpack it anywhere and point `CMAKE_PREFIX_PATH` at that directory.
+- one `.deb` per component (`libinertia-<component>-dev_<version>-1_<arch>.deb`, section `libdevel`). Every package but the core one depends on exactly the same version of `libinertia-core-dev`, and the core one on `nlohmann-json3-dev`. The libraries are static, so there are no shared-library dependencies. Drogon, cpp-httplib and Catch2 have no stable Debian package names, so the adapter and conformance packages do not declare them: provide them yourself (vcpkg or a source build). The files install under `/usr`, and `find_package(inertia)` finds them there.
+
+| Component (CPack) | Debian package | Contents |
+| --- | --- | --- |
+| `inertia_core` | `libinertia-core-dev` | headers, `libinertia_core.a`, the CMake package files, `LICENSE` and `README.md` under `share/doc/inertia` |
+| `inertia_fake` | `libinertia-fake-dev` | the in-memory fake adapter |
+| `inertia_drogon` | `libinertia-drogon-dev` | the Drogon adapter (built unless `INERTIA_BUILD_DROGON=OFF`) |
+| `inertia_httplib` | `libinertia-httplib-dev` | the cpp-httplib adapter (built unless `INERTIA_BUILD_HTTPLIB=OFF`) |
+| `inertia_conformance` | `libinertia-conformance-dev` | the conformance kit: headers, scenario sources and the `inertia_add_conformance_test` helper |
+
+Only the components of the configured build are packaged, so a core-only build yields the core and fake packages. Set `SOURCE_DATE_EPOCH` before running CPack to get packages with stable timestamps. The `package.cpack.*` tests (label `package`) build a consumer against the extracted TGZ, in C++17 and C++20, and check the control fields of the `.deb` files with `dpkg-deb`; the `.deb` files are never installed.
+
+### Personal presets
+
+`CMakeUserPresets.json` is gitignored: use it for settings that belong to your machine. For example, a preset that inherits `dev`, runs include-what-you-use and uses another vcpkg checkout:
+
+```json
+{
+  "version": 10,
+  "configurePresets": [
+    {
+      "name": "dev-iwyu",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/dev-iwyu",
+      "toolchainFile": "/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "INERTIA_IWYU": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev-iwyu", "configurePreset": "dev-iwyu" }
+  ]
+}
+```
+
 ## Architecture
 
 Ports and adapters.
