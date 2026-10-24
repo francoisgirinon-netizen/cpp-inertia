@@ -2,7 +2,15 @@
 
 #include "test_server.hpp"
 
+#include <inertia/drogon/drogon.hpp>
+
+#include <stdexcept>
+
 using inertia::drogon_test::Client;
+
+TEST_CASE("DrogonSession rejects a null session with a clear error", "[drogon]") {
+    CHECK_THROWS_AS(inertia::drogon::DrogonSession{nullptr}, std::invalid_argument);
+}
 
 TEST_CASE("DrogonSession put then get then pull", "[drogon]") {
     Client client;

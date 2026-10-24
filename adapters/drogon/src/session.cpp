@@ -2,6 +2,7 @@
 
 #include <any>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -21,7 +22,12 @@ std::optional<Json> parse(const std::string &text) {
 
 } // namespace
 
-DrogonSession::DrogonSession(::drogon::SessionPtr session) : session_(std::move(session)) {}
+DrogonSession::DrogonSession(::drogon::SessionPtr session) : session_(std::move(session)) {
+    if (!session_) {
+        throw std::invalid_argument(
+            "DrogonSession needs a session: req->session() is null, call app().enableSession()");
+    }
+}
 
 std::optional<Json> DrogonSession::get(std::string_view key) const {
     const auto text = session_->getOptional<std::string>(std::string{key});

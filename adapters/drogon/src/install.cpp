@@ -36,10 +36,13 @@ std::shared_ptr<const Inertia> requireInstalled() {
     return instance;
 }
 
-::drogon::HttpResponsePtr serverError() {
+constexpr std::string_view kSessionsDisabled =
+    "inertia: sessions are disabled: call app().enableSession() before app().run()";
+
+::drogon::HttpResponsePtr serverError(std::string_view message = "Internal Server Error") {
     auto res = ::drogon::HttpResponse::newHttpResponse();
     res->setStatusCode(::drogon::k500InternalServerError);
-    res->setBody("Internal Server Error");
+    res->setBody(std::string{message});
     return res;
 }
 
@@ -166,7 +169,14 @@ void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &re
 } // namespace
 
 void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
-    installed().store(inertia);
+    if (!inertia) {
+        throw std::invalid_argument("inertia::drogon::install() needs an Inertia instance");
+    }
+    std::shared_ptr<const Inertia> none;
+    if (!installed().compare_exchange_strong(none, inertia)) {
+        throw std::logic_error("inertia::drogon::install() was already called: the adapter can be "
+                               "installed only once per process");
+    }
     auto &app = ::drogon::app();
     const auto options = std::make_shared<const CsrfOptions>(std::move(csrf));
 
@@ -187,7 +197,15 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
             ::drogon::HttpResponsePtr early;
             try {
                 const DrogonRequest view{req};
-                if (auto versionMismatch = inertia->handleVersion(view)) {
+                if (!req->session()) {
+                    // Drogon exposes no way to ask whether sessions are enabled, so a request
+                    // without one is the earliest sign. Say so plainly instead of a 419.
+                    static std::atomic<bool> reported{false};
+                    if (!reported.exchange(true)) {
+                        LOG_ERROR << kSessionsDisabled;
+                    }
+                    early = serverError(kSessionsDisabled);
+                } else if (auto versionMismatch = inertia->handleVersion(view)) {
                     early = toDrogon(*versionMismatch);
                 } else if (options->enabled && !isSafeMethod(view.method()) &&
                            !isExempt(*options, req->path()) && !csrfMatches(*options, req)) {

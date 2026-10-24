@@ -39,6 +39,7 @@ class DrogonRequest final : public RequestView {
 // own lock, so a store is safe to use while other requests of the same session run.
 class DrogonSession final : public SessionStore {
   public:
+    // Throws std::invalid_argument for a null session (sessions not enabled).
     explicit DrogonSession(::drogon::SessionPtr session);
 
     [[nodiscard]] std::optional<Json> get(std::string_view key) const override;
@@ -86,7 +87,9 @@ struct CsrfOptions {
 };
 
 // Wires an Inertia instance into the application; call once, after app().enableSession() and
-// before app().run().
+// before app().run(). A second call throws std::logic_error. Drogon cannot report whether
+// sessions are enabled, so a request that arrives without one is answered with a 500 that says
+// to call app().enableSession() (instead of a confusing 419).
 //  - pre-handling advice: Inertia::handleVersion (a version mismatch answers 409 here), then, for
 //    every method but GET/HEAD/OPTIONS, the CSRF check: the header must equal the token kept in
 //    the session (constant-time comparison), else the answer is 419 ("page expired");
