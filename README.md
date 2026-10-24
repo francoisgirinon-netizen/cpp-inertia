@@ -370,6 +370,17 @@ scripts/dev tools/coverage-report.sh              # merge, print the llvm-cov su
 
 The report is `build/coverage/html/index.html`. It covers `include/inertia`, `src` and `adapters/*`; vcpkg, system headers, tests and build output are ignored. The script fails when the total line coverage drops below `INERTIA_COVERAGE_MIN_LINES` (default set at the top of `tools/coverage-report.sh`, the single place to raise it; override per run with `scripts/dev env INERTIA_COVERAGE_MIN_LINES=99 tools/coverage-report.sh`). `llvm-cov` and `llvm-profdata` come from the `conda:llvm-tools` mise pin, at the same version as clang.
 
+## API documentation
+
+The API reference is built with Doxygen from the public headers (`include/inertia`, excluding `detail`, and the adapter headers). It is off by default and not part of `all`:
+
+```sh
+scripts/dev cmake --preset dev -DINERTIA_BUILD_DOCS=ON   # configure with the docs target
+scripts/dev cmake --build --preset dev --target docs     # writes build/dev/docs/html/index.html
+```
+
+Every documented entity must be complete: Doxygen warnings (undocumented members, missing `@param`) fail the `docs` target.
+
 ## Compiler cache
 
 Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CMAKE_C_COMPILER_LAUNCHER` and `CMAKE_CXX_COMPILER_LAUNCHER` in the base configure preset, sccache pinned in `mise.toml`). Locally the cache lives in the `sccache-cache` Docker volume (`SCCACHE_DIR`, 10G): a rebuild of a wiped `build/dev` is served from it. Print the hit rate with `scripts/dev sh -c 'cmake --build --preset dev && sccache --show-stats'` (the stats belong to the container's own server). In CI the GitHub Actions cache backend is used (`SCCACHE_GHA_ENABLED`). To reset the local cache: `docker volume rm cpp-inertia_sccache-cache`.
