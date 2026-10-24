@@ -352,6 +352,8 @@ Every preset has configure, build, test and workflow presets of the same name, s
   python3 tools/host-compile-commands.py
   ```
   Without the database the hook fails and says so; it never skips silently. The hook is configured with `--all-lines` (every diagnostic of a staged file, not only those on changed lines). To lint the whole tree (every tracked `.cpp` except the out-of-tree `tests/package`), run `pre-commit run clang-tidy --all-files`; it takes a few minutes and must report nothing. `.clang-tidy` limits diagnostics to the project's own headers (`include/inertia`, `src`, `adapters`, `tests`, `examples`), so vcpkg and system headers stay quiet. `ExcludeHeaderFilterRegex` keeps the build trees (`build`, `vcpkg_installed`, `.cache`) out, wherever the clone lives.
+- **hadolint** (v2.15.1, the ready-made `hadolint-docker` hook, image pinned to the same tag) lints `docker/Dockerfile`. It runs in Docker.
+- **dclint** (`zavoloklom/dclint:3.1.0`, a local hook because the upstream project ships no pre-commit hook) lints `compose.yaml`. It runs in Docker.
 - The tree contains no inline clang-tidy suppression comment: a finding is fixed in the code, not silenced.
 - A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
