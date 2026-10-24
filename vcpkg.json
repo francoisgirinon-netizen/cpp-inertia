@@ -5,11 +5,20 @@
   "description": "Inertia.js v3 server protocol implementation for C++20",
   "builtin-baseline": "65a2c2391af39b773f83f91e0ab6c8ced8f9c727",
   "dependencies": ["nlohmann-json", "catch2"],
-  "default-features": ["drogon"],
+  "default-features": ["drogon", "httplib"],
   "features": {
     "drogon": {
       "description": "Drogon adapter, example app and adapter tests",
       "dependencies": ["drogon"]
+    },
+    "httplib": {
+      "description": "cpp-httplib adapter and its tests",
+      "dependencies": [
+        {
+          "name": "cpp-httplib",
+          "default-features": false
+        }
+      ]
     }
   }
 }
