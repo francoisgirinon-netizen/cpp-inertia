@@ -343,6 +343,8 @@ Every preset has configure, build, test and workflow presets of the same name, s
 | `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering. Build the example and `bun run build` in `examples/react-app/frontend` first. |
 | `python3 -m unittest discover -s tools/tests` | The Python tools (`coverage_check.py`, `check-inertia-version.py`, README table). Also run by CTest as `tools_unit_tests`. |
 
+Run `pre-commit install` once after cloning: it installs both the pre-commit and the commit-msg hook.
+
 `pre-commit run --all-files` runs the commit hooks:
 
 - **clang-format** (v23.1.3, the ready-made `pre-commit/mirrors-clang-format` hook) formats the C/C++ files. It runs on the host: no build, no Docker.
@@ -356,6 +358,35 @@ Every preset has configure, build, test and workflow presets of the same name, s
 - **dclint** (`zavoloklom/dclint:3.1.0`, a local hook because the upstream project ships no pre-commit hook) lints `compose.yaml`. It runs in Docker.
 - The tree contains no inline clang-tidy suppression comment: a finding is fixed in the code, not silenced.
 - A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
+
+## Coverage
+
+Line coverage uses clang source-based instrumentation (`-fprofile-instr-generate -fcoverage-mapping`):
+
+```sh
+scripts/dev cmake --workflow --preset coverage   # configure, build, test; profiles land in build/coverage/profiles
+scripts/dev tools/coverage-report.sh              # merge, print the llvm-cov summary, write the HTML report
+```
+
+The report is `build/coverage/html/index.html`. It covers `include/inertia`, `src` and `adapters/*`; vcpkg, system headers, tests and build output are ignored. The script fails when the total line coverage drops below `INERTIA_COVERAGE_MIN_LINES` (default set at the top of `tools/coverage-report.sh`, the single place to raise it; override per run with `scripts/dev env INERTIA_COVERAGE_MIN_LINES=99 tools/coverage-report.sh`). `llvm-cov` and `llvm-profdata` come from the `conda:llvm-tools` mise pin, at the same version as clang.
+
+## Compiler cache
+
+Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CMAKE_C_COMPILER_LAUNCHER` and `CMAKE_CXX_COMPILER_LAUNCHER` in the base configure preset, sccache pinned in `mise.toml`). Locally the cache lives in the `sccache-cache` Docker volume (`SCCACHE_DIR`, 10G): a rebuild of a wiped `build/dev` is served from it. Print the hit rate with `scripts/dev sh -c 'cmake --build --preset dev && sccache --show-stats'` (the stats belong to the container's own server). In CI the GitHub Actions cache backend is used (`SCCACHE_GHA_ENABLED`). To reset the local cache: `docker volume rm cpp-inertia_sccache-cache`.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on pushes to `main` and `feat/**` and on pull requests; a newer run on the same ref cancels the older one. Each job builds the dev image with a BuildKit cache and runs the same `scripts/dev` commands as above, with the vcpkg binary cache persisted by `actions/cache`:
+
+| Job | What it runs |
+| --- | --- |
+| `test` | `cmake --workflow --preset dev` |
+| `asan` | `cmake --workflow --preset asan` |
+| `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 95% lines). The HTML report is the `coverage-html` artifact of the run. |
+| `lint` | configures `build/dev` (examples on), then `pre-commit run --all-files` (clang-format, clang-tidy, actionlint) |
+| `commits` | every commit message of the push or pull request range against Conventional Commits |
+
+Third-party actions are pinned to a full commit SHA.
 
 ## Known limitations
 
