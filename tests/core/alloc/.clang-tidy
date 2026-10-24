@@ -1,0 +1,8 @@
+# alloc_test.cpp replaces the global allocation functions to count allocations: it is itself the
+# allocator, so it calls malloc and free, returns raw owning pointers and keeps per-thread
+# counters. The rest of the configuration applies.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-no-malloc,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-avoid-non-const-global-variables
