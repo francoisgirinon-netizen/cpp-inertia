@@ -1,0 +1,8 @@
+# These sources are installed and compiled by consumers as C++17, so suggestions to use C++20
+# features do not apply here. C++17 validity is proven by headers_cxx17 and the package *17
+# consumers.
+InheritParentConfig: true
+Checks: >
+  -modernize-use-ranges,
+  -modernize-use-designated-initializers,
+  -modernize-use-starts-ends-with

@@ -83,7 +83,7 @@ TestResponse send(const TestRequest &req) {
     auto &w = world();
     if (req.method == "POST" && req.url == "/__reset") {
         w.session = CustomSession{};
-        return {.status = 204, .headers = {}, .body = {}};
+        return {204, {}, {}};
     }
 
     const CustomRequest request{req};
@@ -93,9 +93,10 @@ TestResponse send(const TestRequest &req) {
         res = std::move(*early);
     } else {
         const std::string_view path = std::string_view{req.url}.substr(0, req.url.find('?'));
-        const auto route = std::ranges::find_if(w.routes, [&](const Route &candidate) {
-            return candidate.method == req.method && candidate.path == path;
-        });
+        const auto route =
+            std::find_if(w.routes.begin(), w.routes.end(), [&](const Route &candidate) {
+                return candidate.method == req.method && candidate.path == path;
+            });
         if (route == w.routes.end()) {
             res.status = 404;
         } else {
@@ -110,7 +111,7 @@ TestResponse send(const TestRequest &req) {
         }
     }
     w.app.finalize(request, res);
-    return {.status = res.status, .headers = std::move(res.headers), .body = std::move(res.body)};
+    return {res.status, std::move(res.headers), std::move(res.body)};
 }
 
 } // namespace inertia::conformance

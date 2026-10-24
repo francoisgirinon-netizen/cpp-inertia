@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -24,10 +23,7 @@ namespace {
 using Headers = std::vector<std::pair<std::string, std::string>>;
 
 TestRequest plainRequest(std::string url, std::string method = "GET", Headers headers = {}) {
-    return {.method = std::move(method),
-            .url = std::move(url),
-            .headers = std::move(headers),
-            .body = {}};
+    return {std::move(method), std::move(url), std::move(headers), {}};
 }
 
 void reset() {
@@ -40,7 +36,9 @@ TestRequest inertiaRequest(std::string url, Headers extra = {}, std::string meth
                             {{"X-Inertia", "true"}, {"X-Inertia-Version", "v1"}});
     for (auto &header : extra) {
         // An extra header replaces the default of the same name.
-        std::erase_if(req.headers, [&](const auto &h) { return h.first == header.first; });
+        req.headers.erase(std::remove_if(req.headers.begin(), req.headers.end(),
+                                         [&](const auto &h) { return h.first == header.first; }),
+                          req.headers.end());
         req.headers.push_back(std::move(header));
     }
     return req;
@@ -82,7 +80,7 @@ std::vector<std::string> list(const Json &page, const char *key) {
             out.push_back(item.get<std::string>());
         }
     }
-    std::ranges::sort(out);
+    std::sort(out.begin(), out.end());
     return out;
 }
 
@@ -90,6 +88,15 @@ using Strings = std::vector<std::string>;
 
 bool contains(const std::string &haystack, const std::string &needle) {
     return haystack.find(needle) != std::string::npos;
+}
+
+// std::string::starts_with / ends_with are C++20; the kit builds as C++17.
+bool startsWith(std::string_view text, std::string_view prefix) {
+    return text.substr(0, prefix.size()) == prefix;
+}
+
+bool endsWith(std::string_view text, std::string_view suffix) {
+    return text.size() >= suffix.size() && text.substr(text.size() - suffix.size()) == suffix;
 }
 
 // The page object embedded in the first-visit HTML's data-page script element.
@@ -113,7 +120,7 @@ TEST_CASE("an Inertia request gets the page as JSON", "[conformance][protocol:js
     const auto res = send(inertiaRequest("/page"));
     REQUIRE(res.status == 200);
     REQUIRE(res.header("X-Inertia") == "true");
-    REQUIRE(res.header("Content-Type").value_or("").starts_with("application/json"));
+    REQUIRE(startsWith(res.header("Content-Type").value_or(""), "application/json"));
     REQUIRE(res.json()["component"] == "Page");
 }
 
@@ -121,7 +128,7 @@ TEST_CASE("a first visit gets HTML with the page script element",
           "[conformance][protocol:html.script-element]") {
     const auto res = send(plainRequest("/page"));
     REQUIRE(res.status == 200);
-    REQUIRE(res.header("Content-Type").value_or("").starts_with("text/html"));
+    REQUIRE(startsWith(res.header("Content-Type").value_or(""), "text/html"));
     REQUIRE_FALSE(res.header("X-Inertia").has_value());
     REQUIRE(contains(res.body, R"(<script data-page="app" type="application/json">)"));
     REQUIRE(contains(res.body, R"(</script><div id="app"></div>)"));
@@ -335,7 +342,7 @@ TEST_CASE("deepMerge lists the prop in deepMergeProps", "[conformance][protocol:
 TEST_CASE("nested append paths are listed with their full path",
           "[conformance][protocol:merge.nested-paths]") {
     const auto mergeList = list(visit("/merge"), "mergeProps");
-    REQUIRE(std::ranges::find(mergeList, "n.data") != mergeList.end());
+    REQUIRE(std::find(mergeList.begin(), mergeList.end(), "n.data") != mergeList.end());
 }
 
 TEST_CASE("matchOn keys are listed in matchPropsOn", "[conformance][protocol:merge.match-on]") {
@@ -361,7 +368,7 @@ TEST_CASE("a deferred merge prop emits merge metadata while deferred",
     REQUIRE(meta(page, "deferredProps") == R"({"default":["dm"]})");
     REQUIRE_FALSE(page["props"].contains("dm"));
     const auto mergeList = list(page, "mergeProps");
-    REQUIRE(std::ranges::find(mergeList, "dm") != mergeList.end());
+    REQUIRE(std::find(mergeList.begin(), mergeList.end(), "dm") != mergeList.end());
 }
 
 // -- Once props ----------------------------------------------------------------------------------
@@ -465,7 +472,7 @@ TEST_CASE("a stale version on an Inertia GET gets 409 with the location to reloa
           "[conformance][protocol:version.mismatch]") {
     const auto res = send(inertiaRequest("/page?b=1", {{"X-Inertia-Version", "old"}}));
     REQUIRE(res.status == 409);
-    REQUIRE(res.header("X-Inertia-Location").value_or("").ends_with("/page?b=1"));
+    REQUIRE(endsWith(res.header("X-Inertia-Location").value_or(""), "/page?b=1"));
     REQUIRE(res.header("X-Inertia-Version") == "v1");
     REQUIRE_FALSE(res.header("X-Inertia").has_value());
     REQUIRE(res.body.empty());

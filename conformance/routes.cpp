@@ -39,10 +39,10 @@ respond(std::function<Response(const RequestView &, SessionStore &, const Inerti
 Prop scrolled() {
     return scroll([] { return Json{{"data", Json::array({1, 2})}}; },
                   [] {
-                      return ScrollMetadata{.pageName = "page",
-                                            .previousPage = nullptr,
-                                            .nextPage = 2,
-                                            .currentPage = 1};
+                      ScrollMetadata metadata;
+                      metadata.nextPage = 2;
+                      metadata.currentPage = 1;
+                      return metadata;
                   });
 }
 
