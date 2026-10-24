@@ -7,14 +7,14 @@ target_link_libraries(inertia_drogon_test_support PUBLIC inertia::drogon Catch2:
 
 add_executable(inertia_drogon_tests)
 target_sources(inertia_drogon_tests PRIVATE
-    app.cpp
-    concurrent_test.cpp
     convert_test.cpp
-    csrf_test.cpp
+    session_test.cpp
     http_client_test.cpp
     render_test.cpp
-    session_test.cpp
-    $<TARGET_OBJECTS:inertia_drogon_test_support>)
+    csrf_test.cpp
+    concurrent_test.cpp
+    $<TARGET_OBJECTS:inertia_drogon_test_support>
+    app.cpp)
 target_link_libraries(inertia_drogon_tests PRIVATE inertia_drogon_test_support
                                                    Catch2::Catch2WithMain inertia_warnings)
 catch_discover_tests(inertia_drogon_tests PROPERTIES LABELS drogon)
