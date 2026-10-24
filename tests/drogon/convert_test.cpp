@@ -112,6 +112,53 @@ TEST_CASE("toDrogon keeps statuses unknown to Drogon", "[drogon]") {
     CHECK(back.status == 419);
 }
 
+TEST_CASE("toDrogon keeps duplicate headers: list headers are comma-joined", "[drogon]") {
+    inertia::Response res;
+    res.headers.emplace_back("Vary", "X-Inertia");
+    res.headers.emplace_back("Content-Type", "text/html");
+    res.headers.emplace_back("vary", "Accept-Encoding");
+    res.headers.emplace_back("Link", "</a>; rel=preload");
+    res.headers.emplace_back("Link", "</b>; rel=preload");
+    const auto back = inertia::drogon::fromDrogon(inertia::drogon::toDrogon(res));
+    CHECK(back.header("Vary") == "X-Inertia, Accept-Encoding");
+    CHECK(back.header("Link") == "</a>; rel=preload, </b>; rel=preload");
+}
+
+TEST_CASE("toDrogon keeps every Set-Cookie", "[drogon]") {
+    inertia::Response res;
+    res.headers.emplace_back("Set-Cookie", "a=1; Path=/");
+    res.headers.emplace_back("Set-Cookie", "b=2; Path=/");
+    const auto converted = inertia::drogon::toDrogon(res);
+    CHECK(converted->getCookie("a").value() == "1");
+    CHECK(converted->getCookie("b").value() == "2");
+}
+
+TEST_CASE("toDrogon keeps every Set-Cookie attribute", "[drogon]") {
+    inertia::Response res;
+    res.headers.emplace_back("Set-Cookie",
+                             "sid=xyz; Expires=Wed, 21 Oct 2026 07:28:00 GMT; Max-Age=3600; "
+                             "Domain=example.com; Path=/app; Secure; HttpOnly; SameSite=Strict");
+    const auto converted = inertia::drogon::toDrogon(res);
+    const auto cookie = converted->getCookie("sid");
+    CHECK(cookie.value() == "xyz");
+    CHECK(cookie.getMaxAge() == 3600);
+    CHECK(cookie.domain() == "example.com");
+    CHECK(cookie.path() == "/app");
+    CHECK(cookie.isSecure());
+    CHECK(cookie.isHttpOnly());
+    CHECK(cookie.sameSite() == ::drogon::Cookie::SameSite::kStrict);
+    CHECK(cookie.expiresDate().microSecondsSinceEpoch() == 1792567680LL * 1000000LL);
+
+    const auto line = inertia::drogon::fromDrogon(converted).header("Set-Cookie").value_or("");
+    CHECK(line.find("Expires=Wed, 21 Oct 2026 07:28:00 GMT") != std::string::npos);
+    CHECK(line.find("Max-Age=3600") != std::string::npos);
+    CHECK(line.find("Domain=example.com") != std::string::npos);
+    CHECK(line.find("Path=/app") != std::string::npos);
+    CHECK(line.find("Secure") != std::string::npos);
+    CHECK(line.find("HttpOnly") != std::string::npos);
+    CHECK(line.find("SameSite=Strict") != std::string::npos);
+}
+
 TEST_CASE("toDrogon converts Set-Cookie headers to cookies and back", "[drogon]") {
     inertia::Response res;
     res.headers.emplace_back("Set-Cookie", "XSRF-TOKEN=abc123; Path=/; SameSite=Lax");

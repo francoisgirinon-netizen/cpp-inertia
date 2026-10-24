@@ -7,10 +7,13 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cstdint>
+#include <ctime>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia::drogon {
 
@@ -32,6 +35,18 @@ std::string_view trim(std::string_view text) {
         text.remove_suffix(1);
     }
     return text;
+}
+
+// "Wed, 21 Oct 2026 07:28:00 GMT" (the IMF-fixdate of RFC 9110) -> a date; nullopt otherwise.
+std::optional<trantor::Date> parseHttpDate(std::string_view text) {
+    std::tm parts{};
+    const std::string copy{text};
+    const char *end = strptime(copy.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &parts);
+    if (end == nullptr || *end != '\0') {
+        return std::nullopt;
+    }
+    const auto seconds = timegm(&parts);
+    return trantor::Date{static_cast<std::int64_t>(seconds) * 1000000};
 }
 
 // "name=value; Path=/; SameSite=Lax" -> a cookie; nullopt when there is no name.
@@ -64,6 +79,10 @@ std::optional<::drogon::Cookie> parseSetCookie(std::string_view line) {
             cookie.setSecure(true);
         } else if (headers::iequals(key, "SameSite")) {
             cookie.setSameSite(::drogon::Cookie::convertString2SameSite(value));
+        } else if (headers::iequals(key, "Expires")) {
+            if (const auto date = parseHttpDate(value)) {
+                cookie.setExpiresDate(*date);
+            }
         } else if (headers::iequals(key, "Max-Age")) {
             int seconds = 0;
             if (std::from_chars(value.data(), value.data() + value.size(), seconds).ec ==
@@ -145,13 +164,29 @@ std::optional<std::string> DrogonRequest::header(std::string_view name) const {
     // The enum is open-ended: codes Drogon has no name for (e.g. 419) are still sent as-is.
     out->setStatusCode(static_cast<::drogon::HttpStatusCode>(res.status));
     out->setBody(res.body);
+    // Drogon keeps one value per header name, so repeated headers are combined into one field
+    // with commas (RFC 9110 section 5.3). Cookies are separate objects and stay separate.
+    std::vector<std::pair<std::string, std::string>> combined;
     for (const auto &[name, value] : res.headers) {
-        if (headers::iequals(name, "Content-Type")) {
-            out->setContentTypeString(value);
-        } else if (headers::iequals(name, "Set-Cookie")) {
+        if (headers::iequals(name, "Set-Cookie")) {
             if (auto cookie = parseSetCookie(value)) {
                 out->addCookie(std::move(*cookie));
             }
+            continue;
+        }
+        const auto same = std::ranges::find_if(
+            combined, [&](const auto &entry) { return headers::iequals(entry.first, name); });
+        if (same == combined.end()) {
+            combined.emplace_back(name, value);
+        } else if (headers::iequals(name, "Content-Type")) {
+            same->second = value; // not a list header: the last one wins
+        } else {
+            same->second += ", " + value;
+        }
+    }
+    for (const auto &[name, value] : combined) {
+        if (headers::iequals(name, "Content-Type")) {
+            out->setContentTypeString(value);
         } else {
             out->addHeader(name, value);
         }
