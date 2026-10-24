@@ -19,6 +19,7 @@ cmake_dependent_option(INERTIA_BUILD_EXAMPLES "Build examples (needs the Drogon 
 option(INERTIA_INSTALL "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
 option(INERTIA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(INERTIA_COVERAGE_STRICT "Fail coverage_check on todo protocol ids" OFF)
+option(INERTIA_BUILD_DOCS "Build the Doxygen API reference (target docs, not part of all)" OFF)
 set(INERTIA_E2E_LIST "" CACHE FILEPATH
     "Output of `playwright test --list`: coverage_check then also requires e2e tests")
 
@@ -26,6 +27,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(Warnings)
 include(InertiaTargets)
 include(ProtocolCoverage)
+if(INERTIA_BUILD_DOCS)
+    include(InertiaDocs)
+endif()
 
 find_package(nlohmann_json CONFIG REQUIRED)
 
@@ -65,6 +69,7 @@ if(PROJECT_IS_TOP_LEVEL)
     add_feature_info(tests INERTIA_BUILD_TESTS "Catch2 tests, conformance suites, coverage_check")
     add_feature_info(examples INERTIA_BUILD_EXAMPLES "React example application")
     add_feature_info(install INERTIA_INSTALL "install rules and package config")
+    add_feature_info(docs INERTIA_BUILD_DOCS "Doxygen API reference (target docs)")
     add_feature_info(warnings-as-errors INERTIA_WARNINGS_AS_ERRORS "-Werror on the project's own targets")
     feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES)
 endif()

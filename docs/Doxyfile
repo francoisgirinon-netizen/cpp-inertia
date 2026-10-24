@@ -1,0 +1,37 @@
+# Doxygen configuration of the C++ Inertia API reference. Only non-default settings are listed.
+# The `docs` target (cmake/InertiaDocs.cmake) runs Doxygen from the source root and passes the
+# values CMake knows through the environment: Doxygen expands $(NAME) in every value.
+
+# Project identity, taken from project() in CMakeLists.txt.
+PROJECT_NAME           = $(INERTIA_PROJECT_NAME)
+PROJECT_NUMBER         = $(INERTIA_PROJECT_VERSION)
+
+# Output goes into the build tree, never into the source tree (HTML under <build>/docs/html).
+OUTPUT_DIRECTORY       = $(INERTIA_DOCS_OUTPUT_DIR)
+
+# Input: the public headers only. Headers under include/inertia/detail are implementation details.
+# README.md is listed because it is the main page (USE_MDFILE_AS_MAINPAGE needs it among the inputs).
+INPUT                  = README.md \
+                         include/inertia \
+                         adapters/fake/include/inertia \
+                         adapters/drogon/include/inertia \
+                         adapters/httplib/include/inertia
+RECURSIVE              = YES
+EXCLUDE                = include/inertia/detail
+
+# Documentation policy: only documented entities are listed, and any gap is a warning that fails the
+# build (the API is documented by hand, not extracted from the declarations).
+EXTRACT_ALL            = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
+
+# Output formats: HTML only, without Graphviz diagrams (the image has no `dot` binary, and the
+# inheritance graphs are not needed yet).
+GENERATE_LATEX         = NO
+HAVE_DOT               = NO
+
+# Comment parsing: the README is the landing page, and the first sentence of a comment is its brief
+# when no \brief command is written.
+USE_MDFILE_AS_MAINPAGE = README.md
+JAVADOC_AUTOBRIEF      = YES
