@@ -244,9 +244,9 @@ Ports and adapters.
 
 - The **core** is pure and synchronous (SSR goes through a callback). It talks to the world through ports: `RequestView`, `Response` (a plain value), `SessionStore`, `HttpClient` (async, for SSR) and `FileReader` (Vite manifest, hot file). A CTest check fails if `drogon` or `httplib` ever appears in `include/inertia/` or `src/`.
 - **Adapters** implement the ports for a framework: `adapters/drogon` and `adapters/httplib` are the real ones, `adapters/fake` is in-memory.
-- A **conformance suite** (`tests/conformance`) runs the same HTTP-level protocol scenarios against every adapter.
+- A **conformance kit** (`conformance/`, installable as the component `conformance`) runs the same HTTP-level protocol scenarios against every adapter.
 
-To write a new adapter (another framework): implement `RequestView` over its request type, `SessionStore` over its session, `HttpClient` over its async client if you want SSR, translate `Response` to and from its response type, and call `Inertia::handleVersion`, `Inertia::render` and `Inertia::finalize` from its hooks. Then add a harness next to `tests/conformance/fake_harness.cpp`, `drogon_harness.cpp` and `httplib_harness.cpp` and make the whole suite pass. Props-building code stays portable.
+To write a new adapter for another framework, follow [docs/writing-an-adapter.md](docs/writing-an-adapter.md): the ports to implement, the request pipeline, and how to prove the adapter with the conformance kit (`find_package(inertia COMPONENTS core conformance)` and `inertia_add_conformance_test()`). `adapters/httplib` is the simplest reference. Props-building code stays portable.
 
 ## Protocol coverage
 
