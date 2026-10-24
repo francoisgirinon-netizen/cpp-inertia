@@ -19,7 +19,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
       - name: Configure, build and test (dev)
-        run: scripts/dev cmake --workflow --preset dev
+        run: |
+          scripts/dev sh -c 'status=0; cmake --workflow --preset dev || status=$?; sccache --show-stats; exit "$status"'
 
   asan:
     runs-on: ubuntu-24.04
@@ -27,7 +28,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
       - name: Configure, build and test (asan, ubsan)
-        run: scripts/dev cmake --workflow --preset asan
+        run: |
+          scripts/dev sh -c 'status=0; cmake --workflow --preset asan || status=$?; sccache --show-stats; exit "$status"'
 
   coverage:
     runs-on: ubuntu-24.04
@@ -35,7 +37,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
       - name: Configure, build and test (coverage)
-        run: scripts/dev cmake --workflow --preset coverage
+        run: |
+          scripts/dev sh -c 'status=0; cmake --workflow --preset coverage || status=$?; sccache --show-stats; exit "$status"'
       - name: Report and enforce the minimum line coverage
         run: scripts/dev tools/coverage-report.sh
       - name: Upload the HTML report
