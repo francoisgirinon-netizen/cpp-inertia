@@ -109,6 +109,12 @@ if(INERTIA_BUILD_TESTS)
     cmake_language(DEFER DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} CALL inertia_register_coverage_check
                    ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR})
 
+    # The Python tools' own tests (coverage_check, version watch, the generated README table).
+    add_test(NAME tools_unit_tests
+             COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tools/tests
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    set_tests_properties(tools_unit_tests PROPERTIES LABELS meta)
+
     if(INERTIA_INSTALL)
         include(InertiaPackageTests)
         inertia_add_package_tests()
