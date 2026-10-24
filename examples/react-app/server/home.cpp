@@ -3,6 +3,9 @@
 
 #include <inertia/props.hpp>
 
+#include <string>
+#include <utility>
+
 namespace example {
 
 // Home: shared props (registered in app.cpp) and flash messages ride along automatically.

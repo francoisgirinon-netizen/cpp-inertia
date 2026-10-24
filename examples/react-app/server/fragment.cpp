@@ -4,6 +4,8 @@
 #include <inertia/props.hpp>
 #include <inertia/session.hpp>
 
+#include <string>
+
 namespace example {
 
 // Fragment: browsers drop the #fragment of a redirect that an XHR follows. preserveFragment()

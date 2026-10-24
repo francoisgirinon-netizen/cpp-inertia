@@ -7,16 +7,17 @@
 
 #include <inertia/httplib/httplib.hpp>
 #include <inertia/inertia.hpp>
-#include <inertia/ports/request_view.hpp>
-#include <inertia/ports/session_store.hpp>
 #include <inertia/response.hpp>
 
 #include <httplib.h>
 
+#include <functional>
+#include <inertia/props.hpp>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <variant>
 

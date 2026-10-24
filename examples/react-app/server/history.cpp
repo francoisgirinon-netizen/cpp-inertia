@@ -4,6 +4,10 @@
 #include <inertia/inertia.hpp>
 #include <inertia/props.hpp>
 #include <inertia/session.hpp>
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace example {
 

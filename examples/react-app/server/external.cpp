@@ -5,6 +5,8 @@
 #include <inertia/response.hpp>
 
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace example {
 

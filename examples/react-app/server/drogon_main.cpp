@@ -7,22 +7,21 @@
 
 #include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
-#include <inertia/json.hpp>
-#include <inertia/ports/request_view.hpp>
-#include <inertia/ports/session_store.hpp>
 #include <inertia/response.hpp>
 
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpTypes.h>
-#include <drogon/drogon_callbacks.h>
 
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <drogon/HttpResponse.h>
 #include <functional>
+#include <inertia/props.hpp>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <variant>
