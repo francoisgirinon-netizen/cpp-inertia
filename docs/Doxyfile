@@ -11,7 +11,7 @@ OUTPUT_DIRECTORY       = $(INERTIA_DOCS_OUTPUT_DIR)
 
 # Input: the public headers only. Headers under include/inertia/detail are implementation details.
 # README.md is listed because it is the main page (USE_MDFILE_AS_MAINPAGE needs it among the inputs).
-INPUT                  = README.md \
+INPUT                  = docs/mainpage.md \
                          include/inertia \
                          adapters/fake/include/inertia \
                          adapters/drogon/include/inertia \
@@ -33,5 +33,5 @@ HAVE_DOT               = NO
 
 # Comment parsing: the README is the landing page, and the first sentence of a comment is its brief
 # when no \brief command is written.
-USE_MDFILE_AS_MAINPAGE = README.md
+USE_MDFILE_AS_MAINPAGE = docs/mainpage.md
 JAVADOC_AUTOBRIEF      = YES
