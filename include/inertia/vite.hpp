@@ -1,5 +1,6 @@
 #pragma once
 
+#include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 
 #include <filesystem>
@@ -56,13 +57,21 @@ class Vite {
   private:
     /// Dev-server tags that load the entries from `url`.
     [[nodiscard]] std::string devTags(std::string_view url) const;
-    /// Production tags built from the manifest.
-    [[nodiscard]] std::string prodTags() const;
-    /// Raw manifest content, if the file can be read.
-    [[nodiscard]] std::optional<std::string> manifestContent() const;
+    /// Production tags built from a parsed manifest.
+    [[nodiscard]] std::string prodTags(const Json &manifest) const;
+
+    /// What the manifest file currently yields. It is derived once per version of the file: while
+    /// the reader's stamp is unchanged nothing is read, and without stamps an unchanged content is
+    /// not parsed again.
+    struct Snapshot;
+    [[nodiscard]] std::shared_ptr<const Snapshot> snapshot() const;
+    /// The snapshot holder, shared by copies of this object.
+    struct Cache;
 
     ViteConfig cfg_;
     std::shared_ptr<const FileReader> files_;
+    std::filesystem::path manifestPath_;
+    std::shared_ptr<Cache> cache_;
 };
 
 /// Builds an asset-version callback for Config::version from a Vite integration. The version

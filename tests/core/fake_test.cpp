@@ -21,6 +21,21 @@ TEST_CASE("FakeRequest::inertia sets X-Inertia and version", "[fake]") {
     REQUIRE(request.fullUrl() == "http://localhost/users?page=2");
 }
 
+TEST_CASE("MemoryFileReader stamps a file by its content and size", "[fake]") {
+    MemoryFileReader files;
+    REQUIRE_FALSE(files.stamp("a").has_value());
+
+    files.files["a"] = "one";
+    const auto first = files.stamp("a");
+    REQUIRE(first.has_value());
+    REQUIRE(files.stamp("a") == first);
+
+    files.files["a"] = "two"; // same size, other content
+    REQUIRE(files.stamp("a") != first);
+    files.files["a"] = "three";
+    REQUIRE(files.stamp("a") != first);
+}
+
 TEST_CASE("MemorySession pull erases", "[fake]") {
     MemorySession session;
     session.put("k", Json(1));

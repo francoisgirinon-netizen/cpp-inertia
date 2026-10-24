@@ -2,7 +2,11 @@
 
 #include <inertia/headers.hpp>
 
+#include <cstdint>
+#include <filesystem>
+#include <functional>
 #include <optional>
+#include <string>
 #include <utility>
 
 namespace inertia::fake {
@@ -93,6 +97,15 @@ std::optional<std::string> MemoryFileReader::read(const std::filesystem::path &p
         return std::nullopt;
     }
     return it->second;
+}
+
+std::optional<FileStamp> MemoryFileReader::stamp(const std::filesystem::path &path) const {
+    const auto it = files.find(path);
+    if (it == files.end()) {
+        return std::nullopt;
+    }
+    return FileStamp{.size = it->second.size(),
+                     .modified = static_cast<std::int64_t>(std::hash<std::string>{}(it->second))};
 }
 
 } // namespace inertia::fake

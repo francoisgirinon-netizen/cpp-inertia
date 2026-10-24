@@ -17,6 +17,7 @@ target_sources(inertia_core_tests PRIVATE
     errors_test.cpp
     flash_history_test.cpp
     vite_test.cpp
+    vite_cache_test.cpp
     ssr_test.cpp)
 target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
                                                  Catch2::Catch2WithMain inertia_warnings)

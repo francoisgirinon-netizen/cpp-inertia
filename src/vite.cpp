@@ -3,6 +3,7 @@
 #include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -106,8 +107,28 @@ std::optional<Json> parseManifest(const std::optional<std::string> &content) {
 
 } // namespace
 
+// What is derived from one version of the manifest file.
+struct Vite::Snapshot {
+    // Stamp of the file when it was read; nullopt when the reader cannot stamp it.
+    std::optional<FileStamp> stamp;
+    // The raw content, to recognize an unchanged file whose stamp is unknown or has moved.
+    std::string content;
+    // manifestHash(): empty when the content is not a JSON object.
+    std::string hash;
+    // The production tags: empty when the content is not a JSON object.
+    std::string tags;
+};
+
+// Shared by the copies of a Vite. The snapshot is immutable and swapped atomically, so request
+// threads never wait for each other and never see a half-built one.
+struct Vite::Cache {
+    std::atomic<std::shared_ptr<const Snapshot>> current;
+};
+
 Vite::Vite(ViteConfig cfg, std::shared_ptr<const FileReader> files)
-    : cfg_(std::move(cfg)), files_(std::move(files)) {}
+    : cfg_(std::move(cfg)), files_(std::move(files)),
+      manifestPath_(cfg_.publicDir / cfg_.buildDir / ".vite" / "manifest.json"),
+      cache_(std::make_shared<Cache>()) {}
 
 std::optional<std::string> Vite::hotUrl() const {
     const auto content = files_->read(cfg_.publicDir / cfg_.hotFile);
@@ -129,7 +150,7 @@ std::string Vite::tags() const {
     if (const auto url = hotUrl()) {
         return devTags(*url);
     }
-    return prodTags();
+    return snapshot()->tags;
 }
 
 std::string Vite::devTags(std::string_view url) const {
@@ -153,18 +174,48 @@ std::string Vite::devTags(std::string_view url) const {
     return out;
 }
 
-std::string Vite::prodTags() const {
-    const auto manifest = parseManifest(manifestContent());
-    if (!manifest) {
-        return {};
+std::shared_ptr<const Vite::Snapshot> Vite::snapshot() const {
+    auto cached = cache_->current.load();
+    // The stamp is taken before the content: a file that changes in between leaves an old stamp
+    // on newer content, which only costs one more read, never a stale hit.
+    const auto stamp = files_->stamp(manifestPath_);
+    if (cached && stamp && cached->stamp == stamp) {
+        return cached;
     }
+    auto content = files_->read(manifestPath_);
+    if (!content) {
+        static const auto missing = std::make_shared<const Snapshot>();
+        return missing; // not cached: the file may come back
+    }
+    if (cached && cached->content == *content) {
+        if (cached->stamp == stamp) {
+            return cached; // a reader without stamps: same content, nothing to refresh
+        }
+        auto touched = std::make_shared<Snapshot>(*cached);
+        touched->stamp = stamp;
+        cached = std::move(touched);
+        cache_->current.store(cached);
+        return cached;
+    }
+    auto fresh = std::make_shared<Snapshot>();
+    fresh->stamp = stamp;
+    if (const auto manifest = parseManifest(content)) {
+        fresh->hash = std::format("{:016x}", fnv1a64(*content));
+        fresh->tags = prodTags(*manifest);
+    }
+    fresh->content = std::move(*content);
+    cache_->current.store(fresh);
+    return fresh;
+}
+
+std::string Vite::prodTags(const Json &manifest) const {
     // Entries are seen up front so an entry imported by another is not preloaded.
     std::set<std::string> seen(cfg_.entries.begin(), cfg_.entries.end());
     std::set<std::string> seenCss;
     std::string out;
     for (const auto &entry : cfg_.entries) {
-        const auto found = manifest->find(entry);
-        if (found == manifest->end() || !found->is_object()) {
+        const auto found = manifest.find(entry);
+        if (found == manifest.end() || !found->is_object()) {
             continue;
         }
         const auto file = stringValue(*found, "file");
@@ -174,23 +225,13 @@ std::string Vite::prodTags() const {
         for (const auto &css : stringList(*found, "css")) {
             appendStylesheet(cfg_.buildDir, css, seenCss, out);
         }
-        appendImports(*manifest, stringList(*found, "imports"), cfg_.buildDir, seen, seenCss, out);
+        appendImports(manifest, stringList(*found, "imports"), cfg_.buildDir, seen, seenCss, out);
         out += R"(<script type="module" src=")" + assetUrl(cfg_.buildDir, *file) + R"("></script>)";
     }
     return out;
 }
 
-std::optional<std::string> Vite::manifestContent() const {
-    return files_->read(cfg_.publicDir / cfg_.buildDir / ".vite" / "manifest.json");
-}
-
-std::string Vite::manifestHash() const {
-    const auto content = manifestContent();
-    if (!content || !parseManifest(content)) {
-        return {};
-    }
-    return std::format("{:016x}", fnv1a64(*content));
-}
+std::string Vite::manifestHash() const { return snapshot()->hash; }
 
 std::function<std::string()> versionFromVite(std::shared_ptr<const Vite> vite) {
     return [held = std::move(vite)] { return held ? held->manifestHash() : std::string{}; };

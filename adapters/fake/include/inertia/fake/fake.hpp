@@ -130,6 +130,12 @@ class MemoryFileReader final : public FileReader {
     /// @param path The path to read, matched exactly against `files`.
     /// @return The stored content, or std::nullopt when `path` is not in `files`.
     [[nodiscard]] std::optional<std::string> read(const std::filesystem::path &path) const override;
+
+    /// Fingerprints the stored content, so that code that caches by stamp sees every edit of
+    /// `files`, including one that keeps the size.
+    /// @param path The path to stamp, matched exactly against `files`.
+    /// @return The size and a hash of the content, or std::nullopt when `path` is not in `files`.
+    [[nodiscard]] std::optional<FileStamp> stamp(const std::filesystem::path &path) const override;
 };
 
 } // namespace inertia::fake

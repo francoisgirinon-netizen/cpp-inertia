@@ -16,12 +16,15 @@
 #include <inertia/html.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/json.hpp>
+#include <inertia/ports/file_reader.hpp>
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
 #include <inertia/vite.hpp>
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,17 +42,40 @@ void measureWithProps(Catch::Benchmark::Chronometer &meter, const Props &base, C
     meter.measure([&](int run) { return call(std::move(copies[static_cast<std::size_t>(run)])); });
 }
 
+// A manifest in memory whose stamp costs what a stat call does: it is a constant. Reads count as
+// real work (a copy of the content), like a read from the page cache.
+class StatLikeReader final : public FileReader {
+  public:
+    explicit StatLikeReader(std::string manifest) : manifest_(std::move(manifest)) {}
+
+    [[nodiscard]] std::optional<std::string>
+    read(const std::filesystem::path &path) const override {
+        if (path.filename() != "manifest.json") {
+            return std::nullopt;
+        }
+        return manifest_;
+    }
+    [[nodiscard]] std::optional<FileStamp> stamp(const std::filesystem::path &path) const override {
+        if (path.filename() != "manifest.json") {
+            return std::nullopt;
+        }
+        return FileStamp{.size = manifest_.size(), .modified = 1};
+    }
+
+  private:
+    std::string manifest_;
+};
+
 // An Inertia instance configured like an application: shared props, and a Vite integration over
 // an in-memory manifest, whose hash is the asset version.
 struct App {
-    std::shared_ptr<fake::MemoryFileReader> files = std::make_shared<fake::MemoryFileReader>();
     std::shared_ptr<const Vite> vite;
     std::unique_ptr<Inertia> inertia;
     fake::MemorySession session;
 
     App() {
-        files->files["public/build/.vite/manifest.json"] = bench::manifestText();
-        vite = std::make_shared<const Vite>(ViteConfig{}, files);
+        vite = std::make_shared<const Vite>(
+            ViteConfig{}, std::make_shared<StatLikeReader>(bench::manifestText()));
         Config config;
         config.vite = vite;
         config.version = versionFromVite(vite);
@@ -125,4 +151,10 @@ TEST_CASE("vite manifest", "[.bench]") {
     App app;
     BENCHMARK("Vite::manifestHash()") { return app.vite->manifestHash(); };
     BENCHMARK("Vite::tags()") { return app.vite->tags(); };
+
+    // The in-memory test double stamps by hashing the content, so it costs more than a stat.
+    auto files = std::make_shared<fake::MemoryFileReader>();
+    files->files["public/build/.vite/manifest.json"] = bench::manifestText();
+    const Vite memory(ViteConfig{}, files);
+    BENCHMARK("Vite::manifestHash(), MemoryFileReader") { return memory.manifestHash(); };
 }

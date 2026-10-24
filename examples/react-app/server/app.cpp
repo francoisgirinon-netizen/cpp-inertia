@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -22,9 +23,24 @@ namespace example {
 
 namespace {
 
-// Reads the Vite manifest and the dev-server hot file from disk.
+// Reads the Vite manifest and the dev-server hot file from disk. The stamp (size and modification
+// time) lets Vite keep the parsed manifest until `bun run build` rewrites it.
 class DiskFileReader final : public inertia::FileReader {
   public:
+    [[nodiscard]] std::optional<inertia::FileStamp>
+    stamp(const std::filesystem::path &path) const override {
+        std::error_code error;
+        const auto size = std::filesystem::file_size(path, error);
+        if (error) {
+            return std::nullopt;
+        }
+        const auto modified = std::filesystem::last_write_time(path, error);
+        if (error) {
+            return std::nullopt;
+        }
+        return inertia::FileStamp{.size = size, .modified = modified.time_since_epoch().count()};
+    }
+
     [[nodiscard]] std::optional<std::string>
     read(const std::filesystem::path &path) const override {
         std::ifstream in{path, std::ios::binary};
@@ -58,8 +74,8 @@ std::shared_ptr<inertia::Inertia> makeInertia(std::shared_ptr<inertia::HttpClien
                                               std::make_shared<DiskFileReader>());
 
     inertia::Config config;
-    // The asset version is the hash of the Vite manifest, read on every request (not cached). After
-    // `bun run build` changes the manifest, a client holding the old version sends a stale
+    // The asset version is the hash of the Vite manifest, recomputed when the manifest file
+    // changes. After `bun run build` rewrites it, a client holding the old version sends a stale
     // X-Inertia-Version on its next visit, gets a 409 + X-Inertia-Location and does a full reload.
     config.version = inertia::versionFromVite(vite);
     config.vite = std::move(vite);
