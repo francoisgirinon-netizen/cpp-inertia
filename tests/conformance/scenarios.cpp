@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,19 @@ using Strings = std::vector<std::string>;
 
 bool contains(const std::string &haystack, const std::string &needle) {
     return haystack.find(needle) != std::string::npos;
+}
+
+// The page object embedded in the first-visit HTML's data-page script element.
+Json pageFromHtml(const std::string &body) {
+    const std::string open = R"(<script data-page="app" type="application/json">)";
+    const auto begin = body.find(open);
+    REQUIRE(begin != std::string::npos);
+    const auto start = begin + open.size();
+    const auto end = body.find("</script>", start);
+    REQUIRE(end != std::string::npos);
+    const Json page = Json::parse(body.substr(start, end - start), nullptr, false);
+    REQUIRE_FALSE(page.is_discarded());
+    return page;
 }
 
 } // namespace
@@ -372,7 +386,9 @@ TEST_CASE("the except header is ignored on the first HTML visit",
     const auto res = send(plainRequest("/once", "GET", {{"X-Inertia-Except-Once-Props", "f"}}));
     REQUIRE(res.status == 200);
     // The prop is still resolved into the embedded page object.
-    REQUIRE(contains(res.body, R"("f":1)"));
+    const auto page = pageFromHtml(res.body);
+    REQUIRE(page["props"]["f"] == 1);
+    REQUIRE(page["onceProps"]["f"]["prop"] == "f");
 }
 
 TEST_CASE("partial reloads ignore the once except header",
@@ -463,7 +479,10 @@ TEST_CASE("non-GET requests never get the version 409", "[conformance][protocol:
         INFO(verb);
         const auto res =
             send(inertiaRequest("/update-redirect", {{"X-Inertia-Version", "old"}}, verb));
-        REQUIRE(res.status != 409);
+        // The route's own redirect is returned: 302 for POST, rewritten to 303 for the others.
+        REQUIRE(res.status == (std::string_view(verb) == "POST" ? 302 : 303));
+        REQUIRE(res.header("Location").value_or("") == "/page");
+        REQUIRE_FALSE(res.header("X-Inertia-Location").has_value());
     }
 }
 
