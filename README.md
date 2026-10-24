@@ -42,6 +42,14 @@ INERTIA_SSR=1 scripts/dev-serve sh -c '(cd examples/react-app/frontend && bun ru
   exec build/dev/examples/react-app/server/inertia_example'
 ```
 
+The same pages also run on the cpp-httplib adapter. `inertia_example` (Drogon) and `inertia_example_httplib` (cpp-httplib) share the routes (`examples/react-app/server/*.cpp`, written against the inertia core and the small `Context`/`Router` interfaces of `context.hpp`); only `drogon_main.cpp` and `httplib_main.cpp` differ, each a thin registration layer. Both listen on port 8081, so run one at a time, with any of the commands above:
+
+```sh
+scripts/dev-serve build/dev/examples/react-app/server/inertia_example_httplib   # http://127.0.0.1:8081
+```
+
+`INERTIA_BUILD_EXAMPLES` needs at least one of the two adapters; each executable is built when its adapter is.
+
 ### CLion
 
 Use CLion's Docker toolchain (Settings > Build, Execution, Deployment > Toolchains > Docker) with the image `cpp-inertia-dev:latest` (built by `docker compose build`) and a container setting that mounts the project at `/src`. Select the `dev` CMake preset; it needs `VCPKG_ROOT=/opt/vcpkg`, which the image already sets. The `.clang-format` and `.clang-tidy` files are picked up automatically.
@@ -340,7 +348,7 @@ Every preset has configure, build, test and workflow presets of the same name, s
 | `scripts/dev cmake --workflow --preset asan` | AddressSanitizer + UBSan: the `undefined` group plus `integer` (signed overflow, shifts, implicit conversions), `nullability`, `float-divide-by-zero` and `local-bounds`; any report fails the test. `unsigned-integer-overflow` is excluded because libstdc++ `std::string::compare` wraps on purpose. TypeSanitizer was tried and is not kept: its runtime reports false positives inside libstdc++ `std::tuple`. |
 | `scripts/dev-tsan cmake --workflow --preset tsan` | ThreadSanitizer, with instrumented dependencies (`x64-linux-tsan` triplet). |
 | `scripts/dev cmake --workflow --preset release` | Release build with strict coverage: no `todo` rule left. |
-| `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering. Build the example and `bun run build` in `examples/react-app/frontend` first. |
+| `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering, and `INERTIA_E2E_SERVER=httplib` (default `drogon`) to run it on the cpp-httplib adapter instead of Drogon; the suite is the same and must pass on both. Build both example servers and `bun run build` in `examples/react-app/frontend` first. |
 | `python3 -m unittest discover -s tools/tests` | The Python tools (`coverage_check.py`, `check-inertia-version.py`, README table). Also run by CTest as `tools_unit_tests`. |
 
 Run `pre-commit install` once after cloning: it installs both the pre-commit and the commit-msg hook.
@@ -403,6 +411,7 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 | --- | --- |
 | `test` | `cmake --workflow --preset dev` |
 | `asan` | `cmake --workflow --preset asan` |
+| `e2e` | matrix `server: [drogon, httplib]`: builds the example servers and the front end, then runs the Playwright suite against that adapter, in client mode and with `INERTIA_SSR=1` |
 | `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 95% lines). The HTML report is the `coverage-html` artifact of the run. |
 | `lint` | configures `build/dev` (examples and IWYU on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then builds the tree with `INERTIA_IWYU=ON` (include-what-you-use, no tests), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
 | `commits` | every commit message of the push or pull request range against Conventional Commits |
