@@ -4,7 +4,6 @@
 #include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 
-#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <format>

@@ -21,12 +21,9 @@
 #include <inertia/json.hpp>
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
-#include <inertia/vite.hpp>
 
-#include <cstddef>
 #include <cstdlib>
 #include <functional>
-#include <memory>
 #include <new>
 #include <string>
 #include <utility>

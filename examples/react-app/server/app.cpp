@@ -6,6 +6,7 @@
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>

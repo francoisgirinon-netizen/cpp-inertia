@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <inertia/fake/fake.hpp>
 #include <inertia/ports/file_reader.hpp>
 #include <inertia/vite.hpp>
 
