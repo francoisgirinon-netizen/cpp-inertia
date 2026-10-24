@@ -22,6 +22,8 @@ x-dev-base: &dev-base
     VCPKG_DEFAULT_BINARY_CACHE: /home/dev/.cache/vcpkg/archives
     BUN_INSTALL_CACHE_DIR: /home/dev/.bun/install/cache
     INERTIA_TEST_PORT: "18080"
+    # Forwarded from the host (`INERTIA_SSR=1 scripts/dev ...`); empty means off.
+    INERTIA_SSR: ${INERTIA_SSR:-}
   volumes:
     - .:/src
     - vcpkg-cache:/home/dev/.cache/vcpkg
