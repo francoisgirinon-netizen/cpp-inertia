@@ -43,7 +43,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 
-RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git /opt/vcpkg \
+# Check out the builtin-baseline pinned in vcpkg.json (vcpkg.json resolves against the image's vcpkg,
+# so a plain clone of HEAD would drift from it and manifest installs would fail).
+ARG VCPKG_BASELINE=65a2c2391af39b773f83f91e0ab6c8ced8f9c727
+RUN git init -q /opt/vcpkg \
+    && git -C /opt/vcpkg remote add origin https://github.com/microsoft/vcpkg.git \
+    && git -C /opt/vcpkg fetch -q --depth 1 origin "${VCPKG_BASELINE}" \
+    && git -C /opt/vcpkg checkout -q FETCH_HEAD \
     && /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics \
     && chown -R dev:dev /opt/vcpkg
 
