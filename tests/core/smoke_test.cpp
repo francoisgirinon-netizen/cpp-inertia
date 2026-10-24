@@ -2,6 +2,8 @@
 
 #include <inertia/json.hpp>
 
+#include <string>
+
 TEST_CASE("Json keeps insertion order", "[smoke]") {
     inertia::Json j;
     j["b"] = 1;

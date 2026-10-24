@@ -2,10 +2,13 @@
 
 #include <inertia/fake/fake.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/response.hpp>
 #include <inertia/session.hpp>
 
+#include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 
 using namespace inertia;
 using namespace inertia::fake;

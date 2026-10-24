@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/html.hpp>
+#include <inertia/json.hpp>
 
+#include <functional>
 #include <string>
 
 using namespace inertia;

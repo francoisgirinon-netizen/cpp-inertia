@@ -20,5 +20,6 @@ target_sources(inertia_core_tests PRIVATE
     ssr_test.cpp)
 target_link_libraries(inertia_core_tests PRIVATE inertia::core inertia::fake
                                                  Catch2::Catch2WithMain inertia_warnings)
+inertia_enable_iwyu(inertia_core_tests)
 catch_discover_tests(inertia_core_tests PROPERTIES LABELS unit)
 inertia_add_protocol_tests(inertia_core_tests)

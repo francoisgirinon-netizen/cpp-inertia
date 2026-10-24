@@ -2,17 +2,23 @@
 // routes of conformanceRoutes() are registered as cpp-httplib handlers that go through the httplib
 // adapter.
 #include "test_support.hpp"
+
 #include <inertia/conformance/harness.hpp>
 #include <inertia/conformance/routes.hpp>
-
 #include <inertia/httplib/httplib.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/response.hpp>
 
+#include <httplib.h>
+
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia::conformance {
 

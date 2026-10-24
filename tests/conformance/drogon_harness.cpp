@@ -1,18 +1,25 @@
 // Runs the shared conformance scenarios over real HTTP against a Drogon application: the routes of
 // conformanceRoutes() are registered as Drogon handlers that go through the Drogon adapter.
 #include "test_server.hpp"
+
 #include <inertia/conformance/harness.hpp>
 #include <inertia/conformance/routes.hpp>
-
 #include <inertia/drogon/drogon.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/response.hpp>
 
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/HttpTypes.h>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia::drogon_test {
 

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/detail/props_resolver.hpp>
+#include <inertia/json.hpp>
 #include <inertia/props.hpp>
 
 #include <string>

@@ -2,11 +2,20 @@
 
 #include <inertia/fake/fake.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
 #include <inertia/vite.hpp>
 
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 using namespace inertia;
 

@@ -1,12 +1,12 @@
 #include <inertia/conformance/harness.hpp>
 #include <inertia/conformance/routes.hpp>
-
 #include <inertia/fake/fake.hpp>
+#include <inertia/inertia.hpp>
+#include <inertia/response.hpp>
 
 #include <algorithm>
-#include <map>
-#include <memory>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>

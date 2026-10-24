@@ -1,10 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/fake/fake.hpp>
-#include <inertia/headers.hpp>
+#include <inertia/json.hpp>
+#include <inertia/ports/http_client.hpp>
 
 #include <chrono>
+#include <deque>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace inertia;

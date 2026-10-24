@@ -1,10 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <inertia/fake/fake.hpp>
+#include <inertia/html.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/props.hpp>
 #include <inertia/session.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace inertia;
 using namespace inertia::fake;

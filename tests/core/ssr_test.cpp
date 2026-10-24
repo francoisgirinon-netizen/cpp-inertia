@@ -2,16 +2,26 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include <inertia/fake/fake.hpp>
+#include <inertia/html.hpp>
 #include <inertia/inertia.hpp>
+#include <inertia/json.hpp>
+#include <inertia/ports/http_client.hpp>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
+#include <chrono>
+#include <deque>
+#include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace inertia;
 using namespace inertia::fake;
