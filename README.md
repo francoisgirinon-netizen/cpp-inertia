@@ -285,7 +285,11 @@ Every preset has configure, build, test and workflow presets of the same name, s
 | `scripts/dev sh -c 'cd e2e && bunx playwright test'` | The official client against the example app (production build). Set `INERTIA_SSR=1` to run again with server-side rendering. Build the example and `bun run build` in `examples/react-app/frontend` first. |
 | `python3 -m unittest discover -s tools/tests` | The Python tools (`coverage_check.py`, `check-inertia-version.py`, README table). Also run by CTest as `tools_unit_tests`. |
 
-`pre-commit run --all-files` runs the commit hooks, all through `scripts/dev`: clang-format on C++ files, clang-tidy on `.cpp` files (run in Docker; it only needs a configured `build/dev`, i.e. `scripts/dev cmake --preset dev`, no build) and a Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
+`pre-commit run --all-files` runs the commit hooks:
+
+- **clang-format** (v23.1.3, the ready-made `pre-commit/mirrors-clang-format` hook) formats the C/C++ files. It runs on the host: no build, no Docker.
+- **clang-tidy** runs on `.cpp` files through `scripts/dev` (Docker). It needs a configured `build/dev` but no build: when `build/dev/compile_commands.json` is missing, the hook configures it itself (`cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON`, examples included) and fails if the configure fails. An existing tree configured without examples is left alone, with a hint.
+- A Conventional Commits check on the commit message (`feat(core): ...`, `fix(drogon): ...`).
 
 ## Known limitations
 
