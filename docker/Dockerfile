@@ -9,33 +9,69 @@
 # ---------------------------------------------------------------- base
 FROM ubuntu:26.04 AS base
 
+# A pipeline fails when any of its commands fails, not only the last one.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UID=1000
 ARG GID=1000
+
+# Dated Ubuntu snapshot every apt source is pointed at, so the package versions pinned below are
+# reproducible. To bump: choose a new timestamp, look up the candidate of each package in that
+# snapshot (`apt-cache policy <pkg>`), update the pins below, and change this value in the same commit.
+ARG UBUNTU_SNAPSHOT=20261024T000000Z
 
 # Keep downloaded .debs in the cache mount: the stock docker-clean hook would delete them.
 RUN rm -f /etc/apt/apt.conf.d/docker-clean \
     && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
+# The base image has no CA bundle and the snapshot only answers over HTTPS, so ca-certificates is first
+# installed from the plain-HTTP archive, at the version the snapshot holds (the archive keeps only the
+# current version: if this pin fails, the snapshot and the archive have diverged, bump both).
+# The snapshot's Release files outlive their Valid-Until date, hence Check-Valid-Until is off; their
+# signatures are still verified.
+#
 # git/curl/...: fetching; binutils: CMake finds ar/ranlib/nm next to the system toolchain, not next
 # to the conda clang; make/perl/autotools/...: what vcpkg ports (openssl, libuuid, ...) need to
 # build from source; libstdc++-15-dev: the C++ standard library clang compiles against.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
-        git curl ca-certificates zip unzip tar pkg-config python3 libstdc++-15-dev \
-        binutils make perl linux-libc-dev autoconf automake libtool
+    apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates=20260816ubuntu0.26.04.1 \
+    && sed -i "s|^URIs: .*|URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/|" \
+        /etc/apt/sources.list.d/ubuntu.sources \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99snapshot \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates=20260816ubuntu0.26.04.1 \
+        git=1:2.53.0-1ubuntu1.1 \
+        curl=8.18.0-1ubuntu2.8 \
+        zip=3.0-15ubuntu3 \
+        unzip=6.0-29ubuntu1 \
+        tar=1.35+dfsg-4ubuntu0.4 \
+        pkg-config=2.5.1-4 \
+        python3=3.14.3-0ubuntu2 \
+        libstdc++-15-dev=15.2.0-16ubuntu1 \
+        binutils=2.46-3ubuntu2 \
+        make=4.4.1-3 \
+        perl=5.40.1-7ubuntu0.3 \
+        linux-libc-dev=7.0.0-38.38 \
+        autoconf=2.72-3.1ubuntu2 \
+        automake=1:1.18.1-3build1 \
+        libtool=2.5.4-9
 
 # Dev user matching the host UID/GID (drop any stock user/group already holding them).
 RUN (getent passwd "${UID}" | cut -d: -f1 | xargs -r userdel -r || true) \
     && (getent group "${GID}" | cut -d: -f1 | xargs -r groupdel || true) \
     && groupadd -g "${GID}" dev \
-    && useradd -m -u "${UID}" -g "${GID}" -s /bin/bash dev \
+    && useradd -l -m -u "${UID}" -g "${GID}" -s /bin/bash dev \
     && mkdir -p /home/dev/.cache/vcpkg/archives /home/dev/.bun/install/cache \
     && chown -R dev:dev /home/dev
 
 # ---------------------------------------------------------------- toolchain
 FROM base AS toolchain
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # mise, installed system-wide so any UID can use it. Pinned release binary, checksum verified
 # (SHASUMS256.txt of the release).
@@ -96,22 +132,26 @@ FROM toolchain AS playwright
 # e2e/package.json (@playwright/test must be an exact version), the single source of truth.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
 COPY e2e/package.json /tmp/e2e/package.json
+WORKDIR /opt/playwright-tmp
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/root/.bun/install/cache \
     V="$(python3 -c 'import json; print(json.load(open("/tmp/e2e/package.json"))["devDependencies"]["@playwright/test"])')" \
     && case "$V" in [0-9]*) ;; *) echo "pin an exact @playwright/test version" >&2; exit 1;; esac \
     && apt-get update \
-    && mkdir -p /opt/playwright-tmp && cd /opt/playwright-tmp \
     && bunx playwright@"$V" install --with-deps chromium \
-    && cd / && rm -rf /opt/playwright-tmp /tmp/e2e && chmod -R a+rX /opt/playwright
+    && rm -rf /opt/playwright-tmp /tmp/e2e && chmod -R a+rX /opt/playwright
+WORKDIR /
 
 # ---------------------------------------------------------------- dev
 FROM playwright AS dev
+
+ARG UID=1000
+ARG GID=1000
 
 COPY --from=vcpkg --chown=dev:dev /opt/vcpkg /opt/vcpkg
 
 ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 
-USER dev
+USER ${UID}:${GID}
 WORKDIR /src
