@@ -89,6 +89,13 @@ serves the client-side page.
 `nullopt` when it cannot be read. `Vite` uses it for the manifest and the hot file; `Inertia` never
 touches the file system itself. It must be callable from several threads (it is `const`).
 
+`std::optional<FileStamp> stamp(const std::filesystem::path &)` is optional: a cheap fingerprint of
+a file (its size and modification time, one `stat`). `Vite` keeps the parsed manifest, its tags and
+its hash until the stamp changes, so with a stamp an unchanged manifest costs one `stat` per
+request. The default returns `nullopt` ("unknown"), and then the manifest is read on every use and
+compared with the previous content, which is still correct but costs a read. A stamp must differ
+whenever the content does: pair the modification time with the size.
+
 ## The request pipeline
 
 For every request, the adapter runs three steps, in this order, around the application's handler:
