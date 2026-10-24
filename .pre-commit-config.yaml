@@ -1,3 +1,4 @@
+default_install_hook_types: [pre-commit, commit-msg]
 repos:
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v23.1.3
