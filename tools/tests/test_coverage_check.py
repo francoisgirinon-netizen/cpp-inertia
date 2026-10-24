@@ -167,6 +167,36 @@ class CoverageCheckTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("invalid e2e for rule a.b", result.stdout)
 
+    def run_markdown(self, matrix):
+        cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix), "--markdown"]
+        return subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+    def test_markdown_lists_every_rule_in_a_table(self):
+        matrix = self.matrix(
+            rule("a.one", status="done", e2e=True),
+            rule("b.two", status="todo"),
+            rule("c.three", status="na", reason="out | of scope"),
+        )
+        result = self.run_markdown(matrix)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        lines = result.stdout.splitlines()
+        self.assertEqual(lines[0], "| Rule | Behavior | Status | Browser-tested |")
+        self.assertEqual(lines[1], "| --- | --- | --- | --- |")
+        self.assertEqual(lines[2], "| `a.one` | behavior of a.one | done | yes |")
+        self.assertEqual(lines[3], "| `b.two` | behavior of b.two | todo | no |")
+        self.assertEqual(
+            lines[4], "| `c.three` | behavior of c.three | n/a: out \\| of scope | no |"
+        )
+        self.assertEqual(len(lines), 5)
+
+    def test_markdown_needs_no_tags(self):
+        result = self.run_markdown(self.matrix(rule("a.one", status="done")))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_markdown_rejects_an_unreadable_matrix(self):
+        result = self.run_markdown(self.dir / "missing.toml")
+        self.assertEqual(result.returncode, 1)
+
     def test_repository_matrix_is_consistent(self):
         matrix = REPO / "docs" / "protocol-coverage.toml"
         with open(matrix, "rb") as handle:

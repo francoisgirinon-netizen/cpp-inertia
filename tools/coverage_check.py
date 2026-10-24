@@ -44,7 +44,34 @@ def parse_args(argv):
         action="store_true",
         help="fail on rules still marked todo and on client-observable rules without an e2e test",
     )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help="print the matrix as a Markdown table (used for the README) and exit",
+    )
     return parser.parse_args(argv)
+
+
+def markdown_cell(text):
+    return " ".join(str(text).split()).replace("|", "\\|")
+
+
+def markdown_table(rules):
+    """The matrix as a Markdown table, one row per rule, in matrix order."""
+    lines = [
+        "| Rule | Behavior | Status | Browser-tested |",
+        "| --- | --- | --- | --- |",
+    ]
+    for rule in rules:
+        status = str(rule.get("status", ""))
+        if status == "na":
+            status = f"n/a: {markdown_cell(rule.get('reason', ''))}"
+        browser = "yes" if rule.get("e2e") is True else "no"
+        lines.append(
+            f"| `{markdown_cell(rule.get('id', ''))}` | {markdown_cell(rule.get('behavior', ''))} "
+            f"| {status} | {browser} |"
+        )
+    return "\n".join(lines)
 
 
 def tags_from_text(text):
@@ -119,6 +146,10 @@ def main(argv):
     except (OSError, tomllib.TOMLDecodeError) as err:
         print(f"cannot read matrix {args.matrix}: {err}")
         return 1
+
+    if args.markdown:
+        print(markdown_table(rules))
+        return 0
 
     tags = set()
     for path in args.tags_file:
