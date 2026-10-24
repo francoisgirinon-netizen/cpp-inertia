@@ -1,28 +1,23 @@
-# Adapter-agnostic protocol suite. Each harness supplies send() in its own source file, and
-# scenarios.cpp + routes.cpp are shared unchanged.
-function(inertia_add_conformance_executable name harness_source)
-    set(_dir ${CMAKE_CURRENT_FUNCTION_LIST_DIR})
-    add_executable(${name} ${_dir}/scenarios.cpp ${_dir}/routes.cpp ${_dir}/test_response.cpp
-                   ${harness_source})
-    target_include_directories(${name} PRIVATE ${_dir})
-    target_link_libraries(${name} PRIVATE inertia::core ${ARGN} Catch2::Catch2WithMain
-                                          inertia_warnings)
-    catch_discover_tests(${name} TEST_PREFIX "${name}: " PROPERTIES LABELS conformance)
+# This project's adapters run the kit that consumers get (inertia_add_conformance_test, from
+# cmake/inertiaConformance.cmake); only the warnings and the protocol coverage are in-tree extras.
+function(inertia_add_conformance_executable name)
+    inertia_add_conformance_test(${name} ${ARGN})
+    target_link_libraries(${name} PRIVATE inertia_warnings)
     inertia_add_protocol_tests(${name})
 endfunction()
 
-inertia_add_conformance_executable(inertia_conformance_fake
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/fake_harness.cpp inertia::fake)
+inertia_add_conformance_executable(
+    inertia_conformance_fake ${CMAKE_CURRENT_SOURCE_DIR}/fake_harness.cpp LINK inertia::fake)
 
 if(INERTIA_BUILD_DROGON)
     inertia_add_conformance_executable(
         inertia_conformance_drogon
         "${CMAKE_CURRENT_SOURCE_DIR}/drogon_harness.cpp;$<TARGET_OBJECTS:inertia_drogon_test_support>"
-        inertia_drogon_test_support)
+        LINK inertia_drogon_test_support)
 endif()
 
 if(INERTIA_BUILD_HTTPLIB)
     inertia_add_conformance_executable(
         inertia_conformance_httplib ${CMAKE_CURRENT_SOURCE_DIR}/httplib_harness.cpp
-        inertia_httplib_test_support)
+        LINK inertia_httplib_test_support)
 endif()

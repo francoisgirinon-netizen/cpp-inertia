@@ -1,9 +1,9 @@
 // Runs the shared conformance scenarios over real HTTP against a cpp-httplib application: the
 // routes of conformanceRoutes() are registered as cpp-httplib handlers that go through the httplib
 // adapter.
-#include "harness.hpp"
-#include "routes.hpp"
 #include "test_support.hpp"
+#include <inertia/conformance/harness.hpp>
+#include <inertia/conformance/routes.hpp>
 
 #include <inertia/httplib/httplib.hpp>
 

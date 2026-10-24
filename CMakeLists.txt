@@ -39,6 +39,12 @@ if(INERTIA_BUILD_HTTPLIB)
     add_subdirectory(adapters/httplib)
 endif()
 
+# The conformance kit is a library others build their adapter tests with: built for the tests of
+# this project and for the install, so not only with the tests.
+if(INERTIA_BUILD_TESTS OR INERTIA_INSTALL)
+    add_subdirectory(conformance)
+endif()
+
 if(INERTIA_INSTALL)
     include(InertiaInstall)
 endif()

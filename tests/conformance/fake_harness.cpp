@@ -1,5 +1,5 @@
-#include "harness.hpp"
-#include "routes.hpp"
+#include <inertia/conformance/harness.hpp>
+#include <inertia/conformance/routes.hpp>
 
 #include <inertia/fake/fake.hpp>
 

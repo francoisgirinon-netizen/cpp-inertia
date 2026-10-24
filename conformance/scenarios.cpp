@@ -2,7 +2,7 @@
 // only ever set by an earlier request of the same scenario.
 #include <catch2/catch_test_macros.hpp>
 
-#include "harness.hpp"
+#include <inertia/conformance/harness.hpp>
 
 #include <inertia/html.hpp>
 

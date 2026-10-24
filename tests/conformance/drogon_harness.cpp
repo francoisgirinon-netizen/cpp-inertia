@@ -1,8 +1,8 @@
 // Runs the shared conformance scenarios over real HTTP against a Drogon application: the routes of
 // conformanceRoutes() are registered as Drogon handlers that go through the Drogon adapter.
-#include "harness.hpp"
-#include "routes.hpp"
 #include "test_server.hpp"
+#include <inertia/conformance/harness.hpp>
+#include <inertia/conformance/routes.hpp>
 
 #include <inertia/drogon/drogon.hpp>
 

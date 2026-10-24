@@ -24,6 +24,26 @@ foreach(_component IN LISTS _inertia_installed)
             COMPONENT inertia_${_component})
 endforeach()
 
+# The conformance kit: a header-only INTERFACE target whose Catch2 scenarios are installed as
+# sources, to be compiled by the consumer (see conformance/CMakeLists.txt), plus its CMake helper.
+if(TARGET inertia_conformance)
+    install(TARGETS inertia_conformance
+            EXPORT inertia-conformance-targets
+            FILE_SET HEADERS COMPONENT inertia_conformance)
+    install(EXPORT inertia-conformance-targets
+            NAMESPACE inertia::
+            DESTINATION ${INERTIA_INSTALL_CMAKEDIR}
+            COMPONENT inertia_conformance)
+    list(TRANSFORM INERTIA_CONFORMANCE_SOURCES
+         PREPEND ${PROJECT_SOURCE_DIR}/conformance/ OUTPUT_VARIABLE _conformance_files)
+    install(FILES ${_conformance_files}
+            DESTINATION ${INERTIA_CONFORMANCE_DATADIR}
+            COMPONENT inertia_conformance)
+    install(FILES ${CMAKE_CURRENT_LIST_DIR}/inertiaConformance.cmake
+            DESTINATION ${INERTIA_INSTALL_CMAKEDIR}
+            COMPONENT inertia_conformance)
+endif()
+
 configure_package_config_file(
     ${CMAKE_CURRENT_LIST_DIR}/inertiaConfig.cmake.in
     ${PROJECT_BINARY_DIR}/inertiaConfig.cmake

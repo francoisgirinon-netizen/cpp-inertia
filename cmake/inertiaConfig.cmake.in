@@ -40,9 +40,20 @@ foreach(_inertia_component IN LISTS inertia_FIND_COMPONENTS)
             set(inertia_NOT_FOUND_MESSAGE
                 "inertia was installed without the cpp-httplib adapter (configured with INERTIA_BUILD_HTTPLIB=OFF)")
         endif()
+    elseif(_inertia_component STREQUAL "conformance")
+        if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/inertia-conformance-targets.cmake")
+            find_dependency(Catch2 CONFIG)
+            include("${CMAKE_CURRENT_LIST_DIR}/inertia-conformance-targets.cmake")
+            # inertia_add_conformance_test()
+            include("${CMAKE_CURRENT_LIST_DIR}/inertiaConformance.cmake")
+            set(inertia_conformance_FOUND TRUE)
+        else()
+            set(inertia_NOT_FOUND_MESSAGE
+                "inertia was installed without the conformance kit (Catch2 was not available when it was configured)")
+        endif()
     else()
         set(inertia_NOT_FOUND_MESSAGE
-            "unknown inertia component '${_inertia_component}' (available: core, fake, drogon, httplib)")
+            "unknown inertia component '${_inertia_component}' (available: core, fake, drogon, httplib, conformance)")
     endif()
 endforeach()
 

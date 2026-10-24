@@ -28,7 +28,7 @@ struct TestResponse {
     [[nodiscard]] Json json() const;
 };
 
-// Performs one HTTP exchange against the application under test. Each harness (fake or Drogon)
+// Performs one HTTP exchange against the application under test. Each adapter's harness
 // implements it, so the scenarios run unchanged against every adapter.
 //
 // Contract: a session persists between calls, and `POST /__reset` starts a fresh one.

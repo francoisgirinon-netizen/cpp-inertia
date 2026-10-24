@@ -1,4 +1,4 @@
-#include "harness.hpp"
+#include <inertia/conformance/harness.hpp>
 
 #include <inertia/headers.hpp>
 
