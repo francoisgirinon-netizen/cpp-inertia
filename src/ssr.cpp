@@ -139,7 +139,7 @@ void dispatch(Call call, Parse parse, std::function<void(R)> done, R fallback) {
 
 } // namespace
 
-void SsrGateway::render(const Json &page, std::string_view /*requestPath*/,
+void SsrGateway::render(const Json &page,
                         std::function<void(std::optional<SsrResult>)> done) const {
     if (!http_) {
         done(std::nullopt);

@@ -58,13 +58,12 @@ class SsrGateway {
     /// `exceptPaths`.
     [[nodiscard]] bool shouldRender(std::string_view requestPath) const;
 
-    /// Renders a page on the SSR server.
+    /// Renders a page on the SSR server. The caller decides first whether the request path
+    /// should be rendered, with shouldRender().
     /// @param page Page object from Inertia::page(), posted as JSON.
-    /// @param requestPath Request path of the page. It is not sent to the SSR server.
     /// @param done Receives the rendered markup, or nullopt on any failure: connection error,
     /// timeout, non-2xx status or a malformed reply.
-    void render(const Json &page, std::string_view requestPath,
-                std::function<void(std::optional<SsrResult>)> done) const;
+    void render(const Json &page, std::function<void(std::optional<SsrResult>)> done) const;
 
     /// Checks the SSR server's `GET /health` endpoint.
     /// @param done Receives `true` only when the reply is `{"status": "OK"}`.

@@ -50,10 +50,10 @@ struct GatewayRig {
         return {ssr, http, std::make_shared<const Vite>(ViteConfig{}, files)};
     }
 
-    [[nodiscard]] std::optional<SsrResult> render(const std::string &path = "/home") const {
+    [[nodiscard]] std::optional<SsrResult> render() const {
         std::optional<SsrResult> got;
         bool called = false;
-        gateway().render(Json{{"component", "X"}}, path, [&](std::optional<SsrResult> r) {
+        gateway().render(Json{{"component", "X"}}, [&](std::optional<SsrResult> r) {
             got = std::move(r);
             called = true;
         });
@@ -170,7 +170,7 @@ TEST_CASE("an SSR gateway without a client answers at once without calling out",
     const SsrGateway gw(enabledConfig(), nullptr, nullptr);
     int renders = 0;
     int healths = 0;
-    gw.render(Json{{"component", "X"}}, "/home", [&](const std::optional<SsrResult> &r) {
+    gw.render(Json{{"component", "X"}}, [&](const std::optional<SsrResult> &r) {
         ++renders;
         REQUIRE_FALSE(r.has_value());
     });
@@ -218,7 +218,7 @@ TEST_CASE("a second SSR answer is ignored", "[ssr][protocol:ssr.fallback]") {
     const SsrGateway gw(enabledConfig(), std::make_shared<DoubleAnswerClient>(), nullptr);
     int renders = 0;
     std::optional<SsrResult> got;
-    gw.render(Json{{"component", "X"}}, "/home", [&](const std::optional<SsrResult> &r) {
+    gw.render(Json{{"component", "X"}}, [&](const std::optional<SsrResult> &r) {
         ++renders;
         got = r;
     });
@@ -241,7 +241,7 @@ TEST_CASE("an exception from the gateway callback propagates out of the client",
           "[ssr][protocol:ssr.fallback]") {
     const SsrGateway gw(enabledConfig(), std::make_shared<PassThroughClient>(), nullptr);
     REQUIRE_THROWS_AS(
-        gw.render(Json{{"component", "X"}}, "/home",
+        gw.render(Json{{"component", "X"}},
                   [](const std::optional<SsrResult> &) { throw std::logic_error("user"); }),
         std::logic_error);
     REQUIRE_THROWS_AS(gw.health([](bool) { throw std::logic_error("user"); }), std::logic_error);

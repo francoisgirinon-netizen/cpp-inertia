@@ -265,7 +265,7 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
         finish(std::nullopt);
         return;
     }
-    ssr_.render(page, path, finish);
+    ssr_.render(page, finish);
 }
 
 std::optional<Response> Inertia::handleVersion(const RequestView &req) const {
