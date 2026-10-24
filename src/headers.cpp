@@ -58,7 +58,7 @@ bool iequals(std::string_view a, std::string_view b) {
 
 std::optional<std::string> Response::header(std::string_view name) const {
     for (const auto &[key, value] : headers) {
-        if (headers::iequals(key, name)) {
+        if (inertia::headers::iequals(key, name)) {
             return value;
         }
     }
@@ -66,7 +66,8 @@ std::optional<std::string> Response::header(std::string_view name) const {
 }
 
 void Response::setHeader(std::string name, std::string value) {
-    std::erase_if(headers, [&](const auto &entry) { return headers::iequals(entry.first, name); });
+    std::erase_if(headers,
+                  [&](const auto &entry) { return inertia::headers::iequals(entry.first, name); });
     headers.emplace_back(std::move(name), std::move(value));
 }
 
