@@ -20,7 +20,8 @@ export default function Posts({ posts, latest, page, settings, thread }: Props) 
 
   // `posts` is merged (appended), so only the new page travels over the wire.
   const loadMore = () => router.reload({ only: ['posts', 'page'], data: { page: page + 1 } })
-  // `latest` is prepended: new entries show up before the existing ones.
+  // `latest` is prepended: new entries show up before the existing ones. `newest` is the number
+  // of entries already shown; the server derives the new id from it (see posts.cpp).
   const addLatest = () => router.reload({ only: ['latest'], data: { newest: latest.length } })
   // `reset` replaces the merged list instead of merging into it.
   const reset = () => router.reload({ only: ['posts', 'page'], reset: ['posts'], data: { page: 1 } })

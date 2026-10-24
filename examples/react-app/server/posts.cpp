@@ -20,7 +20,10 @@ int intParam(const ::drogon::HttpRequestPtr &req, const char *name, int fallback
     return value;
 }
 
-inertia::Json post(int id) { return {{"id", id}, {"title", "Post " + std::to_string(id)}}; }
+// `edited` marks a post the server changed since the client last loaded it.
+inertia::Json post(int id, const char *edited = "") {
+    return {{"id", id}, {"title", "Post " + std::to_string(id) + edited}};
+}
 
 } // namespace
 
@@ -29,12 +32,20 @@ inertia::Json post(int id) { return {{"id", id}, {"title", "Post " + std::to_str
 void registerPosts() {
     registerPage({.path = "/posts", .component = "Posts"}, [](const ::drogon::HttpRequestPtr &req) {
         const int page = std::max(intParam(req, "page", 1), 1);
-        const int newest = intParam(req, "newest", 0); // the highest id the client has seen
+        // How many `latest` entries the client already shows. The new entry gets id newest + 100,
+        // so each prepend adds the next id (100, 101, ...) as long as only this button adds them.
+        const int newest = intParam(req, "newest", 0);
         const int step = std::max(intParam(req, "step", 1), 1);
         return inertia::Props{
+            // Page 2 and later re-send the last post of the page before, edited, so the matchOn
+            // reload carries an id the client already shows and must replace, not duplicate.
             {"posts", inertia::Prop{[page] {
                           auto posts = inertia::Json::array();
-                          for (int id = (page - 1) * kPageSize + 1; id <= page * kPageSize; ++id) {
+                          const int first = (page - 1) * kPageSize + 1;
+                          if (page > 1) {
+                              posts.push_back(post(first - 1, " (edited)"));
+                          }
+                          for (int id = first; id <= page * kPageSize; ++id) {
                               posts.push_back(post(id));
                           }
                           return posts;

@@ -20,12 +20,12 @@ test('a merge prop appends the next page to the list already on screen [protocol
   )
   const body = await res.json()
   expect(body.mergeProps).toContain('posts')
-  // Only the new page travels over the wire.
-  expect(body.props.posts.map((post) => post.id)).toEqual([4, 5, 6])
+  // Post 3 is re-sent (edited) for matchOn to replace; the other three are the new page.
+  expect(body.props.posts.map((post) => post.id)).toEqual([3, 4, 5, 6])
   await expect(titles(page, 'posts')).toHaveText([
     'Post 1',
     'Post 2',
-    'Post 3',
+    'Post 3 (edited)',
     'Post 4',
     'Post 5',
     'Post 6',
@@ -93,6 +93,7 @@ test('matchOn keys travel in matchPropsOn so the client replaces entries with th
   page,
 }) => {
   await page.goto('/posts')
+  await expect(titles(page, 'posts')).toHaveText(['Post 1', 'Post 2', 'Post 3'])
   const res = await visitDuring(
     page,
     '/posts',
@@ -102,10 +103,17 @@ test('matchOn keys travel in matchPropsOn so the client replaces entries with th
   )
   const body = await res.json()
   expect(body.matchPropsOn).toEqual(expect.arrayContaining(['posts.id']))
-  // Entries are keyed by id, so no post shows twice.
-  const shown = await titles(page, 'posts').allTextContents()
-  await expect(titles(page, 'posts')).toHaveCount(6)
-  expect(new Set(shown).size).toBe(shown.length)
+  // The reload carries post 3, already on screen. The client replaces it in place: the list
+  // keeps six entries, post 3 shows its new title, and no id appears twice.
+  expect(body.props.posts.map((post) => post.id)).toContain(3)
+  await expect(titles(page, 'posts')).toHaveText([
+    'Post 1',
+    'Post 2',
+    'Post 3 (edited)',
+    'Post 4',
+    'Post 5',
+    'Post 6',
+  ])
 })
 
 test('reset replaces the merged list instead of merging into it [protocol:merge.reset]', async ({
