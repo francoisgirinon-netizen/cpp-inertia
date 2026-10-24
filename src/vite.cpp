@@ -54,10 +54,19 @@ std::optional<std::string> stringValue(const Json &chunk, const char *key) {
     return found->get<std::string>();
 }
 
+// Appends a stylesheet link unless that stylesheet was already emitted.
+void appendStylesheet(const std::string &buildDir, const std::string &css,
+                      std::set<std::string> &seenCss, std::string &out) {
+    if (seenCss.insert(css).second) {
+        out += R"(<link rel="stylesheet" href=")" + assetUrl(buildDir, css) + R"(">)";
+    }
+}
+
 // Appends the stylesheet and modulepreload tags of every chunk reachable through imports, once
 // each.
 void appendImports(const Json &manifest, const std::vector<std::string> &imports,
-                   const std::string &buildDir, std::set<std::string> &seen, std::string &out) {
+                   const std::string &buildDir, std::set<std::string> &seen,
+                   std::set<std::string> &seenCss, std::string &out) {
     for (const auto &import : imports) {
         if (!seen.insert(import).second) {
             continue;
@@ -67,12 +76,12 @@ void appendImports(const Json &manifest, const std::vector<std::string> &imports
             continue;
         }
         for (const auto &css : stringList(*found, "css")) {
-            out += R"(<link rel="stylesheet" href=")" + assetUrl(buildDir, css) + R"(">)";
+            appendStylesheet(buildDir, css, seenCss, out);
         }
         if (const auto file = stringValue(*found, "file")) {
             out += R"(<link rel="modulepreload" href=")" + assetUrl(buildDir, *file) + R"(">)";
         }
-        appendImports(manifest, stringList(*found, "imports"), buildDir, seen, out);
+        appendImports(manifest, stringList(*found, "imports"), buildDir, seen, seenCss, out);
     }
 }
 
@@ -103,6 +112,9 @@ std::optional<std::string> Vite::hotUrl() const {
         return std::nullopt;
     }
     const auto end = content->find_last_not_of(std::string(kWhitespace) + "/");
+    if (end == std::string::npos || end < begin) {
+        return std::nullopt; // nothing but slashes and whitespace
+    }
     return content->substr(begin, end - begin + 1);
 }
 
@@ -141,6 +153,7 @@ std::string Vite::prodTags() const {
     }
     // Entries are seen up front so an entry imported by another is not preloaded.
     std::set<std::string> seen(cfg_.entries.begin(), cfg_.entries.end());
+    std::set<std::string> seenCss;
     std::string out;
     for (const auto &entry : cfg_.entries) {
         const auto found = manifest->find(entry);
@@ -152,9 +165,9 @@ std::string Vite::prodTags() const {
             continue;
         }
         for (const auto &css : stringList(*found, "css")) {
-            out += R"(<link rel="stylesheet" href=")" + assetUrl(cfg_.buildDir, css) + R"(">)";
+            appendStylesheet(cfg_.buildDir, css, seenCss, out);
         }
-        appendImports(*manifest, stringList(*found, "imports"), cfg_.buildDir, seen, out);
+        appendImports(*manifest, stringList(*found, "imports"), cfg_.buildDir, seen, seenCss, out);
         out += R"(<script type="module" src=")" + assetUrl(cfg_.buildDir, *file) + R"("></script>)";
     }
     return out;

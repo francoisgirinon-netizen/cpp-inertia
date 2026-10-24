@@ -30,6 +30,15 @@ TEST_CASE("hotUrl is empty when there is no hot file", "[vite]") {
     REQUIRE_FALSE(vite.hotUrl().has_value());
 }
 
+TEST_CASE("hotUrl is absent when the hot file is only slashes or whitespace", "[vite]") {
+    for (const char *content : {"/", " / \n", "///", "\n"}) {
+        auto files = makeFiles();
+        files->files["public/hot"] = content;
+        const Vite vite(ViteConfig{}, files);
+        REQUIRE_FALSE(vite.hotUrl().has_value());
+    }
+}
+
 TEST_CASE("dev tags load the refresh preamble, client and entries from the hot URL", "[vite]") {
     auto files = makeFiles();
     files->files["public/hot"] = "http://localhost:5173\n";
@@ -104,6 +113,20 @@ TEST_CASE("prod tags visit shared imports once", "[vite]") {
     REQUIRE(countOf(tags, R"(href="/build/v.js")") == 1);
     REQUIRE(countOf(tags, R"(src="/build/a.js")") == 1);
     REQUIRE(countOf(tags, R"(src="/build/b.js")") == 1);
+}
+
+TEST_CASE("prod tags emit an identical stylesheet once across chunks and entries", "[vite]") {
+    auto files = makeFiles();
+    files->files[std::string(kManifestPath)] =
+        R"({"src/app.tsx": {"file": "a.js", "css": ["s.css"], "imports": ["_v.js"]},
+            "src/admin.tsx": {"file": "b.js", "css": ["s.css"], "imports": ["_v.js"]},
+            "_v.js": {"file": "v.js", "css": ["s.css", "v.css"]}})";
+    ViteConfig cfg;
+    cfg.entries = {"src/app.tsx", "src/admin.tsx"};
+    const Vite vite(cfg, files);
+    const auto tags = vite.tags();
+    REQUIRE(countOf(tags, R"(href="/build/s.css")") == 1);
+    REQUIRE(countOf(tags, R"(href="/build/v.css")") == 1);
 }
 
 TEST_CASE("an entry missing from the manifest is skipped", "[vite]") {
