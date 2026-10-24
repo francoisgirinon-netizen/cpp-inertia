@@ -107,6 +107,11 @@ TEST_CASE("gateway failures yield nullopt", "[ssr][protocol:ssr.fallback]") {
         rig.http->replies.push_back(reply(200, R"({"head":[1],"body":"y"})"));
     }
     SECTION("body missing") { rig.http->replies.push_back(reply(200, R"({"head":[]})")); }
+    SECTION("head missing") { rig.http->replies.push_back(reply(200, R"({"body":"y"})")); }
+    SECTION("body is not a string") {
+        rig.http->replies.push_back(reply(200, R"({"head":[],"body":1})"));
+    }
+    SECTION("status below 200") { rig.http->replies.push_back(reply(199, kSsrReply)); }
     SECTION("no reply queued") {}
     REQUIRE_FALSE(rig.render().has_value());
 }
@@ -140,6 +145,106 @@ TEST_CASE("health is true only for status OK", "[ssr][protocol:ssr.health]") {
     REQUIRE_FALSE(check(reply(500, R"({"status":"OK"})")));
     REQUIRE_FALSE(check(reply(200, "nope")));
     REQUIRE_FALSE(check(reply(0, "", "refused")));
+    REQUIRE_FALSE(check(reply(199, R"({"status":"OK"})")));
+    REQUIRE_FALSE(check(reply(200, R"({"other":"OK"})")));
+    REQUIRE_FALSE(check(reply(200, R"(["OK"])")));
+}
+
+TEST_CASE("an empty SSR url posts to the bare render path", "[ssr]") {
+    GatewayRig rig;
+    rig.ssr.url = "";
+    rig.http->replies.push_back(reply(200, kSsrReply));
+    REQUIRE(rig.render().has_value());
+    REQUIRE(rig.http->posts.back().first == "/render");
+}
+
+TEST_CASE("an empty exceptPaths pattern only matches the empty path", "[ssr]") {
+    GatewayRig rig;
+    rig.ssr.exceptPaths = {""};
+    REQUIRE(rig.gateway().shouldRender("/home"));
+    REQUIRE_FALSE(rig.gateway().shouldRender(""));
+}
+
+TEST_CASE("an SSR gateway without a client answers at once without calling out",
+          "[ssr][protocol:ssr.fallback]") {
+    const SsrGateway gw(enabledConfig(), nullptr, nullptr);
+    int renders = 0;
+    int healths = 0;
+    gw.render(Json{{"component", "X"}}, "/home", [&](const std::optional<SsrResult> &r) {
+        ++renders;
+        REQUIRE_FALSE(r.has_value());
+    });
+    gw.health([&](bool ok) {
+        ++healths;
+        REQUIRE_FALSE(ok);
+    });
+    REQUIRE(renders == 1);
+    REQUIRE(healths == 1);
+}
+
+namespace {
+
+// Answers every post twice, the second answer must be ignored.
+class DoubleAnswerClient final : public HttpClient {
+  public:
+    void post(std::string /*url*/, std::string /*jsonBody*/, std::chrono::milliseconds /*timeout*/,
+              std::function<void(HttpResult)> done) override {
+        done(reply(200, kSsrReply));
+        done(reply(500, ""));
+    }
+    void get(std::string /*url*/, std::chrono::milliseconds /*timeout*/,
+             std::function<void(HttpResult)> done) override {
+        done(reply(200, R"({"status":"OK"})"));
+        done(reply(0, "", "refused"));
+    }
+};
+
+// Answers synchronously so that the completion callback's exception unwinds through the client.
+class PassThroughClient final : public HttpClient {
+  public:
+    void post(std::string /*url*/, std::string /*jsonBody*/, std::chrono::milliseconds /*timeout*/,
+              std::function<void(HttpResult)> done) override {
+        done(reply(200, kSsrReply));
+    }
+    void get(std::string /*url*/, std::chrono::milliseconds /*timeout*/,
+             std::function<void(HttpResult)> done) override {
+        done(reply(200, R"({"status":"OK"})"));
+    }
+};
+
+} // namespace
+
+TEST_CASE("a second SSR answer is ignored", "[ssr][protocol:ssr.fallback]") {
+    const SsrGateway gw(enabledConfig(), std::make_shared<DoubleAnswerClient>(), nullptr);
+    int renders = 0;
+    std::optional<SsrResult> got;
+    gw.render(Json{{"component", "X"}}, "/home", [&](const std::optional<SsrResult> &r) {
+        ++renders;
+        got = r;
+    });
+    REQUIRE(renders == 1);
+    REQUIRE(got.has_value());
+    const std::string body = got.value_or(SsrResult{}).body;
+    REQUIRE(body.find("data-server-rendered") != std::string::npos);
+
+    int healths = 0;
+    bool ok = false;
+    gw.health([&](bool v) {
+        ++healths;
+        ok = v;
+    });
+    REQUIRE(healths == 1);
+    REQUIRE(ok);
+}
+
+TEST_CASE("an exception from the gateway callback propagates out of the client",
+          "[ssr][protocol:ssr.fallback]") {
+    const SsrGateway gw(enabledConfig(), std::make_shared<PassThroughClient>(), nullptr);
+    REQUIRE_THROWS_AS(
+        gw.render(Json{{"component", "X"}}, "/home",
+                  [](const std::optional<SsrResult> &) { throw std::logic_error("user"); }),
+        std::logic_error);
+    REQUIRE_THROWS_AS(gw.health([](bool) { throw std::logic_error("user"); }), std::logic_error);
 }
 
 namespace {
