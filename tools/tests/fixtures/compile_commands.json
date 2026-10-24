@@ -1,0 +1,32 @@
+[
+  {
+    "directory": "/src/build/dev",
+    "command": "/usr/local/bin/clang++ -I/src/include -isystem /src/build/dev/vcpkg_installed/x64-linux/include -isystem /usr/include -std=c++20 -Wall -o CMakeFiles/inertia_core.dir/src/inertia.cpp.o -c /src/src/inertia.cpp",
+    "file": "/src/src/inertia.cpp",
+    "output": "/src/build/dev/CMakeFiles/inertia_core.dir/src/inertia.cpp.o"
+  },
+  {
+    "directory": "/src/build/dev",
+    "arguments": [
+      "/usr/local/bin/clang++",
+      "-I", "/src/adapters/drogon/include",
+      "-iquote", "/src/tests/drogon",
+      "-include", "/src/include/inertia/prelude.hpp",
+      "--include=/src/include/inertia/extra.hpp",
+      "-include/src/include/inertia/joined.hpp",
+      "-I/srcfoo/include",
+      "-I/usr/include/c++/15",
+      "--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/15",
+      "--sysroot", "/",
+      "-c", "/src/tests/drogon/main.cpp"
+    ],
+    "file": "/src/tests/drogon/main.cpp",
+    "output": "main.o"
+  },
+  {
+    "directory": "/src/build/dev",
+    "command": "/usr/local/bin/clang++ @/src/build/dev/rsp/args.rsp -c /src/examples/app.cpp",
+    "file": "/src/examples/app.cpp",
+    "output": "/src/build/dev/examples/app.o"
+  }
+]
