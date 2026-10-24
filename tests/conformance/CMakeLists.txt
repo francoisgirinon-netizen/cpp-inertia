@@ -20,3 +20,9 @@ if(INERTIA_BUILD_DROGON)
         "${CMAKE_CURRENT_SOURCE_DIR}/drogon_harness.cpp;$<TARGET_OBJECTS:inertia_drogon_test_support>"
         inertia_drogon_test_support)
 endif()
+
+if(INERTIA_BUILD_HTTPLIB)
+    inertia_add_conformance_executable(
+        inertia_conformance_httplib ${CMAKE_CURRENT_SOURCE_DIR}/httplib_harness.cpp
+        inertia_httplib_test_support)
+endif()

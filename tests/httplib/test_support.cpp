@@ -71,58 +71,76 @@ std::string Reply::cookieValue(std::string_view name) const {
 Client::Client(std::uint16_t port) : port_(port) {}
 
 Reply Client::send(const Request &req) {
-    ::httplib::Client http("127.0.0.1", port_);
-    http.set_connection_timeout(std::chrono::seconds(5));
-    http.set_read_timeout(std::chrono::seconds(10));
-    http.set_write_timeout(std::chrono::seconds(5));
-
-    ::httplib::Request request;
-    request.method = req.method;
-    request.path = req.url;
-    request.body = req.body;
+    // Hand-written HTTP/1.1, so that the request target reaches the server byte for byte
+    // (cpp-httplib's own client normalizes the query).
+    std::string wire = req.method + " " + req.url + " HTTP/1.1\r\n";
+    wire += "Host: 127.0.0.1:" + std::to_string(port_) + "\r\nConnection: close\r\n";
     bool hasCookie = false;
+    bool hasLength = false;
     for (const auto &[name, value] : req.headers) {
         hasCookie = hasCookie || inertia::headers::iequals(name, "Cookie");
-        request.headers.emplace(name, value);
+        hasLength = hasLength || inertia::headers::iequals(name, "Content-Length");
+        wire.append(name).append(": ").append(value).append("\r\n");
     }
     if (!hasCookie && !jar_.empty()) {
-        std::string cookie;
+        wire += "Cookie: ";
+        bool first = true;
         for (const auto &[name, value] : jar_) {
-            if (!cookie.empty()) {
-                cookie += "; ";
-            }
-            cookie.append(name).append("=").append(value);
+            wire.append(first ? "" : "; ").append(name).append("=").append(value);
+            first = false;
         }
-        request.headers.emplace("Cookie", cookie);
+        wire += "\r\n";
     }
+    if (!hasLength && (!req.body.empty() || req.method == "POST" || req.method == "PUT" ||
+                       req.method == "PATCH")) {
+        wire += "Content-Length: " + std::to_string(req.body.size()) + "\r\n";
+    }
+    wire += "\r\n";
+    wire += req.body;
 
-    const auto result = http.send(request);
-    if (!result) {
-        throw std::runtime_error("request failed: " + req.method + " " + req.url + ": " +
-                                 ::httplib::to_string(result.error()));
+    const auto raw = rawExchange(port_, wire);
+    const auto headEnd = raw.find("\r\n\r\n");
+    const auto lineEnd = raw.find("\r\n");
+    if (headEnd == std::string::npos || !raw.starts_with("HTTP/")) {
+        throw std::runtime_error("malformed reply to " + req.method + " " + req.url);
     }
     Reply reply;
-    reply.status = result->status;
-    reply.body = result->body;
-    for (const auto &[name, value] : result->headers) {
+    const auto space = raw.find(' ');
+    reply.status = std::stoi(raw.substr(space + 1, 3));
+    reply.body = raw.substr(headEnd + 4);
+    std::size_t at = lineEnd + 2;
+    while (at < headEnd + 2) {
+        const auto next = raw.find("\r\n", at);
+        const auto line = raw.substr(at, next - at);
+        at = next + 2;
+        const auto colon = line.find(':');
+        if (colon == std::string::npos) {
+            continue;
+        }
+        const auto name = line.substr(0, colon);
+        const auto first = line.find_first_not_of(" \t", colon + 1);
+        const auto value = first == std::string::npos ? std::string{} : line.substr(first);
         reply.headers.emplace_back(name, value);
-        if (!inertia::headers::iequals(name, "Set-Cookie")) {
-            continue;
-        }
-        const auto pair = value.substr(0, value.find(';'));
-        const auto eq = pair.find('=');
-        if (eq == std::string::npos) {
-            continue;
-        }
-        const auto cookieName = pair.substr(0, eq);
-        const auto cookieValue = pair.substr(eq + 1);
-        if (cookieValue.empty() || value.find("Max-Age=0") != std::string::npos) {
-            jar_.erase(cookieName);
-        } else {
-            jar_[cookieName] = cookieValue;
+        if (inertia::headers::iequals(name, "Set-Cookie")) {
+            rememberCookie(value);
         }
     }
     return reply;
+}
+
+void Client::rememberCookie(const std::string &setCookie) {
+    const auto pair = setCookie.substr(0, setCookie.find(';'));
+    const auto eq = pair.find('=');
+    if (eq == std::string::npos) {
+        return;
+    }
+    const auto name = pair.substr(0, eq);
+    const auto value = pair.substr(eq + 1);
+    if (value.empty() || setCookie.find("Max-Age=0") != std::string::npos) {
+        jar_.erase(name);
+    } else {
+        jar_[name] = value;
+    }
 }
 
 std::string rawExchange(std::uint16_t port, const std::string &request) {
@@ -130,6 +148,10 @@ std::string rawExchange(std::uint16_t port, const std::string &request) {
     if (fd < 0) {
         throw std::runtime_error("socket() failed");
     }
+    // A hung server must fail a test, not hang it.
+    const timeval limit{.tv_sec = 15, .tv_usec = 0};
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &limit, sizeof(limit));
+    ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &limit, sizeof(limit));
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);

@@ -76,6 +76,8 @@ class Client {
     [[nodiscard]] const std::map<std::string, std::string> &cookies() const { return jar_; }
 
   private:
+    void rememberCookie(const std::string &setCookie);
+
     std::uint16_t port_;
     std::map<std::string, std::string> jar_;
 };
