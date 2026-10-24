@@ -1,0 +1,45 @@
+# include-what-you-use mapping (INERTIA_IWYU, see cmake/InertiaIwyu.cmake).
+#
+# The project spells its own headers <inertia/...> while include-what-you-use suggests
+# "inertia/...": the first group maps one to the other. The next groups map the implementation
+# headers of third-party libraries to the header their users are meant to include.
+[
+  # --- project headers
+  { include: ['"inertia/conformance/harness.hpp"', private, '<inertia/conformance/harness.hpp>', public] },
+  { include: ['"inertia/conformance/routes.hpp"', private, '<inertia/conformance/routes.hpp>', public] },
+  { include: ['"inertia/detail/props_resolver.hpp"', private, '<inertia/detail/props_resolver.hpp>', public] },
+  { include: ['"inertia/detail/session_keys.hpp"', private, '<inertia/detail/session_keys.hpp>', public] },
+  { include: ['"inertia/drogon/drogon.hpp"', private, '<inertia/drogon/drogon.hpp>', public] },
+  { include: ['"inertia/fake/fake.hpp"', private, '<inertia/fake/fake.hpp>', public] },
+  { include: ['"inertia/headers.hpp"', private, '<inertia/headers.hpp>', public] },
+  { include: ['"inertia/html.hpp"', private, '<inertia/html.hpp>', public] },
+  { include: ['"inertia/httplib/httplib.hpp"', private, '<inertia/httplib/httplib.hpp>', public] },
+  { include: ['"inertia/inertia.hpp"', private, '<inertia/inertia.hpp>', public] },
+  { include: ['"inertia/json.hpp"', private, '<inertia/json.hpp>', public] },
+  { include: ['"inertia/ports/file_reader.hpp"', private, '<inertia/ports/file_reader.hpp>', public] },
+  { include: ['"inertia/ports/http_client.hpp"', private, '<inertia/ports/http_client.hpp>', public] },
+  { include: ['"inertia/ports/request_view.hpp"', private, '<inertia/ports/request_view.hpp>', public] },
+  { include: ['"inertia/ports/session_store.hpp"', private, '<inertia/ports/session_store.hpp>', public] },
+  { include: ['"inertia/props.hpp"', private, '<inertia/props.hpp>', public] },
+  { include: ['"inertia/response.hpp"', private, '<inertia/response.hpp>', public] },
+  { include: ['"inertia/session.hpp"', private, '<inertia/session.hpp>', public] },
+  { include: ['"inertia/ssr.hpp"', private, '<inertia/ssr.hpp>', public] },
+  { include: ['"inertia/vite.hpp"', private, '<inertia/vite.hpp>', public] },
+
+  # --- nlohmann/json: only <nlohmann/json.hpp> is public
+  { include: ['@<nlohmann/detail/.*>', private, '<nlohmann/json.hpp>', public] },
+  { include: ['<nlohmann/ordered_map.hpp>', private, '<nlohmann/json.hpp>', public] },
+
+  # --- Catch2: INFO, CAPTURE, ... come with the test macros
+  { include: ['<catch2/catch_message.hpp>', private, '<catch2/catch_test_macros.hpp>', public] },
+  { include: ['<catch2/catch_assertion_info.hpp>', private, '<catch2/reporters/catch_reporter_event_listener.hpp>', public] },
+
+  # --- Drogon: the smart pointer aliases and the routing constraint are reached through the
+  #     class headers and the application framework
+  { symbol: ['drogon::HttpRequestPtr', private, '<drogon/HttpRequest.h>', public] },
+  { symbol: ['drogon::HttpResponsePtr', private, '<drogon/HttpResponse.h>', public] },
+  { include: ['<drogon/utils/HttpConstraint.h>', private, '<drogon/HttpAppFramework.h>', public] },
+
+  # --- libstdc++: the range algorithms are function objects declared in <bits/ranges_algo.h>
+  { symbol: ['@std::ranges::__.*_fn', private, '<algorithm>', public] },
+]

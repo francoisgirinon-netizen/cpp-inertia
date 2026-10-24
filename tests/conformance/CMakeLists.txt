@@ -3,6 +3,7 @@
 function(inertia_add_conformance_executable name)
     inertia_add_conformance_test(${name} ${ARGN})
     target_link_libraries(${name} PRIVATE inertia_warnings)
+    inertia_enable_iwyu(${name})
     inertia_add_protocol_tests(${name})
 endfunction()
 

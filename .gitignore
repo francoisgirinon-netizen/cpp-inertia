@@ -6,3 +6,4 @@ __pycache__/
 examples/react-app/server/public/build/
 examples/react-app/frontend/dist/
 *.profraw
+CMakeUserPresets.json
