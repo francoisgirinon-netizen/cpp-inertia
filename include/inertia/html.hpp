@@ -19,8 +19,7 @@ namespace inertia {
 [[nodiscard]] std::string inertiaBody(const Json &page, std::string_view rootId);
 
 struct RootContext {
-    const Json &page; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members): non-owning view,
-                      // short-lived
+    std::reference_wrapper<const Json> page; // non-owning view, short-lived
     std::string head;
     std::string body;
     std::string viteTags;

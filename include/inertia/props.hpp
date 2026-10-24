@@ -55,21 +55,19 @@ class Prop {
     enum class Kind : std::uint8_t { Value, Closure, Object };
 
     // Implicit by design: `{{"key", 1}}` and `{{"key", [] { ... }}}` must work in Props lists.
-    // NOLINTBEGIN(cppcoreguidelines-explicit-constructor)
     template <class T>
         requires(!std::same_as<std::remove_cvref_t<T>, Prop> && !std::invocable<T &> &&
                  std::constructible_from<Json, T>)
-    Prop(T &&v) : Prop(Json(std::forward<T>(v))) {}
+    explicit(false) Prop(T &&v) : Prop(Json(std::forward<T>(v))) {}
 
     template <class F>
         requires(!std::same_as<std::remove_cvref_t<F>, Prop> && std::invocable<F &> &&
                  std::convertible_to<std::invoke_result_t<F &>, Prop>)
-    Prop(F &&fn)
+    explicit(false) Prop(F &&fn)
         : kind_(Kind::Closure),
           resolver_([f = std::forward<F>(fn)]() mutable -> Prop { return f(); }) {}
 
-    Prop(Json v);
-    // NOLINTEND(cppcoreguidelines-explicit-constructor)
+    explicit(false) Prop(Json v);
 
     // Fluent modifiers.
     [[nodiscard]] Prop prepend() &&;
