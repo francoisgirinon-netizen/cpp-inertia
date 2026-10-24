@@ -1,15 +1,12 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
 
 #include <inertia/json.hpp>
 #include <inertia/props.hpp>
 
-#include <drogon/HttpRequest.h>
-
 #include <algorithm>
 #include <charconv>
 #include <string>
-#include <utility>
 
 namespace example {
 
@@ -29,9 +26,9 @@ int pageNumber(const std::string &text) {
 
 // Feed: a scroll prop. The server returns one page of items plus the paging metadata; the
 // client's <InfiniteScroll> asks for the next page and merges it into the list.
-void registerFeed() {
-    registerPage({.path = "/feed", .component = "Feed"}, [](const ::drogon::HttpRequestPtr &req) {
-        const int current = pageNumber(req->getParameter("page"));
+void registerFeed(Router &router) {
+    registerPage(router, {.path = "/feed", .component = "Feed"}, [](Context &ctx) {
+        const int current = pageNumber(ctx.query("page"));
         return inertia::Props{
             {"items",
              inertia::scroll(

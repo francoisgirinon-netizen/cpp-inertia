@@ -1,28 +1,17 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
 
 #include <inertia/json.hpp>
 #include <inertia/props.hpp>
 
-#include <drogon/HttpRequest.h>
-
 #include <algorithm>
-#include <charconv>
 #include <string>
-#include <utility>
 
 namespace example {
 
 namespace {
 
 constexpr int kPageSize = 3;
-
-int intParam(const ::drogon::HttpRequestPtr &req, const char *name, int fallback) {
-    const auto text = req->getParameter(name);
-    int value = fallback;
-    std::from_chars(text.data(), text.data() + text.size(), value);
-    return value;
-}
 
 // `edited` marks a post the server changed since the client last loaded it.
 inertia::Json post(int id, const char *edited = "") {
@@ -33,14 +22,14 @@ inertia::Json post(int id, const char *edited = "") {
 
 // Posts: merge props. `posts` appends each requested page, replacing entries with the same id
 // (matchOn); `latest` prepends. `router.reload({ reset: ['posts'] })` starts over.
-void registerPosts() {
-    registerPage({.path = "/posts", .component = "Posts"}, [](const ::drogon::HttpRequestPtr &req) {
-        const int page = std::max(intParam(req, "page", 1), 1);
+void registerPosts(Router &router) {
+    registerPage(router, {.path = "/posts", .component = "Posts"}, [](Context &ctx) {
+        const int page = std::max(intQuery(ctx, "page", 1), 1);
         // How many `latest` entries the client already shows. The new entry gets id newest + 100,
         // so each prepend adds the next id (100, 101, ...) as long as only this button adds them.
-        const int newest = intParam(req, "newest", 0);
-        const bool edit = intParam(req, "edit", 0) == 1; // re-send the last post, edited
-        const int step = std::max(intParam(req, "step", 1), 1);
+        const int newest = intQuery(ctx, "newest", 0);
+        const bool edit = intQuery(ctx, "edit", 0) == 1; // re-send the last post, edited
+        const int step = std::max(intQuery(ctx, "step", 1), 1);
         return inertia::Props{
             // With edit=1, page 2 and later re-send the last post of the page before, edited, so
             // the

@@ -1,28 +1,22 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
-#include <inertia/props.hpp>
 
-#include <drogon/HttpAppFramework.h>
-#include <drogon/HttpRequest.h>
-#include <drogon/HttpResponse.h>
-#include <drogon/HttpTypes.h>
+#include <inertia/props.hpp>
+#include <inertia/response.hpp>
 
 #include <atomic>
-#include <functional>
 #include <string>
-#include <utility>
-#include <vector>
 
 namespace example {
 
 // Props: how partial reloads (`only` / `except`) select props.
-void registerProps() {
+void registerProps(Router &router) {
     // Each counter shows how many times its prop was resolved, i.e. whether the server sent it.
     static std::atomic<int> alwaysResolved{0};
     static std::atomic<int> optionalResolved{0};
     static std::atomic<int> otherResolved{0};
 
-    registerPage({.path = "/props", .component = "Props"}, [](const ::drogon::HttpRequestPtr &) {
+    registerPage(router, {.path = "/props", .component = "Props"}, [](Context &) {
         return inertia::Props{
             {"title", "Props"},
             // always(): sent on every response, even a partial reload whose `only` does not list
@@ -43,11 +37,7 @@ void registerProps() {
 
     // An Inertia request that gets a 200 with an empty body is turned by Inertia into a redirect
     // back to the page the request came from (so the client never receives an empty page).
-    ::drogon::app().registerHandler("/props/empty",
-                                    [](const ::drogon::HttpRequestPtr &, Callback &&done) {
-                                        std::move(done)(::drogon::HttpResponse::newHttpResponse());
-                                    },
-                                    {::drogon::Post});
+    router.post("/props/empty", [](Context &) -> Outcome { return inertia::Response{}; });
 }
 
 } // namespace example

@@ -1,17 +1,12 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
 
-#include <inertia/drogon/drogon.hpp>
 #include <inertia/props.hpp>
 #include <inertia/session.hpp>
 
-#include <drogon/HttpAppFramework.h>
-#include <drogon/HttpRequest.h>
-#include <drogon/HttpTypes.h>
 #include <nlohmann/json.hpp>
 
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace example {
@@ -19,27 +14,24 @@ namespace example {
 // Login: validation errors in a named error bag. The client sends `errorBag: 'login'`
 // (X-Inertia-Error-Bag), so the page's `errors` prop holds only that bag's messages, and several
 // forms on one page do not show each other's errors.
-void registerLogin() {
-    registerPage({.path = "/login", .component = "Login"},
-                 [](const ::drogon::HttpRequestPtr &) { return inertia::Props{}; });
+void registerLogin(Router &router) {
+    registerPage(router, {.path = "/login", .component = "Login"},
+                 [](Context &) { return inertia::Props{}; });
 
-    ::drogon::app().registerHandler(
-        "/login",
-        [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
-            const auto body = jsonBody(req);
-            const auto password = body.value("password", std::string{});
-            auto session = sessionOf(req);
-            // Demo only: the password is a hard-coded literal. A real app checks a salted hash.
-            if (password != "secret") {
-                inertia::withErrors(
-                    session, {{"password", std::vector<std::string>{"The password is wrong."}}},
-                    "login");
-                return reply(std::move(done), inertia::back(inertia::drogon::DrogonRequest{req}));
-            }
-            inertia::flash(session, "success", "Logged in.");
-            reply(std::move(done), inertia::redirect("/"));
-        },
-        {::drogon::Post});
+    router.post("/login", [](Context &ctx) -> Outcome {
+        const auto body = jsonBody(ctx);
+        const auto password = body.value("password", std::string{});
+        auto &session = ctx.session();
+        // Demo only: the password is a hard-coded literal. A real app checks a salted hash.
+        if (password != "secret") {
+            inertia::withErrors(session,
+                                {{"password", std::vector<std::string>{"The password is wrong."}}},
+                                "login");
+            return inertia::back(ctx.request());
+        }
+        inertia::flash(session, "success", "Logged in.");
+        return inertia::redirect("/");
+    });
 }
 
 } // namespace example

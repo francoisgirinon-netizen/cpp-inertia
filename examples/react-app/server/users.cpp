@@ -1,18 +1,14 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
 
-#include <inertia/drogon/drogon.hpp>
 #include <inertia/json.hpp>
 #include <inertia/props.hpp>
 #include <inertia/session.hpp>
 
-#include <drogon/HttpAppFramework.h>
-#include <drogon/HttpRequest.h>
-#include <drogon/HttpTypes.h>
-
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <charconv>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -91,61 +87,56 @@ std::string stringField(const inertia::Json &body, const char *key) {
 
 // Users: a partial reload driven by a search filter, a form with validation errors and a flash
 // message, and a PUT whose 302 redirect Inertia upgrades to a 303.
-void registerUsers() {
+void registerUsers(Router &router) {
     // GET /users?search=... The client reloads with only: ['users'], so `renderCount` (resolved
     // lazily on every render that includes it) and `filters` stay untouched on a partial reload.
-    registerPage({.path = "/users", .component = "Users/Index"},
-                 [](const ::drogon::HttpRequestPtr &req) {
-                     const auto search = req->getParameter("search");
-                     static std::atomic<int> renders{0};
-                     return inertia::Props{
-                         {"users", [search] { return inertia::Prop{store().search(search)}; }},
-                         {"filters", inertia::Json{{"search", search}}},
-                         {"renderCount", [] { return inertia::Prop{++renders}; }},
-                     };
-                 });
+    registerPage(router, {.path = "/users", .component = "Users/Index"}, [](Context &ctx) {
+        const auto search = ctx.query("search");
+        static std::atomic<int> renders{0};
+        return inertia::Props{
+            {"users", [search] { return inertia::Prop{store().search(search)}; }},
+            {"filters", inertia::Json{{"search", search}}},
+            {"renderCount", [] { return inertia::Prop{++renders}; }},
+        };
+    });
 
-    registerPage({.path = "/users/create", .component = "Users/Create"},
-                 [](const ::drogon::HttpRequestPtr &) { return inertia::Props{}; });
+    registerPage(router, {.path = "/users/create", .component = "Users/Create"},
+                 [](Context &) { return inertia::Props{}; });
 
     // POST /users: invalid input goes back to the form with errors (consumed by the next render);
     // valid input is saved, flashed and redirected.
-    ::drogon::app().registerHandler(
-        "/users",
-        [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
-            const auto body = jsonBody(req);
-            const auto name = stringField(body, "name");
-            const auto email = stringField(body, "email");
+    router.post("/users", [](Context &ctx) -> Outcome {
+        const auto body = jsonBody(ctx);
+        const auto name = stringField(body, "name");
+        const auto email = stringField(body, "email");
 
-            inertia::Errors errors;
-            if (name.empty()) {
-                errors.emplace_back("name", std::vector<std::string>{"The name is required."});
-            }
-            if (email.find('@') == std::string::npos) {
-                errors.emplace_back("email", std::vector<std::string>{"The email must contain @."});
-            }
-            auto session = sessionOf(req);
-            if (!errors.empty()) {
-                inertia::withErrors(session, errors);
-                return reply(std::move(done), inertia::back(inertia::drogon::DrogonRequest{req}));
-            }
-            store().add(name, email);
-            inertia::flash(session, "success", "User created.");
-            reply(std::move(done), inertia::redirect("/users"));
-        },
-        {::drogon::Post});
+        inertia::Errors errors;
+        if (name.empty()) {
+            errors.emplace_back("name", std::vector<std::string>{"The name is required."});
+        }
+        if (email.find('@') == std::string::npos) {
+            errors.emplace_back("email", std::vector<std::string>{"The email must contain @."});
+        }
+        auto &session = ctx.session();
+        if (!errors.empty()) {
+            inertia::withErrors(session, errors);
+            return inertia::back(ctx.request());
+        }
+        store().add(name, email);
+        inertia::flash(session, "success", "User created.");
+        return inertia::redirect("/users");
+    });
 
     // PUT /users/{id}/promote answers 302; Inertia turns it into 303 so the browser follows with
     // GET.
-    ::drogon::app().registerHandler(
-        "/users/{id}/promote",
-        [](const ::drogon::HttpRequestPtr &req, Callback &&done, int id) {
-            store().promote(id);
-            auto session = sessionOf(req);
-            inertia::flash(session, "success", "User promoted.");
-            reply(std::move(done), inertia::redirect("/users"));
-        },
-        {::drogon::Put});
+    router.put("/users/:id/promote", [](Context &ctx) -> Outcome {
+        const auto text = ctx.pathParam("id");
+        int id = 0;
+        std::from_chars(text.data(), text.data() + text.size(), id);
+        store().promote(id);
+        inertia::flash(ctx.session(), "success", "User promoted.");
+        return inertia::redirect("/users");
+    });
 }
 
 } // namespace example

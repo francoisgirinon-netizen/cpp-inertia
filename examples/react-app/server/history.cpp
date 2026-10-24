@@ -1,45 +1,30 @@
+#include "context.hpp"
 #include "routes.hpp"
-#include "support.hpp"
 
-#include <inertia/drogon/drogon.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/props.hpp>
 #include <inertia/session.hpp>
-
-#include <drogon/HttpAppFramework.h>
-#include <drogon/HttpRequest.h>
-#include <drogon/HttpTypes.h>
-#include <nlohmann/json.hpp>
-
-#include <optional>
-#include <string>
-#include <utility>
-#include <vector>
 
 namespace example {
 
 // History: this page opts into history encryption (the client encrypts it in the browser's
 // history state); POST /history/clear asks the client to discard the encrypted entries, which
 // is what a logout does.
-void registerHistory() {
-    ::drogon::app().registerHandler(
-        "/history",
-        [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
-            inertia::RenderOptions options;
-            options.encryptHistory = true;
-            inertia::drogon::render(req, "History", inertia::Props{{"secret", "s3cret-token-42"}},
-                                    std::move(done), options);
-        },
-        {::drogon::Get});
+void registerHistory(Router &router) {
+    router.get("/history", [](Context &) -> Outcome {
+        inertia::RenderOptions options;
+        options.encryptHistory = true;
+        return Page{.component = "History",
+                    .props = inertia::Props{{"secret", "s3cret-token-42"}},
+                    .options = options};
+    });
 
-    ::drogon::app().registerHandler("/history/clear",
-                                    [](const ::drogon::HttpRequestPtr &req, Callback &&done) {
-                                        auto session = sessionOf(req);
-                                        inertia::clearHistory(session);
-                                        inertia::flash(session, "success", "History cleared.");
-                                        reply(std::move(done), inertia::redirect("/history"));
-                                    },
-                                    {::drogon::Post});
+    router.post("/history/clear", [](Context &ctx) -> Outcome {
+        auto &session = ctx.session();
+        inertia::clearHistory(session);
+        inertia::flash(session, "success", "History cleared.");
+        return inertia::redirect("/history");
+    });
 }
 
 } // namespace example
