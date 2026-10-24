@@ -9,7 +9,8 @@ x-dev-base: &dev-base
     args:
       UID: ${UID:-1000}
       GID: ${GID:-1000}
-  image: cpp-inertia-dev:latest
+  # Per-worktree tag (INERTIA_IMAGE_TAG) so parallel checkouts never overwrite each other's image.
+  image: cpp-inertia-dev:${INERTIA_IMAGE_TAG:-latest}
   user: "${UID:-1000}:${GID:-1000}"
   working_dir: /src
   init: true
