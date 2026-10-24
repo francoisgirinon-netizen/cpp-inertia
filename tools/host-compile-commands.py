@@ -137,11 +137,36 @@ def convert_entry(entry, rewriter):
     return converted
 
 
+VERIFY_TARGET_MARKER = "_verify_interface_header_sets.dir/"
+
+
+def drop_verify_duplicates(entries):
+    """Drop the entries of CMake's generated *_verify_interface_header_sets targets for a source
+    that also has a real entry.
+
+    Those scaffolding targets inherit INTERFACE_SOURCES (the conformance kit's .cpp files) and
+    only the usage requirements of their library (cxx_std_17), whereas the real targets build
+    the same files with their own flags. clang-tidy takes the first entry of a file, so it would
+    judge the kit with the scaffolding's flags instead of the real build's.
+    """
+    real = {
+        entry["file"]
+        for entry in entries
+        if VERIFY_TARGET_MARKER not in str(entry.get("output", ""))
+    }
+    return [
+        entry
+        for entry in entries
+        if VERIFY_TARGET_MARKER not in str(entry.get("output", "")) or entry["file"] not in real
+    ]
+
+
 def convert(entries, container_root, host_root, output_dir):
     """Return (converted entries, warnings)."""
     warnings = []
     rewriter = Rewriter(container_root, host_root, output_dir / "rsp", warnings)
-    return [convert_entry(entry, rewriter) for entry in entries], warnings
+    converted = [convert_entry(entry, rewriter) for entry in entries]
+    return drop_verify_duplicates(converted), warnings
 
 
 def parse_args(argv):

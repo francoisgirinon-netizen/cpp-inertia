@@ -116,6 +116,30 @@ class ConvertTest(unittest.TestCase):
         self.assertIn("-DNAME=a b", rewritten)
         self.assertIn("-std=c++20", rewritten)
 
+    def test_verify_target_entries_are_dropped_when_a_real_entry_exists(self):
+        def entry(source, output):
+            return {
+                "directory": "/src/build/dev",
+                "file": f"/src/{source}",
+                "output": output,
+                "command": f"clang++ -c /src/{source}",
+            }
+
+        verify = "conformance/CMakeFiles/inertia_conformance_verify_interface_header_sets.dir/scenarios.cpp.o"
+        real = "tests/conformance/CMakeFiles/inertia_conformance_fake.dir/__/__/conformance/scenarios.cpp.o"
+        only_verify = "conformance/CMakeFiles/x_verify_interface_header_sets.dir/lonely.cpp.o"
+        converted, _ = self.convert(
+            [
+                entry("conformance/scenarios.cpp", verify),
+                entry("conformance/scenarios.cpp", real),
+                entry("conformance/lonely.cpp", only_verify),
+            ]
+        )
+        self.assertEqual(
+            [e["output"].replace(HOST + "/", "") for e in converted],
+            [real, only_verify],
+        )
+
     def test_missing_response_file_is_reported_and_path_rewritten(self):
         converted, warnings = self.convert(host_root=self.host_root)
         at = [arg for arg in tokens(converted[2]) if arg.startswith("@")][0]
