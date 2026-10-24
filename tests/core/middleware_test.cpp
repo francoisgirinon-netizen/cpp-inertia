@@ -215,3 +215,31 @@ TEST_CASE("empty non-Inertia 200 is left alone", "[middleware]") {
     app.finalize(FakeRequest::get("/a"), res);
     REQUIRE(res.status == 200);
 }
+
+TEST_CASE("finalize appends X-Inertia to an existing Vary", "[middleware][protocol:vary.always]") {
+    const Inertia app{Config{}};
+    Response res;
+    res.body = "x";
+    res.setHeader("Vary", "Accept-Encoding");
+    app.finalize(FakeRequest::get("/a"), res);
+    REQUIRE(res.header("Vary").value_or("") == "Accept-Encoding, X-Inertia");
+}
+
+TEST_CASE("finalize deduplicates Vary tokens case-insensitively",
+          "[middleware][protocol:vary.always]") {
+    const Inertia app{Config{}};
+    Response res;
+    res.body = "x";
+    res.setHeader("Vary", "accept-encoding, Accept-Encoding, x-inertia, ACCEPT-ENCODING");
+    app.finalize(FakeRequest::get("/a"), res);
+    REQUIRE(res.header("Vary").value_or("") == "accept-encoding, x-inertia");
+}
+
+TEST_CASE("finalize leaves Vary: * untouched", "[middleware][protocol:vary.always]") {
+    const Inertia app{Config{}};
+    Response res;
+    res.body = "x";
+    res.setHeader("Vary", "*");
+    app.finalize(FakeRequest::get("/a"), res);
+    REQUIRE(res.header("Vary").value_or("") == "*");
+}

@@ -8,7 +8,9 @@
 #include <iterator>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace inertia {
 
@@ -279,12 +281,21 @@ void Inertia::finalize(const RequestView &req, Response &res) const {
         res.status = 409;
         res.body.clear();
     }
-    auto items = headers::parseList(res.header(headers::kVary));
-    const bool present = std::ranges::any_of(
-        items, [](const auto &item) { return headers::iequals(item, headers::kInertia); });
-    if (!present) {
-        items.emplace_back(headers::kInertia);
+    const auto existing = headers::parseList(res.header(headers::kVary));
+    if (std::ranges::find(existing, "*") != existing.end()) {
+        return; // Vary: * already covers every request header
     }
+    std::vector<std::string> items;
+    const auto add = [&items](std::string_view token) {
+        if (!std::ranges::any_of(items,
+                                 [&](const auto &item) { return headers::iequals(item, token); })) {
+            items.emplace_back(token);
+        }
+    };
+    for (const auto &token : existing) {
+        add(token);
+    }
+    add(headers::kInertia);
     std::string joined;
     for (const auto &item : items) {
         if (!joined.empty()) {
