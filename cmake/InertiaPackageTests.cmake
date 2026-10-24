@@ -3,6 +3,31 @@
 #
 # The consumers inherit the compiler, flags, build type and vcpkg setup of this build, so that
 # sanitizer builds link consistently.
+
+# Configure + build + run the consumer of the package staged in <stage>, as the chained tests
+# package.<name>.configure/build/run. <fixture> is the fixture whose setup produces the stage; a
+# name ending in 17 builds the consumer as C++17 (what the library promises), the others as C++20.
+# ARGN: the arguments common to every consumer configure.
+function(_inertia_consumer_tests name components stage fixture consumer_src)
+    set(_bin ${PROJECT_BINARY_DIR}/_package/consumer-${name})
+    set(_standard 20)
+    if(name MATCHES "17$")
+        set(_standard 17)
+    endif()
+    add_test(NAME package.${name}.configure
+             COMMAND ${CMAKE_COMMAND} -S ${consumer_src} -B ${_bin} ${ARGN}
+                     -DCMAKE_CXX_STANDARD=${_standard} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+                     -DCMAKE_CXX_EXTENSIONS=OFF
+                     -DCMAKE_PREFIX_PATH=${stage} -DCONSUMER_COMPONENTS=${components})
+    add_test(NAME package.${name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin})
+    add_test(NAME package.${name}.run COMMAND ${_bin}/consumer)
+    set_tests_properties(package.${name}.configure PROPERTIES
+        FIXTURES_REQUIRED ${fixture} FIXTURES_SETUP package_${name}_configured)
+    set_tests_properties(package.${name}.build PROPERTIES
+        FIXTURES_REQUIRED package_${name}_configured FIXTURES_SETUP package_${name}_built)
+    set_tests_properties(package.${name}.run PROPERTIES FIXTURES_REQUIRED package_${name}_built)
+endfunction()
+
 function(inertia_add_package_tests)
     set(_stage ${PROJECT_BINARY_DIR}/_package/stage)
     set(_stage_core ${PROJECT_BINARY_DIR}/_package/stage-core-only)
@@ -45,24 +70,8 @@ function(inertia_add_package_tests)
         list(GET _variants ${_i} _name)
         math(EXPR _j "${_i} + 1")
         list(GET _variants ${_j} _components)
-        set(_bin ${PROJECT_BINARY_DIR}/_package/consumer-${_name})
-        set(_standard 20)
-        if(_name MATCHES "17$")
-            set(_standard 17)
-        endif()
-        add_test(NAME package.${_name}.configure
-                 COMMAND ${CMAKE_COMMAND} -S ${_consumer_src} -B ${_bin} ${_common_args}
-                         -DCMAKE_CXX_STANDARD=${_standard} -DCMAKE_CXX_STANDARD_REQUIRED=ON
-                         -DCMAKE_CXX_EXTENSIONS=OFF
-                         -DCMAKE_PREFIX_PATH=${_stage} -DCONSUMER_COMPONENTS=${_components})
-        add_test(NAME package.${_name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin})
-        add_test(NAME package.${_name}.run COMMAND ${_bin}/consumer)
-        set_tests_properties(package.${_name}.configure PROPERTIES
-            FIXTURES_REQUIRED package_stage FIXTURES_SETUP package_${_name}_configured)
-        set_tests_properties(package.${_name}.build PROPERTIES
-            FIXTURES_REQUIRED package_${_name}_configured FIXTURES_SETUP package_${_name}_built)
-        set_tests_properties(package.${_name}.run PROPERTIES
-            FIXTURES_REQUIRED package_${_name}_built)
+        _inertia_consumer_tests(${_name} ${_components} ${_stage} package_stage ${_consumer_src}
+                                ${_common_args})
     endforeach()
 
     # A package installed without an adapter must refuse its component, clearly.
@@ -143,5 +152,40 @@ function(inertia_add_package_tests)
         set_tests_properties(package.httplib.configure package.httplib.build package.httplib.run
                              package.httplib17.configure package.httplib17.build
                              package.httplib17.run PROPERTIES LABELS package)
+    endif()
+
+    # CPack: the TGZ is extracted to a clean directory and consumed from there, the .deb files
+    # are inspected (never installed). The generators run on the build tree, so they need the
+    # project built, as every test does.
+    set(_cpack_dir ${PROJECT_BINARY_DIR}/_package/cpack)
+    add_test(NAME package.cpack.tgz
+             COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ --config ${PROJECT_BINARY_DIR}/CPackConfig.cmake
+                     -B ${_cpack_dir}/tgz)
+    set_tests_properties(package.cpack.tgz PROPERTIES FIXTURES_SETUP package_cpack_packed)
+    add_test(NAME package.cpack.extract
+             COMMAND ${CMAKE_COMMAND} -DARCHIVE=${_cpack_dir}/tgz/${INERTIA_PACKAGE_FILE_NAME}.tar.gz
+                     -DDEST=${_cpack_dir}/extracted -DTOP=${INERTIA_PACKAGE_FILE_NAME}
+                     -P ${_consumer_src}/extract_archive.cmake)
+    set_tests_properties(package.cpack.extract PROPERTIES
+        FIXTURES_REQUIRED package_cpack_packed FIXTURES_SETUP package_cpack_extracted)
+    foreach(_name IN ITEMS cpack.core cpack.core17)
+        _inertia_consumer_tests(${_name} "core,fake" ${_cpack_dir}/extracted/${INERTIA_PACKAGE_FILE_NAME}
+                                package_cpack_extracted ${_consumer_src} ${_common_args})
+        set_tests_properties(package.${_name}.configure package.${_name}.build
+                             package.${_name}.run PROPERTIES LABELS package)
+    endforeach()
+    set_tests_properties(package.cpack.tgz package.cpack.extract PROPERTIES LABELS package)
+
+    if(INERTIA_DPKG_DEB)
+        add_test(NAME package.cpack.deb
+                 COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
+                         --config ${PROJECT_BINARY_DIR}/CPackConfig.cmake -B ${_cpack_dir}/deb)
+        add_test(NAME package.cpack.deb.check
+                 COMMAND ${CMAKE_COMMAND} -DDEB_DIR=${_cpack_dir}/deb -DVERSION=${PROJECT_VERSION}
+                         -DDPKG_DEB=${INERTIA_DPKG_DEB} -P ${_consumer_src}/check_deb.cmake)
+        set_tests_properties(package.cpack.deb PROPERTIES
+            FIXTURES_SETUP package_cpack_deb_packed LABELS package)
+        set_tests_properties(package.cpack.deb.check PROPERTIES
+            FIXTURES_REQUIRED package_cpack_deb_packed LABELS package)
     endif()
 endfunction()
