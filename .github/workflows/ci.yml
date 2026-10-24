@@ -84,6 +84,8 @@ jobs:
         run: python3 tools/host-compile-commands.py
       - name: Build with include-what-you-use (no tests)
         run: scripts/dev sh -c 'status=0; cmake --build --preset dev || status=$?; sccache --show-stats; exit "$status"'
+      - name: Build the API docs (Doxygen warnings fail the build)
+        run: scripts/dev sh -c 'cmake --preset dev -DINERTIA_BUILD_DOCS=ON && cmake --build --preset dev --target docs'
       - name: Install pre-commit
         run: pipx install pre-commit==4.7.0
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
