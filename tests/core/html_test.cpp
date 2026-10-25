@@ -26,7 +26,7 @@ TEST_CASE("escapeForScript escapes line separators", "[html]") {
 TEST_CASE("escapeForScript handles empty and boundary-length inputs", "[html]") {
     REQUIRE(escapeForScript(Json::array()) == "[]");
     REQUIRE(escapeForScript(Json{{"s", ""}}) == R"({"s":""})");
-    REQUIRE(escapeForScript(Json{{"s", "/"}}) == R"({"s":"\/"})");
+    REQUIRE(escapeForScript(Json{{"s", "/"}}) == "{\"s\":\"\\/\"}");
     // A separator that ends the string is still followed by the closing quote in the JSON text.
     REQUIRE(escapeForScript(Json{{"s", "\xE2\x80\xA8"}}) == "{\"s\":\"\\u2028\"}");
     // A three-byte sequence that is not a line separator is copied unchanged.
