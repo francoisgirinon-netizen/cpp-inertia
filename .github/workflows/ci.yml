@@ -32,7 +32,7 @@ jobs:
         env:
           PRESET: ${{ matrix.preset }}
         run: |
-          scripts/dev sh -c 'status=0; cmake --workflow --preset "$1" || status=$?; sccache --show-stats; exit "$status"' sh "$PRESET"
+          scripts/dev tools/with-sccache-stats.sh cmake --workflow --preset "$PRESET"
 
   e2e:
     runs-on: ubuntu-26.04
@@ -46,7 +46,8 @@ jobs:
       - uses: ./.github/actions/dev-env
       - name: Build the example servers
         run: |
-          scripts/dev sh -c 'status=0; cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON && cmake --build --preset dev --target inertia_example inertia_example_httplib || status=$?; sccache --show-stats; exit "$status"'
+          scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON
+          scripts/dev tools/with-sccache-stats.sh cmake --build --preset dev --target inertia_example inertia_example_httplib
       - name: Build the front end
         run: scripts/dev sh -c 'cd examples/react-app/frontend && bun install --frozen-lockfile && bun run build'
       - name: Run the Playwright suite on the ${{ matrix.server }} adapter
@@ -67,7 +68,7 @@ jobs:
       - uses: ./.github/actions/dev-env
       - name: Configure, build and test (coverage)
         run: |
-          scripts/dev sh -c 'status=0; cmake --workflow --preset coverage || status=$?; sccache --show-stats; exit "$status"'
+          scripts/dev tools/with-sccache-stats.sh cmake --workflow --preset coverage
       - name: Report and enforce the minimum line coverage
         run: scripts/dev tools/coverage-report.sh
       - name: Upload the HTML report
@@ -89,7 +90,7 @@ jobs:
       - name: Configure the dev tree with the examples (compile database for clang-tidy)
         run: scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON -DINERTIA_IWYU=ON
       - name: Build with include-what-you-use (no tests)
-        run: scripts/dev sh -c 'status=0; cmake --build --preset dev || status=$?; sccache --show-stats; exit "$status"'
+        run: scripts/dev tools/with-sccache-stats.sh cmake --build --preset dev
       - name: Build the API docs (Doxygen warnings fail the build)
         run: scripts/dev sh -c 'cmake --preset dev -DINERTIA_BUILD_DOCS=ON && cmake --build --preset dev --target docs'
       # clang-tidy runs on the whole tree, through the pre-commit hook, behind a result cache: ctcache
@@ -182,11 +183,7 @@ jobs:
       - name: Configure, build and test (${{ matrix.workflow }})
         env:
           WORKFLOW: ${{ matrix.workflow }}
-        run: |
-          status=0
-          cmake --workflow --preset "$WORKFLOW" || status=$?
-          sccache --show-stats
-          exit "$status"
+        run: tools/with-sccache-stats.sh cmake --workflow --preset "$WORKFLOW"
       - name: Remove the compiler problem matcher
         if: ${{ always() }}
         run: echo "::remove-matcher owner=clang-tidy::"
