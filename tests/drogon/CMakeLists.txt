@@ -22,7 +22,7 @@ target_sources(inertia_drogon_tests PRIVATE
 target_link_libraries(inertia_drogon_tests PRIVATE inertia_drogon_test_support
                                                    Catch2::Catch2WithMain inertia_warnings)
 inertia_enable_iwyu(inertia_drogon_tests)
-catch_discover_tests(inertia_drogon_tests PROPERTIES LABELS drogon)
+catch_discover_tests(inertia_drogon_tests PROPERTIES LABELS drogon TIMEOUT 60)
 
 # Variants that need another application configuration (app() is a process singleton).
 add_executable(inertia_drogon_nosession_tests)
@@ -33,7 +33,7 @@ target_sources(inertia_drogon_nosession_tests PRIVATE
 target_link_libraries(inertia_drogon_nosession_tests PRIVATE inertia_drogon_test_support
                                                              Catch2::Catch2WithMain inertia_warnings)
 inertia_enable_iwyu(inertia_drogon_nosession_tests)
-catch_discover_tests(inertia_drogon_nosession_tests PROPERTIES LABELS drogon)
+catch_discover_tests(inertia_drogon_nosession_tests PROPERTIES LABELS drogon TIMEOUT 60)
 
 add_executable(inertia_drogon_nosession_nocsrf_tests)
 target_sources(inertia_drogon_nosession_nocsrf_tests PRIVATE
@@ -44,7 +44,7 @@ target_link_libraries(inertia_drogon_nosession_nocsrf_tests PRIVATE inertia_drog
                                                                     Catch2::Catch2WithMain
                                                                     inertia_warnings)
 inertia_enable_iwyu(inertia_drogon_nosession_nocsrf_tests)
-catch_discover_tests(inertia_drogon_nosession_nocsrf_tests PROPERTIES LABELS drogon)
+catch_discover_tests(inertia_drogon_nosession_nocsrf_tests PROPERTIES LABELS drogon TIMEOUT 60)
 
 add_executable(inertia_drogon_proxy_tests)
 target_sources(inertia_drogon_proxy_tests PRIVATE
@@ -54,4 +54,4 @@ target_sources(inertia_drogon_proxy_tests PRIVATE
 target_link_libraries(inertia_drogon_proxy_tests PRIVATE inertia_drogon_test_support
                                                          Catch2::Catch2WithMain inertia_warnings)
 inertia_enable_iwyu(inertia_drogon_proxy_tests)
-catch_discover_tests(inertia_drogon_proxy_tests PROPERTIES LABELS drogon)
+catch_discover_tests(inertia_drogon_proxy_tests PROPERTIES LABELS drogon TIMEOUT 60)

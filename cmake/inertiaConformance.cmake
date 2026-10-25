@@ -15,5 +15,5 @@ function(inertia_add_conformance_test target)
     add_executable(${target} ${ARG_UNPARSED_ARGUMENTS})
     target_link_libraries(${target} PRIVATE inertia::conformance Catch2::Catch2WithMain
                                             ${ARG_LINK})
-    catch_discover_tests(${target} TEST_PREFIX "${target}: " PROPERTIES LABELS conformance)
+    catch_discover_tests(${target} TEST_PREFIX "${target}: " PROPERTIES LABELS conformance TIMEOUT 60)
 endfunction()

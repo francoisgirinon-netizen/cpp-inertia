@@ -262,4 +262,17 @@ function(inertia_add_package_tests)
         set_tests_properties(package.cpack.deb.check PROPERTIES
             FIXTURES_REQUIRED package_cpack_deb_packed LABELS package)
     endif()
+
+    # A hung step must fail fast instead of holding a runner: every package test has a timeout.
+    # Configure, build and install steps are generous (a Visual Studio build is slow on a cold
+    # runner); a consumer that only runs and exits is not.
+    get_directory_property(_all_tests TESTS)
+    foreach(_test IN LISTS _all_tests)
+        if(_test MATCHES "^package\\.")
+            set_tests_properties(${_test} PROPERTIES TIMEOUT 900)
+            if(_test MATCHES "\\.(run|runs_scenarios)$")
+                set_tests_properties(${_test} PROPERTIES TIMEOUT 60)
+            endif()
+        endif()
+    endforeach()
 endfunction()

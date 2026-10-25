@@ -19,4 +19,4 @@ target_sources(inertia_httplib_tests PRIVATE
 target_link_libraries(inertia_httplib_tests PRIVATE inertia_httplib_test_support
                                                     Catch2::Catch2WithMain inertia_warnings)
 inertia_enable_iwyu(inertia_httplib_tests)
-catch_discover_tests(inertia_httplib_tests PROPERTIES LABELS httplib)
+catch_discover_tests(inertia_httplib_tests PROPERTIES LABELS httplib TIMEOUT 60)
