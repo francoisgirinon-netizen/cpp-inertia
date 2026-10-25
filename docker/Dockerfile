@@ -163,6 +163,14 @@ COPY --from=vcpkg --chown=dev:dev /opt/vcpkg /opt/vcpkg
 
 ENV CC=clang CXX=clang++ VCPKG_ROOT=/opt/vcpkg
 
+# GCC 15, for the `gcc` preset only (CC/CXX above stay clang): a second compiler and standard-library
+# front end to catch what clang accepts and others do not. It matches libstdc++-15-dev, which clang
+# already compiles against. A late stage so that adding it does not rebuild the toolchain layers.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get -o Acquire::Check-Valid-Until=false update \
+    && apt-get install -y --no-install-recommends g++-15=15.2.0-16ubuntu1
+
 # Mount point of the compiler cache volume (a named volume copies the owner of this directory).
 RUN mkdir -p /home/dev/.cache/sccache && chown dev:dev /home/dev/.cache/sccache
 
