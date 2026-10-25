@@ -10,3 +10,8 @@ inertia_add_library(httplib
     HEADERS
         include/inertia/httplib/httplib.hpp
     LINK_PUBLIC inertia::core httplib::httplib)
+
+# random.cpp: BCryptGenRandom
+if(WIN32)
+    target_link_libraries(inertia_httplib PRIVATE bcrypt)
+endif()
