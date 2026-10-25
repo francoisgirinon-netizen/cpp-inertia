@@ -16,6 +16,7 @@
 #endif
 
 #ifndef INERTIA_NONALLOCATING
+/// See above: `noexcept` alone, without function effects.
 #define INERTIA_NONALLOCATING noexcept
 #endif
 
@@ -30,7 +31,9 @@
 /// Ends what INERTIA_DLL_INTERFACE_BEGIN started.
 #define INERTIA_DLL_INTERFACE_END __pragma(warning(pop))
 #else
+/// Starts a class exported from a DLL: nothing outside MSVC.
 #define INERTIA_DLL_INTERFACE_BEGIN
+/// Ends what INERTIA_DLL_INTERFACE_BEGIN started: nothing outside MSVC.
 #define INERTIA_DLL_INTERFACE_END
 #endif
 
