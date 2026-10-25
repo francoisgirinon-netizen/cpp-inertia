@@ -168,6 +168,27 @@ TEST_CASE("toDrogon keeps every Set-Cookie", "[drogon]") {
     CHECK(converted->getCookie("b").value() == "2");
 }
 
+TEST_CASE("toDrogon reads the Expires date without strptime or timegm", "[drogon]") {
+    const auto expires = [](const std::string &date) {
+        inertia::Response res;
+        res.headers.emplace_back("Set-Cookie", "sid=xyz; Expires=" + date);
+        return inertia::drogon::toDrogon(res)
+            ->getCookie("sid")
+            .expiresDate()
+            .microSecondsSinceEpoch();
+    };
+    CHECK(expires("Thu, 01 Jan 1970 00:00:00 GMT") == 0);
+    CHECK(expires("Tue, 29 Feb 2028 12:00:00 GMT") == 1835438400LL * 1000000LL);
+    CHECK(expires("Wed, 31 Dec 1969 23:59:59 GMT") == -1000000LL);
+    // Not an IMF-fixdate: the attribute is ignored and the cookie keeps its default expiry.
+    const auto unset = ::drogon::Cookie{"sid", "xyz"}.expiresDate().microSecondsSinceEpoch();
+    CHECK(expires("tomorrow") == unset);
+    CHECK(expires("Wed, 21 Foo 2026 07:28:00 GMT") == unset);
+    CHECK(expires("Wed, 21 Oct 2026 25:28:00 GMT") == unset);
+    CHECK(expires("Wed, 21 Oct 2026 07:28:00 UTC") == unset);
+    CHECK(expires("Wed, 21 Oct 2026 07:28:00 GMT trailing") == unset);
+}
+
 TEST_CASE("toDrogon keeps every Set-Cookie attribute", "[drogon]") {
     inertia::Response res;
     res.headers.emplace_back("Set-Cookie",

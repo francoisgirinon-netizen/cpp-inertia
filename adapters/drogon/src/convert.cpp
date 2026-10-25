@@ -12,10 +12,11 @@
 #include <trantor/utils/Date.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
-#include <ctime>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -53,16 +54,88 @@ bool isSingleValued(std::string_view name) INERTIA_NONALLOCATING {
            headers::iequals(name, "Content-Length");
 }
 
-// "Wed, 21 Oct 2026 07:28:00 GMT" (the IMF-fixdate of RFC 9110) -> a date; nullopt otherwise.
-std::optional<trantor::Date> parseHttpDate(std::string_view text) {
-    std::tm parts{};
-    const std::string copy{text};
-    const char *end = strptime(copy.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &parts);
-    if (end == nullptr || *end != '\0') {
+// Days from 1970-01-01 to a date of the proleptic Gregorian calendar (days_from_civil, from
+// Howard Hinnant's date algorithms). Portable where timegm() is not: MSVC only has _mkgmtime.
+std::int64_t daysFromCivil(std::int64_t year, unsigned month, unsigned day) {
+    year -= month <= 2 ? 1 : 0;
+    const std::int64_t era = (year >= 0 ? year : year - 399) / 400;
+    const auto yearOfEra = static_cast<unsigned>(year - era * 400);
+    const unsigned dayOfYear = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1;
+    const unsigned dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear;
+    return era * 146097 + static_cast<std::int64_t>(dayOfEra) - 719468;
+}
+
+// Consumes exactly `digits` decimal digits from the front of `in`.
+std::optional<unsigned> takeNumber(std::string_view &in, std::size_t digits) {
+    if (in.size() < digits) {
         return std::nullopt;
     }
-    const auto seconds = timegm(&parts);
-    return trantor::Date{static_cast<std::int64_t>(seconds) * 1000000};
+    unsigned value = 0;
+    for (const char c : in.substr(0, digits)) {
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+        value = value * 10 + static_cast<unsigned>(c - '0');
+    }
+    in.remove_prefix(digits);
+    return value;
+}
+
+// Consumes `literal` from the front of `in`.
+bool takeLiteral(std::string_view &in, std::string_view literal) {
+    if (!in.starts_with(literal)) {
+        return false;
+    }
+    in.remove_prefix(literal.size());
+    return true;
+}
+
+// "Wed, 21 Oct 2026 07:28:00 GMT" (the IMF-fixdate of RFC 9110) -> a date; nullopt otherwise. The
+// day of the week is skipped, not checked. Written out instead of strptime()/timegm(), which
+// Windows does not have.
+std::optional<trantor::Date> parseHttpDate(std::string_view text) {
+    constexpr std::array<std::string_view, 12> months{"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    if (text.size() < 5 || text[3] != ',') {
+        return std::nullopt;
+    }
+    text.remove_prefix(5); // "Wed, "
+    const auto day = takeNumber(text, 2);
+    if (!day || !takeLiteral(text, " ")) {
+        return std::nullopt;
+    }
+    const auto month = std::ranges::find(months, text.substr(0, 3));
+    if (month == months.end()) {
+        return std::nullopt;
+    }
+    text.remove_prefix(3);
+    if (!takeLiteral(text, " ")) {
+        return std::nullopt;
+    }
+    const auto year = takeNumber(text, 4);
+    if (!year || !takeLiteral(text, " ")) {
+        return std::nullopt;
+    }
+    const auto hour = takeNumber(text, 2);
+    if (!hour || !takeLiteral(text, ":")) {
+        return std::nullopt;
+    }
+    const auto minute = takeNumber(text, 2);
+    if (!minute || !takeLiteral(text, ":")) {
+        return std::nullopt;
+    }
+    const auto second = takeNumber(text, 2);
+    if (!second || text != " GMT") {
+        return std::nullopt;
+    }
+    if (*day < 1 || *day > 31 || *hour > 23 || *minute > 59 || *second > 60) {
+        return std::nullopt;
+    }
+    const auto monthNumber = static_cast<unsigned>(month - months.begin()) + 1;
+    const std::int64_t seconds =
+        daysFromCivil(*year, monthNumber, *day) * 86400 + static_cast<std::int64_t>(*hour) * 3600 +
+        static_cast<std::int64_t>(*minute) * 60 + static_cast<std::int64_t>(*second);
+    return trantor::Date{seconds * 1000000};
 }
 
 // "name=value; Path=/; SameSite=Lax" -> a cookie; nullopt when there is no name.
