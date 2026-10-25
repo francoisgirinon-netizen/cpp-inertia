@@ -26,6 +26,16 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
     },
     {
+      "name": "shared-linux",
+      "hidden": true,
+      "description": "Shared inertia libraries. Their dependencies are shared too (the x64-linux-dynamic triplet): a static Drogon would be copied into libinertia_drogon.so and into the program, and the two copies of its app() singleton would not see each other",
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "ON",
+        "VCPKG_TARGET_TRIPLET": "x64-linux-dynamic",
+        "VCPKG_HOST_TRIPLET": "x64-linux"
+      }
+    },
+    {
       "name": "dev",
       "inherits": [
         "base",
@@ -35,6 +45,27 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "INERTIA_BUILD_BENCHMARKS": "ON"
       }
+    },
+    {
+      "name": "gcc",
+      "description": "GCC (g++-15 in the dev image): a portability proxy for the other compilers. Same as dev otherwise, without the benchmarks",
+      "inherits": [
+        "base",
+        "vcpkg"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "gcc-15",
+        "CMAKE_CXX_COMPILER": "g++-15"
+      }
+    },
+    {
+      "name": "dev-shared",
+      "description": "The dev preset with shared libraries",
+      "inherits": [
+        "dev",
+        "shared-linux"
+      ]
     },
     {
       "name": "core-only",
@@ -120,6 +151,127 @@
         "CMAKE_BUILD_TYPE": "Release",
         "INERTIA_COVERAGE_STRICT": "ON"
       }
+    },
+    {
+      "name": "release-shared",
+      "description": "The release preset with shared libraries",
+      "inherits": [
+        "release",
+        "shared-linux"
+      ]
+    },
+    {
+      "name": "native",
+      "hidden": true,
+      "description": "Native build on a developer machine or a CI runner: VCPKG_ROOT from the host environment, no compiler launcher",
+      "inherits": [
+        "vcpkg"
+      ],
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_COLOR_DIAGNOSTICS": "ON",
+        "INERTIA_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "hidden": true,
+      "description": "MSVC through the Visual Studio 2022 generator (cl, /W4 /WX). Debug and Release are build configurations, not presets",
+      "inherits": [
+        "native"
+      ],
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-msvc-static",
+      "description": "Static libraries, static C runtime (/MT): the x64-windows-static triplet",
+      "inherits": [
+        "windows-msvc"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      }
+    },
+    {
+      "name": "windows-msvc-shared",
+      "description": "DLLs and the dynamic C runtime (/MD): the x64-windows triplet, whose dependencies are DLLs too",
+      "inherits": [
+        "windows-msvc"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "BUILD_SHARED_LIBS": "ON"
+      }
+    },
+    {
+      "name": "macos",
+      "hidden": true,
+      "description": "Apple Clang (the Xcode toolchain) with Ninja, on Apple silicon",
+      "inherits": [
+        "native"
+      ],
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-static-debug",
+      "description": "Static libraries, Debug: the arm64-osx triplet",
+      "inherits": [
+        "macos"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "macos-static-release",
+      "description": "Static libraries, Release: the arm64-osx triplet",
+      "inherits": [
+        "macos"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "macos-shared-debug",
+      "description": "Shared libraries, Debug: the arm64-osx-dynamic triplet",
+      "inherits": [
+        "macos"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-dynamic",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_SHARED_LIBS": "ON"
+      }
+    },
+    {
+      "name": "macos-shared-release",
+      "description": "Shared libraries, Release: the arm64-osx-dynamic triplet",
+      "inherits": [
+        "macos"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-dynamic",
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -150,6 +302,54 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "dev-shared",
+      "configurePreset": "dev-shared"
+    },
+    {
+      "name": "gcc",
+      "configurePreset": "gcc"
+    },
+    {
+      "name": "release-shared",
+      "configurePreset": "release-shared"
+    },
+    {
+      "name": "windows-msvc-static-debug",
+      "configurePreset": "windows-msvc-static",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-static-debug",
+      "configurePreset": "macos-static-debug"
+    },
+    {
+      "name": "windows-msvc-static-release",
+      "configurePreset": "windows-msvc-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-static-release",
+      "configurePreset": "macos-static-release"
+    },
+    {
+      "name": "windows-msvc-shared-debug",
+      "configurePreset": "windows-msvc-shared",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-shared-debug",
+      "configurePreset": "macos-shared-debug"
+    },
+    {
+      "name": "windows-msvc-shared-release",
+      "configurePreset": "windows-msvc-shared",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-shared-release",
+      "configurePreset": "macos-shared-release"
     }
   ],
   "testPresets": [
@@ -202,6 +402,65 @@
       "name": "release",
       "inherits": "base",
       "configurePreset": "release"
+    },
+    {
+      "name": "dev-shared",
+      "inherits": "base",
+      "configurePreset": "dev-shared"
+    },
+    {
+      "name": "gcc",
+      "inherits": "base",
+      "configurePreset": "gcc"
+    },
+    {
+      "name": "release-shared",
+      "inherits": "base",
+      "configurePreset": "release-shared"
+    },
+    {
+      "name": "windows-msvc-static-debug",
+      "inherits": "base",
+      "configurePreset": "windows-msvc-static",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-static-debug",
+      "inherits": "base",
+      "configurePreset": "macos-static-debug"
+    },
+    {
+      "name": "windows-msvc-static-release",
+      "inherits": "base",
+      "configurePreset": "windows-msvc-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-static-release",
+      "inherits": "base",
+      "configurePreset": "macos-static-release"
+    },
+    {
+      "name": "windows-msvc-shared-debug",
+      "inherits": "base",
+      "configurePreset": "windows-msvc-shared",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-shared-debug",
+      "inherits": "base",
+      "configurePreset": "macos-shared-debug"
+    },
+    {
+      "name": "windows-msvc-shared-release",
+      "inherits": "base",
+      "configurePreset": "windows-msvc-shared",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-shared-release",
+      "inherits": "base",
+      "configurePreset": "macos-shared-release"
     }
   ],
   "packagePresets": [
@@ -219,6 +478,60 @@
       "configurePreset": "release",
       "generators": [
         "DEB"
+      ]
+    },
+    {
+      "name": "tgz-shared",
+      "description": "The TGZ archive of the shared libraries",
+      "configurePreset": "release-shared",
+      "generators": [
+        "TGZ"
+      ]
+    },
+    {
+      "name": "deb-shared",
+      "description": "One .deb per component, runtime packages included",
+      "configurePreset": "release-shared",
+      "generators": [
+        "DEB"
+      ]
+    },
+    {
+      "name": "windows-msvc-static-zip",
+      "description": "ZIP archive of the static Release build",
+      "configurePreset": "windows-msvc-static",
+      "configurations": [
+        "Release"
+      ],
+      "generators": [
+        "ZIP"
+      ]
+    },
+    {
+      "name": "macos-static-tgz",
+      "description": "TGZ archive of the static Release build",
+      "configurePreset": "macos-static-release",
+      "generators": [
+        "TGZ"
+      ]
+    },
+    {
+      "name": "windows-msvc-shared-zip",
+      "description": "ZIP archive of the shared Release build",
+      "configurePreset": "windows-msvc-shared",
+      "configurations": [
+        "Release"
+      ],
+      "generators": [
+        "ZIP"
+      ]
+    },
+    {
+      "name": "macos-shared-tgz",
+      "description": "TGZ archive of the shared Release build",
+      "configurePreset": "macos-shared-release",
+      "generators": [
+        "TGZ"
       ]
     }
   ],
@@ -348,6 +661,303 @@
         {
           "type": "package",
           "name": "deb"
+        }
+      ]
+    },
+    {
+      "name": "dev-shared",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-shared"
+        },
+        {
+          "type": "build",
+          "name": "dev-shared"
+        },
+        {
+          "type": "test",
+          "name": "dev-shared"
+        }
+      ]
+    },
+    {
+      "name": "gcc",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "gcc"
+        },
+        {
+          "type": "build",
+          "name": "gcc"
+        },
+        {
+          "type": "test",
+          "name": "gcc"
+        }
+      ]
+    },
+    {
+      "name": "release-shared",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "release-shared"
+        },
+        {
+          "type": "build",
+          "name": "release-shared"
+        },
+        {
+          "type": "test",
+          "name": "release-shared"
+        }
+      ]
+    },
+    {
+      "name": "package-shared",
+      "description": "The package workflow for the shared libraries (archives and .deb files named ...-shared)",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "release-shared"
+        },
+        {
+          "type": "build",
+          "name": "release-shared"
+        },
+        {
+          "type": "test",
+          "name": "release-shared"
+        },
+        {
+          "type": "package",
+          "name": "tgz-shared"
+        },
+        {
+          "type": "package",
+          "name": "deb-shared"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-static-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-static"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-static-debug"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-static-debug"
+        }
+      ]
+    },
+    {
+      "name": "macos-static-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-static-debug"
+        },
+        {
+          "type": "build",
+          "name": "macos-static-debug"
+        },
+        {
+          "type": "test",
+          "name": "macos-static-debug"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-static-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-static"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-static-release"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-static-release"
+        }
+      ]
+    },
+    {
+      "name": "macos-static-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-static-release"
+        },
+        {
+          "type": "build",
+          "name": "macos-static-release"
+        },
+        {
+          "type": "test",
+          "name": "macos-static-release"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-shared-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-shared"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-shared-debug"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-shared-debug"
+        }
+      ]
+    },
+    {
+      "name": "macos-shared-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-shared-debug"
+        },
+        {
+          "type": "build",
+          "name": "macos-shared-debug"
+        },
+        {
+          "type": "test",
+          "name": "macos-shared-debug"
+        }
+      ]
+    },
+    {
+      "name": "windows-msvc-shared-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-shared"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-shared-release"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-shared-release"
+        }
+      ]
+    },
+    {
+      "name": "macos-shared-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-shared-release"
+        },
+        {
+          "type": "build",
+          "name": "macos-shared-release"
+        },
+        {
+          "type": "test",
+          "name": "macos-shared-release"
+        }
+      ]
+    },
+    {
+      "name": "package-windows-msvc-static",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-static"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-static-release"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-static-release"
+        },
+        {
+          "type": "package",
+          "name": "windows-msvc-static-zip"
+        }
+      ]
+    },
+    {
+      "name": "package-macos-static",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-static-release"
+        },
+        {
+          "type": "build",
+          "name": "macos-static-release"
+        },
+        {
+          "type": "test",
+          "name": "macos-static-release"
+        },
+        {
+          "type": "package",
+          "name": "macos-static-tgz"
+        }
+      ]
+    },
+    {
+      "name": "package-windows-msvc-shared",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "windows-msvc-shared"
+        },
+        {
+          "type": "build",
+          "name": "windows-msvc-shared-release"
+        },
+        {
+          "type": "test",
+          "name": "windows-msvc-shared-release"
+        },
+        {
+          "type": "package",
+          "name": "windows-msvc-shared-zip"
+        }
+      ]
+    },
+    {
+      "name": "package-macos-shared",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "macos-shared-release"
+        },
+        {
+          "type": "build",
+          "name": "macos-shared-release"
+        },
+        {
+          "type": "test",
+          "name": "macos-shared-release"
+        },
+        {
+          "type": "package",
+          "name": "macos-shared-tgz"
         }
       ]
     }
