@@ -1,13 +1,6 @@
-# The image only needs mise.toml; sources are bind-mounted at run time.
-.git
-.idea
-.vscode
-.cache
-build/
-**/build/
-**/node_modules
-**/dist
-**/test-results
-**/public/hot
-**/__pycache__
-docs/
+# The image only needs the files its Dockerfile copies; sources are bind-mounted at run time.
+*
+!mise.toml
+!vcpkg.json
+!e2e/package.json
+!docker/
