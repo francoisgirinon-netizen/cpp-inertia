@@ -10,8 +10,15 @@ set(_inertia_common_warnings
 
 set(_inertia_clang_warnings
     -Wshadow-all -Wcomma -Wunreachable-code-aggressive -Wrange-loop-analysis
-    -Wmissing-prototypes -Wdeprecated -Wthread-safety -Wdocumentation
-    -Wfunction-effects)
+    -Wmissing-prototypes -Wdeprecated -Wthread-safety -Wdocumentation)
+
+# Function effects ([[clang::nonallocating]]) exist from Clang 20; older compilers do not know the
+# flag, which -Werror would turn into a failure. INERTIA_NONALLOCATING expands to nothing there.
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wfunction-effects INERTIA_HAS_WFUNCTION_EFFECTS)
+if(INERTIA_HAS_WFUNCTION_EFFECTS)
+    list(APPEND _inertia_clang_warnings -Wfunction-effects)
+endif()
 
 set(_inertia_gcc_warnings
     -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast)

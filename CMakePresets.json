@@ -33,8 +33,7 @@
       ],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "INERTIA_BUILD_BENCHMARKS": "ON",
-        "VCPKG_MANIFEST_FEATURES": "benchmarks"
+        "INERTIA_BUILD_BENCHMARKS": "ON"
       }
     },
     {
