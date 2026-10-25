@@ -12,15 +12,11 @@
 #include <drogon/HttpTypes.h>
 #include <trantor/utils/Logger.h>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <loopback.hpp>
 
 #include <chrono>
 #include <compare>
 #include <cstdint>
-#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -35,60 +31,12 @@ std::uint16_t &portStorage() {
     return value;
 }
 
-sockaddr_in loopback(std::uint16_t value) {
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(value);
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    return addr;
-}
-
-// Asks the kernel for a free port. ctest starts one process per test case (and may run them in
-// parallel), so a fixed port would collide; a probed port cannot.
-// sockaddr_in and sockaddr have the same size on Linux, so the generic view is a plain copy.
-static_assert(sizeof(sockaddr_in) == sizeof(sockaddr));
-
-sockaddr toGeneric(const sockaddr_in &addr) {
-    sockaddr generic{};
-    std::memcpy(&generic, &addr, sizeof(generic));
-    return generic;
-}
-
-sockaddr_in fromGeneric(const sockaddr &generic) {
-    sockaddr_in addr{};
-    std::memcpy(&addr, &generic, sizeof(addr));
-    return addr;
-}
-
-std::uint16_t probeFreePort() {
-    const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) {
-        throw std::runtime_error("socket() failed");
-    }
-    sockaddr generic = toGeneric(loopback(0));
-    socklen_t len = sizeof(generic);
-    if (::bind(fd, &generic, sizeof(generic)) != 0 || ::getsockname(fd, &generic, &len) != 0) {
-        ::close(fd);
-        throw std::runtime_error("cannot probe a free port");
-    }
-    ::close(fd);
-    return ntohs(fromGeneric(generic).sin_port);
-}
-
-bool accepts(std::uint16_t value) {
-    const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    const sockaddr addr = toGeneric(loopback(value));
-    const bool ok = ::connect(fd, &addr, sizeof(addr)) == 0;
-    ::close(fd);
-    return ok;
-}
-
 class ServerListener : public Catch::EventListenerBase {
   public:
     using Catch::EventListenerBase::EventListenerBase;
 
     void testRunStarting(const Catch::TestRunInfo &) override {
-        portStorage() = probeFreePort();
+        portStorage() = test_loopback::probeFreePort();
         configureApp();
         ::drogon::app()
             .setLogLevel(trantor::Logger::kWarn)
@@ -98,7 +46,7 @@ class ServerListener : public Catch::EventListenerBase {
         thread_ = std::thread([] { ::drogon::app().run(); });
 
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
-        while (!accepts(portStorage())) {
+        while (!test_loopback::acceptsConnections(portStorage())) {
             if (std::chrono::steady_clock::now() > deadline) {
                 throw std::runtime_error("Drogon did not start listening");
             }

@@ -9,6 +9,7 @@ include(Catch)
 # would start the Drogon test server, also under the sanitizers).
 set(CMAKE_CATCH_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 
+add_subdirectory(support)
 add_subdirectory(core)
 if(INERTIA_BUILD_DROGON)
     add_subdirectory(drogon) # before conformance: it defines the Drogon test support

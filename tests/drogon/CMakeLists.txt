@@ -3,7 +3,8 @@
 add_library(inertia_drogon_test_support OBJECT test_server.cpp)
 target_include_directories(inertia_drogon_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(inertia_drogon_test_support PUBLIC inertia::drogon Catch2::Catch2
-                                                         inertia_warnings)
+                                                         inertia_warnings
+                                                  PRIVATE inertia_test_loopback)
 
 inertia_enable_iwyu(inertia_drogon_test_support)
 
