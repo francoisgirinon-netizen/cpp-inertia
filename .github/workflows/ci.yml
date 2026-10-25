@@ -18,6 +18,7 @@ jobs:
   linux:
     name: linux (${{ matrix.preset }})
     runs-on: ubuntu-26.04
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +36,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-26.04
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +61,7 @@ jobs:
 
   coverage:
     runs-on: ubuntu-26.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
@@ -79,6 +82,7 @@ jobs:
   # The macOS and Windows jobs only build and test, with warnings as errors.
   lint:
     runs-on: ubuntu-26.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
@@ -144,7 +148,7 @@ jobs:
   macos:
     name: macos (${{ matrix.name }})
     runs-on: macos-26
-    timeout-minutes: 90
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -194,7 +198,7 @@ jobs:
   windows:
     name: windows (${{ matrix.name }})
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -220,6 +224,17 @@ jobs:
       - name: Remove the compiler problem matcher
         if: ${{ always() }}
         run: echo "::remove-matcher owner=msvc::"
+      # When the Drogon package consumer fails (it once hung), run it by hand with a limit: its
+      # exit code and the DLLs next to it say whether a library was missing or the exit blocked.
+      - name: Diagnose the Drogon package consumer
+        if: ${{ failure() }}
+        env:
+          CONSUMER_DIR: build/${{ matrix.build }}/_package/consumer-drogon/${{ matrix.config }}
+        run: |
+          ls -l "$CONSUMER_DIR" || true
+          status=0
+          timeout 30 "$CONSUMER_DIR/consumer.exe" || status=$?
+          echo "consumer.exe exit code: $status"
       # The runtime guard of <inertia/attributes.hpp>: a consumer built with another C runtime than
       # the shared core must not link. The workflow ran the test already; this names it and fails if
       # it is ever not registered (the test presets error out on a selection that matches nothing).
@@ -254,7 +269,7 @@ jobs:
     name: windows (VS 2019 consumer, v142, C++17)
     needs: windows
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -312,6 +327,7 @@ jobs:
 
   commits:
     runs-on: ubuntu-26.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
