@@ -108,6 +108,15 @@ _inertia_warnings(MSVC /W4 /permissive- /Zc:__cplusplus /utf-8 /EHsc /external:W
     /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547
     /w14549 /w14555 /w14619 /w14640 /w14826 /w14905 /w14906 /w14928)
 
+# The Visual Studio generators do not pass the system include directories of imported targets
+# with /external:I, so /external:W0 alone leaves vcpkg's headers (httplib.h: C4702) at /W4. Name
+# the vcpkg include directory explicitly. Not an angle-bracket rule: the library's own public
+# headers are included with angle brackets and must keep their warnings.
+if(MSVC AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+    target_compile_options(inertia_warnings INTERFACE
+        "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/external:I${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include>")
+endif()
+
 # --- Warnings as errors
 if(MSVC)
     set(INERTIA_WERROR_FLAG /WX)
