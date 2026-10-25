@@ -30,6 +30,10 @@ std::optional<std::string> DiskFileReader::read(const std::filesystem::path &pat
 
 std::optional<FileStamp> DiskFileReader::stamp(const std::filesystem::path &path) const {
     std::error_code error;
+    // file_size() fails on a directory with the POSIX libraries but not with the MSVC one.
+    if (!std::filesystem::is_regular_file(path, error) || error) {
+        return std::nullopt;
+    }
     const auto size = std::filesystem::file_size(path, error);
     if (error) {
         return std::nullopt;
