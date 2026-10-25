@@ -112,9 +112,9 @@ _inertia_warnings(MSVC /W4 /permissive- /Zc:__cplusplus /utf-8 /EHsc /external:W
 # with /external:I, so /external:W0 alone leaves vcpkg's headers (httplib.h: C4702) at /W4. Name
 # the vcpkg include directory explicitly. Not an angle-bracket rule: the library's own public
 # headers are included with angle brackets and must keep their warnings.
-if(MSVC AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+if(MSVC AND _VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
     target_compile_options(inertia_warnings INTERFACE
-        "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/external:I${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include>")
+        "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/external:I${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include>")
 endif()
 
 # --- Warnings as errors
