@@ -6,7 +6,6 @@
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
-#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>

@@ -68,8 +68,12 @@ void closeHandle(Handle handle) { ::close(handle); }
 void ensureNetworking() {}
 
 void setTimeouts(Handle handle, std::chrono::seconds limit) {
-    const timeval value{.tv_sec = static_cast<decltype(timeval::tv_sec)>(limit.count()),
-                        .tv_usec = 0};
+    // Counted in the type of tv_sec, which std::chrono::seconds' representation need not be.
+    const timeval value{
+        .tv_sec =
+            std::chrono::duration_cast<std::chrono::duration<decltype(timeval::tv_sec)>>(limit)
+                .count(),
+        .tv_usec = 0};
     ::setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, &value, sizeof(value));
     ::setsockopt(handle, SOL_SOCKET, SO_SNDTIMEO, &value, sizeof(value));
 }
