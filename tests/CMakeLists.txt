@@ -82,39 +82,41 @@ add_test(NAME headers_self_contained
                  --target all_verify_interface_header_sets)
 set_tests_properties(headers_self_contained PROPERTIES LABELS meta)
 
-# Consumers only need C++17: every installed public header, and the conformance kit's sources that
-# consumers compile, must build as strict C++17 (the library's own sources stay C++20). The object
+# Consumers only need C++17: one translation unit that includes every public header (the file sets
+# of the library targets that are built) must compile as strict C++17 (the library's own sources
+# stay C++20; the conformance kit's sources are built as C++17 by the in-tree conformance
+# executables). Each header compiling on its own is headers_self_contained's job. The object
 # library is not part of `all`; the test builds it, with the project warnings and -Werror.
-file(GLOB_RECURSE _cxx17_headers CONFIGURE_DEPENDS RELATIVE ${PROJECT_SOURCE_DIR}
-     ${PROJECT_SOURCE_DIR}/include/*.hpp ${PROJECT_SOURCE_DIR}/adapters/*/include/*.hpp)
-set(_cxx17_dir ${CMAKE_CURRENT_BINARY_DIR}/headers_cxx17)
-set(_cxx17_units)
-foreach(_header IN LISTS _cxx17_headers)
-    # An adapter that is not built (core-only preset) has no headers to check either.
-    if(_header MATCHES "^adapters/([^/]+)/")
-        set(_adapter_target inertia_${CMAKE_MATCH_1})
-        if(NOT TARGET ${_adapter_target})
-            continue()
-        endif()
+set(_cxx17_includes)
+set(_cxx17_targets)
+foreach(_library IN ITEMS core fake drogon httplib conformance)
+    if(NOT TARGET inertia_${_library})
+        continue() # an adapter that is not built (core-only preset) has no headers to check
     endif()
-    string(REGEX REPLACE "^(adapters/[^/]+/)?include/" "" _include "${_header}")
-    string(REPLACE "/" "_" _unit "${_include}")
-    file(CONFIGURE OUTPUT ${_cxx17_dir}/${_unit}.cpp CONTENT "#include <@_include@>\n" @ONLY)
-    list(APPEND _cxx17_units ${_cxx17_dir}/${_unit}.cpp)
+    list(APPEND _cxx17_targets inertia::${_library})
+    get_target_property(_dirs inertia_${_library} HEADER_DIRS_HEADERS)
+    get_target_property(_files inertia_${_library} HEADER_SET_HEADERS)
+    foreach(_file IN LISTS _files)
+        foreach(_dir IN LISTS _dirs)
+            if(_file MATCHES "^${_dir}/")
+                cmake_path(RELATIVE_PATH _file BASE_DIRECTORY ${_dir} OUTPUT_VARIABLE _include)
+                list(APPEND _cxx17_includes "#include <${_include}>")
+                break()
+            endif()
+        endforeach()
+    endforeach()
 endforeach()
+list(JOIN _cxx17_includes "\n" _cxx17_content)
+set(_cxx17_unit ${CMAKE_CURRENT_BINARY_DIR}/headers_cxx17.cpp)
+file(CONFIGURE OUTPUT ${_cxx17_unit} CONTENT "@_cxx17_content@\n" @ONLY)
 # Kept out of the compile database: clang-tidy takes the first entry of a file, and the C++17
-# units of this test must not be what it judges the kit and the headers with.
-add_library(inertia_headers_cxx17 OBJECT EXCLUDE_FROM_ALL ${_cxx17_units})
+# unit of this test must not be what it judges the kit and the headers with.
+add_library(inertia_headers_cxx17 OBJECT EXCLUDE_FROM_ALL ${_cxx17_unit})
 set_target_properties(inertia_headers_cxx17 PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON
                                                        CXX_EXTENSIONS OFF
                                                        EXPORT_COMPILE_COMMANDS OFF)
-target_link_libraries(inertia_headers_cxx17 PRIVATE inertia::core inertia::fake inertia_warnings)
+target_link_libraries(inertia_headers_cxx17 PRIVATE ${_cxx17_targets} inertia_warnings)
 target_compile_options(inertia_headers_cxx17 PRIVATE ${INERTIA_WERROR_FLAG})
-foreach(_adapter IN ITEMS drogon httplib conformance)
-    if(TARGET inertia::${_adapter})
-        target_link_libraries(inertia_headers_cxx17 PRIVATE inertia::${_adapter})
-    endif()
-endforeach()
 add_test(NAME headers_cxx17
          COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target inertia_headers_cxx17)
 set_tests_properties(headers_cxx17 PROPERTIES LABELS meta)
