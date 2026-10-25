@@ -24,6 +24,7 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -35,9 +36,33 @@ namespace inertia::drogon {
 
 namespace {
 
-std::atomic<std::shared_ptr<const Inertia>> &installed() {
-    static std::atomic<std::shared_ptr<const Inertia>> instance;
-    return instance;
+// The installed adapter, set once. A mutex instead of std::atomic<std::shared_ptr>, which Apple's
+// libc++ does not provide.
+class InstalledSlot {
+  public:
+    std::shared_ptr<const Inertia> get() const {
+        const std::scoped_lock lock(mutex_);
+        return instance_;
+    }
+
+    // Stores the instance unless one is already there; returns whether it stored it.
+    bool setIfEmpty(std::shared_ptr<const Inertia> instance) {
+        const std::scoped_lock lock(mutex_);
+        if (instance_) {
+            return false;
+        }
+        instance_ = std::move(instance);
+        return true;
+    }
+
+  private:
+    mutable std::mutex mutex_;
+    std::shared_ptr<const Inertia> instance_;
+};
+
+InstalledSlot &installed() {
+    static InstalledSlot slot;
+    return slot;
 }
 
 // CsrfOptions::trustForwardedHeaders of the installed adapter, for the request views that
@@ -48,7 +73,7 @@ std::atomic<bool> &trustForwarded() {
 }
 
 std::shared_ptr<const Inertia> requireInstalled() {
-    auto instance = installed().load();
+    auto instance = installed().get();
     if (!instance) {
         throw std::logic_error("inertia::drogon::install() has not been called");
     }
@@ -196,8 +221,7 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf) {
     // The trust flag is set before the instance is published, so render()/location() never see
     // an installed adapter with a stale flag; a rejected second call puts the old value back.
     const bool previousTrust = trustForwarded().exchange(csrf.trustForwardedHeaders);
-    std::shared_ptr<const Inertia> none;
-    if (!installed().compare_exchange_strong(none, inertia)) {
+    if (!installed().setIfEmpty(inertia)) {
         trustForwarded().store(previousTrust);
         throw std::logic_error("inertia::drogon::install() was already called: the adapter can be "
                                "installed only once per process");
