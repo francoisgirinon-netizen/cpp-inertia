@@ -6,6 +6,7 @@
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
@@ -17,14 +18,34 @@
 
 namespace example {
 
+namespace {
+
+// Whether the environment variable `name` is "1". std::getenv is deprecated on MSVC (C4996), which
+// has _dupenv_s instead.
+bool envFlag(const char *name) {
+#if defined(_MSC_VER)
+    char *raw = nullptr;
+    std::size_t size = 0;
+    if (_dupenv_s(&raw, &size, name) != 0 || raw == nullptr) {
+        return false;
+    }
+    const std::unique_ptr<char, decltype(&std::free)> owned{raw, &std::free};
+    return std::string_view{owned.get()} == "1";
+#else
+    const char *value = std::getenv(name);
+    return value != nullptr && std::string_view{value} == "1";
+#endif
+}
+
+} // namespace
+
 const std::string &publicDir() {
     static const std::string dir = INERTIA_EXAMPLE_PUBLIC_DIR;
     return dir;
 }
 
 std::shared_ptr<inertia::Inertia> makeInertia(std::shared_ptr<inertia::HttpClient> client) {
-    const char *flag = std::getenv("INERTIA_SSR");
-    const bool ssrEnabled = flag != nullptr && std::string_view{flag} == "1";
+    const bool ssrEnabled = envFlag("INERTIA_SSR");
 
     // Production tags come from public/build/.vite/manifest.json; while public/hot exists
     // (`bun run dev`), they point at the Vite dev server instead.
