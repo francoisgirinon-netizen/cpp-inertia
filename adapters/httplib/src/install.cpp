@@ -7,7 +7,7 @@
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
 
-#include <httplib.h>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <algorithm>
 #include <atomic>

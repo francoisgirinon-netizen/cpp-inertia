@@ -6,7 +6,7 @@
 #include <inertia/httplib/httplib.hpp>
 #include <inertia/inertia.hpp>
 
-#include <httplib.h>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <chrono>
 #include <functional>

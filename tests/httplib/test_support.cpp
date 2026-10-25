@@ -1,6 +1,7 @@
 #include "test_support.hpp"
 
 #include <inertia/headers.hpp>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <loopback.hpp>
 

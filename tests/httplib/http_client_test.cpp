@@ -5,7 +5,7 @@
 #include <inertia/httplib/httplib.hpp>
 #include <inertia/ports/http_client.hpp>
 
-#include <httplib.h>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <atomic>
 #include <chrono>

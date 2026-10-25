@@ -2,7 +2,7 @@
 
 #include <inertia/json.hpp>
 
-#include <httplib.h>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <cstdint>
 #include <map>

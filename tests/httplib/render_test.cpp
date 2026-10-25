@@ -7,7 +7,7 @@
 #include <inertia/json.hpp>
 #include <inertia/props.hpp>
 
-#include <httplib.h>
+#include <inertia/httplib/detail/httplib_include.hpp>
 
 #include <stdexcept>
 #include <string>

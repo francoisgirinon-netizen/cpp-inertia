@@ -9,6 +9,7 @@ inertia_add_library(httplib
         src/install.cpp
     HEADERS
         include/inertia/httplib/httplib.hpp
+        include/inertia/httplib/detail/httplib_include.hpp
     LINK_PUBLIC inertia::core httplib::httplib)
 
 # random.cpp: BCryptGenRandom
