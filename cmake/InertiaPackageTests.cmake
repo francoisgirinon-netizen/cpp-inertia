@@ -99,6 +99,29 @@ function(inertia_add_package_tests)
                                 ${_common_args})
     endforeach()
 
+    if(MSVC AND BUILD_SHARED_LIBS)
+        # The runtime guard of <inertia/attributes.hpp>: a consumer built with another C runtime
+        # than the shared core (/MT here, the core is /MD or /MDd) must not link, and the error
+        # names the runtime the DLL expects. The core consumer is configured as usual, only the
+        # runtime differs (a later -D wins).
+        set(_mismatch_bin ${PROJECT_BINARY_DIR}/_package/consumer-runtime-mismatch)
+        add_test(NAME package.runtime_mismatch.configure
+                 COMMAND ${CMAKE_COMMAND} -S ${_consumer_src} -B ${_mismatch_bin} ${_common_args}
+                         -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+                         -DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+                         -DCMAKE_PREFIX_PATH=${_stage} -DCONSUMER_COMPONENTS=core,fake)
+        add_test(NAME package.runtime_mismatch.build
+                 COMMAND ${CMAKE_COMMAND} --build ${_mismatch_bin} ${_install_config})
+        set_tests_properties(package.runtime_mismatch.configure PROPERTIES
+            FIXTURES_REQUIRED package_stage FIXTURES_SETUP package_runtime_mismatch_configured
+            LABELS package)
+        # The build must fail; the output is what proves it failed for the right reason.
+        set_tests_properties(package.runtime_mismatch.build PROPERTIES
+            FIXTURES_REQUIRED package_runtime_mismatch_configured
+            PASS_REGULAR_EXPRESSION "LNK2001[^\n]*inertia_core_requires_runtime_MT"
+            LABELS package)
+    endif()
+
     # A package installed without an adapter must refuse its component, clearly.
     add_test(NAME package.core_only.install
              COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage_core}

@@ -29,3 +29,8 @@ inertia_add_library(core
         ${PROJECT_SOURCE_DIR}/include/inertia/ssr.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/vite.hpp
     LINK_PUBLIC nlohmann_json::nlohmann_json)
+
+# The other half of the runtime guard in <inertia/attributes.hpp>: MSVC with a shared core only.
+if(MSVC AND BUILD_SHARED_LIBS)
+    target_sources(inertia_core PRIVATE runtime_guard.cpp)
+endif()
