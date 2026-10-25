@@ -6,16 +6,17 @@
 
 #if defined(__has_cpp_attribute)
 #if __has_cpp_attribute(clang::nonallocating)
-/// Marks a function that never allocates memory. Write it after the parameter list, as in
-/// `bool same(char a, char b) INERTIA_NONALLOCATING;`. Clang (20 and later) then checks the body
-/// (`-Wfunction-effects`) and rejects a call to anything that may allocate. It expands to nothing
-/// on other compilers and on Clang versions without function effects.
-#define INERTIA_NONALLOCATING [[clang::nonallocating]]
+/// Marks a function that never allocates memory (and so never throws: it implies `noexcept`, which
+/// Apple Clang's -Wperf-constraint-implies-noexcept requires). Write it after the parameter list,
+/// as in `bool same(char a, char b) INERTIA_NONALLOCATING;`. Clang (20 and later) then checks the
+/// body (`-Wfunction-effects`) and rejects a call to anything that may allocate. It expands to
+/// plain `noexcept` on other compilers and on Clang versions without function effects.
+#define INERTIA_NONALLOCATING noexcept [[clang::nonallocating]]
 #endif
 #endif
 
 #ifndef INERTIA_NONALLOCATING
-#define INERTIA_NONALLOCATING
+#define INERTIA_NONALLOCATING noexcept
 #endif
 
 // Brackets an exported class whose data members are standard library types. MSVC warns (C4251)
