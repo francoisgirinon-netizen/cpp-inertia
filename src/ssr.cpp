@@ -23,7 +23,11 @@ namespace {
 
 bool matches(const std::string &pattern, std::string_view path) INERTIA_NONALLOCATING {
     if (!pattern.empty() && pattern.back() == '*') {
-        return path.starts_with(std::string_view(pattern.data(), pattern.size() - 1));
+        // Not starts_with: libc++ implements it with the throwing compare(pos, n, sv), which Apple
+        // Clang's -Wfunction-effects then rejects in a nonallocating function.
+        const std::string_view prefix(pattern.data(), pattern.size() - 1);
+        return path.size() >= prefix.size() &&
+               std::equal(prefix.begin(), prefix.end(), path.begin());
     }
     return path == pattern;
 }

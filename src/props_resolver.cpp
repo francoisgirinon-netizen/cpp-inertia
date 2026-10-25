@@ -47,10 +47,13 @@ std::string joinPath(std::initializer_list<std::string_view> parts) {
     return out;
 }
 
-// True when `path` equals `base` or is a descendant of it.
+// True when `path` equals `base` or is a descendant of it. The prefix test is not starts_with:
+// libc++ implements it with the throwing compare(pos, n, sv), which Apple Clang's
+// -Wfunction-effects then rejects in a nonallocating function.
 bool isSelfOrDescendant(std::string_view path, std::string_view base) INERTIA_NONALLOCATING {
     return path == base ||
-           (path.size() > base.size() && path.starts_with(base) && path[base.size()] == '.');
+           (path.size() > base.size() && std::equal(base.begin(), base.end(), path.begin()) &&
+            path[base.size()] == '.');
 }
 
 // The JSON value of a Value prop: moved out of an rvalue, copied from an lvalue.
