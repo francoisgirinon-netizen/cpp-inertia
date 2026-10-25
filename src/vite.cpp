@@ -9,8 +9,10 @@
 #include <format>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -119,10 +121,22 @@ struct Vite::Snapshot {
     std::string tags;
 };
 
-// Shared by the copies of a Vite. The snapshot is immutable and swapped atomically, so request
-// threads never wait for each other and never see a half-built one.
+// Shared by the copies of a Vite. The snapshot is immutable and replaced as a whole: request
+// threads take the shared lock only to copy the pointer, so they never wait for each other and
+// never see a half-built snapshot. (std::atomic<std::shared_ptr> is not available everywhere.)
 struct Vite::Cache {
-    std::atomic<std::shared_ptr<const Snapshot>> current;
+    [[nodiscard]] std::shared_ptr<const Snapshot> load() const {
+        const std::shared_lock lock(mutex_);
+        return current_;
+    }
+    void store(std::shared_ptr<const Snapshot> snapshot) {
+        const std::unique_lock lock(mutex_);
+        current_ = std::move(snapshot);
+    }
+
+  private:
+    mutable std::shared_mutex mutex_;
+    std::shared_ptr<const Snapshot> current_;
 };
 
 Vite::Vite(ViteConfig cfg, std::shared_ptr<const FileReader> files)
@@ -175,7 +189,7 @@ std::string Vite::devTags(std::string_view url) const {
 }
 
 std::shared_ptr<const Vite::Snapshot> Vite::snapshot() const {
-    auto cached = cache_->current.load();
+    auto cached = cache_->load();
     // The stamp is taken before the content: a file that changes in between leaves an old stamp
     // on newer content, which only costs one more read, never a stale hit.
     const auto stamp = files_->stamp(manifestPath_);
@@ -194,7 +208,7 @@ std::shared_ptr<const Vite::Snapshot> Vite::snapshot() const {
         auto touched = std::make_shared<Snapshot>(*cached);
         touched->stamp = stamp;
         cached = std::move(touched);
-        cache_->current.store(cached);
+        cache_->store(cached);
         return cached;
     }
     auto fresh = std::make_shared<Snapshot>();
@@ -204,7 +218,7 @@ std::shared_ptr<const Vite::Snapshot> Vite::snapshot() const {
         fresh->tags = prodTags(*manifest);
     }
     fresh->content = std::move(*content);
-    cache_->current.store(fresh);
+    cache_->store(fresh);
     return fresh;
 }
 
