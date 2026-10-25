@@ -50,6 +50,10 @@ scripts/dev-serve build/dev/examples/react-app/server/inertia_example_httplib   
 
 `INERTIA_BUILD_EXAMPLES` needs at least one of the two adapters; each executable is built when its adapter is.
 
+### Dev container
+
+`.devcontainer/devcontainer.json` opens the same `dev` service of `compose.yaml` as a dev container (VS Code "Reopen in Container", CLion "Dev Containers", or `devcontainer up --workspace-folder .`). The sources are at `/src`, the toolchain, vcpkg, bun and sccache volumes are the ones `scripts/dev` uses, and the ports 5173, 8081 and 13714 are published on 127.0.0.1. In VS Code it installs clangd (reading `build/dev/compile_commands.json`) and CMake Tools with the presets.
+
 ### CLion
 
 Use CLion's Docker toolchain (Settings > Build, Execution, Deployment > Toolchains > Docker) with the image `cpp-inertia-dev:latest` (built by `docker compose build`) and a container setting that mounts the project at `/src`. Select the `dev` CMake preset; it needs `VCPKG_ROOT=/opt/vcpkg`, which the image already sets. The `.clang-format` and `.clang-tidy` files are picked up automatically.

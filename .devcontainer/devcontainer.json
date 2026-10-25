@@ -1,0 +1,31 @@
+// The same dev image as scripts/dev (compose.yaml, service `dev`), opened as a dev container by VS
+// Code, CLion or any client of the Dev Container spec. Builds, tests and hooks behave exactly as
+// through scripts/dev: same toolchain, same vcpkg, bun and sccache volumes, sources at /src.
+{
+  "name": "cpp-inertia",
+  "dockerComposeFile": ["../compose.yaml"],
+  "service": "dev",
+  // The tsan service is only for scripts/dev-tsan.
+  "runServices": ["dev"],
+  "workspaceFolder": "/src",
+  // compose.yaml starts an interactive bash; a dev container needs a process that stays up.
+  "overrideCommand": true,
+  "shutdownAction": "stopCompose",
+  "remoteUser": "dev",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools"
+      ],
+      "settings": {
+        "cmake.useCMakePresets": "always",
+        "clangd.path": "/opt/mise/shims/clangd",
+        "clangd.arguments": ["--compile-commands-dir=build/dev", "--header-insertion=never"],
+        // clangd provides completion and diagnostics; keep the Microsoft engine out of the way if
+        // that extension is installed too.
+        "C_Cpp.intelliSenseEngine": "disabled"
+      }
+    }
+  }
+}
