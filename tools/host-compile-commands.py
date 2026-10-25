@@ -79,10 +79,10 @@ class Rewriter:
             rewritten = self.rewrite_arguments(tokens)
             self.rsp_dir.mkdir(parents=True, exist_ok=True)
             out.write_text("\n".join(shlex.quote(token) for token in rewritten) + "\n", encoding="utf-8")
-            target = str(out)
+            target = out.as_posix()
         else:
             self.warnings.append(RESPONSE_FILE_WARNING.format(host_path))
-            target = str(host_path)
+            target = host_path.as_posix()
         self._rsp_done[original] = target
         return "@" + target
 

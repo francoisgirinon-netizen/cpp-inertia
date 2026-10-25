@@ -47,6 +47,16 @@ class CoverageCheckTest(unittest.TestCase):
         path.write_text(text, encoding="utf-8")
         return path
 
+    def executable(self, name, python_source):
+        """A program that runs the Python source: a script with a shebang, or on Windows (which
+        has no shebang) a .cmd that starts the interpreter on a .py file."""
+        if os.name == "nt":
+            script = self.write(f"{name}.py", python_source)
+            return self.write(name + ".cmd", f'@"{sys.executable}" "{script}" %*\n')
+        exe = self.write(name, f"#!{sys.executable}\n{python_source}")
+        os.chmod(exe, 0o755)
+        return exe
+
     def matrix(self, *rules):
         body = 'inertia_react_version = "3.9.1"\n\n' + "\n".join(rules)
         return self.write("matrix.toml", body)
@@ -107,14 +117,10 @@ class CoverageCheckTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_tags_are_read_from_list_tags_executable(self):
-        exe = self.dir / "fake_tests"
-        exe.write_text(
-            f"#!{sys.executable}\n"
-            "import sys\n"
-            f"sys.stdout.write({list_tags_output('partial.except')!r})\n",
-            encoding="utf-8",
+        exe = self.executable(
+            "fake_tests",
+            "import sys\n" f"sys.stdout.write({list_tags_output('partial.except')!r})\n",
         )
-        os.chmod(exe, 0o755)
         matrix = self.matrix(rule("partial.except", status="done"))
         cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix),
                "--tags-from", str(exe)]
@@ -214,9 +220,7 @@ class CoverageCheckTest(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
 
     def test_failing_tags_from_executable_fails(self):
-        exe = self.dir / "broken_tests"
-        exe.write_text(f"#!{sys.executable}\nimport sys\nsys.exit(3)\n", encoding="utf-8")
-        os.chmod(exe, 0o755)
+        exe = self.executable("broken_tests", "import sys\nsys.exit(3)\n")
         matrix = self.matrix(rule("a.b", status="todo"))
         cmd = [sys.executable, str(SCRIPT), "--matrix", str(matrix), "--tags-from", str(exe)]
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)

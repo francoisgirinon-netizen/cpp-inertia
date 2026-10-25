@@ -143,7 +143,7 @@ class ConvertTest(unittest.TestCase):
     def test_missing_response_file_is_reported_and_path_rewritten(self):
         converted, warnings = self.convert(host_root=self.host_root)
         at = [arg for arg in tokens(converted[2]) if arg.startswith("@")][0]
-        self.assertEqual(at, "@" + str(self.host_root) + "/build/dev/rsp/args.rsp")
+        self.assertEqual(at, "@" + self.host_root.as_posix() + "/build/dev/rsp/args.rsp")
         self.assertEqual(len(warnings), 1)
         self.assertIn("args.rsp", warnings[0])
 
