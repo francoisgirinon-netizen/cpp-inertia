@@ -1,0 +1,32 @@
+/* Dynamic symbol table of the shared libraries on Linux: the project's own C++ symbols, nothing
+ * else. Hidden visibility already removes what the headers do not export; this removes the std::
+ * and nlohmann:: template instantiations that libstdc++ forces to default visibility. Every
+ * library of the project lives in namespace inertia.
+ *
+ * Itanium-mangled globs, because they are what every linker agrees on. A name inside namespace
+ * inertia starts with N7inertia after _Z (function or variable), _ZTV (vtable), _ZTT (VTT), _ZTI
+ * (typeinfo) or _ZTS (typeinfo name). A member function puts its qualifiers between N and the
+ * name: K (const), V (volatile), R and O (lvalue and rvalue reference), in this order. The
+ * prefix has to be spelled out: a wildcard in front of 7inertia would also take
+ * std::vector<inertia::X>. */
+{
+  global:
+    _ZN7inertia*;
+    _ZNK7inertia*;
+    _ZNV7inertia*;
+    _ZNVK7inertia*;
+    _ZNR7inertia*;
+    _ZNO7inertia*;
+    _ZNKR7inertia*;
+    _ZNKO7inertia*;
+    _ZNVR7inertia*;
+    _ZNVO7inertia*;
+    _ZNVKR7inertia*;
+    _ZNVKO7inertia*;
+    _ZTVN7inertia*;
+    _ZTTN7inertia*;
+    _ZTIN7inertia*;
+    _ZTSN7inertia*;
+  local:
+    *;
+};

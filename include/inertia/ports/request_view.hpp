@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -11,7 +13,7 @@ namespace inertia {
 /// An adapter implements this port around its framework's request object and must not modify that
 /// request. The view usually borrows the request, so it must not outlive it. Implementations need
 /// not be thread safe: a request is handled by one thread at a time.
-class RequestView {
+class INERTIA_CORE_EXPORT RequestView {
   protected:
     RequestView() = default;
     /// Copy-constructs a view in a derived class.

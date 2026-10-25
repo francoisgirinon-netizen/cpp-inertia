@@ -1,5 +1,6 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/request_view.hpp>
 #include <inertia/props.hpp>
@@ -35,12 +36,15 @@ struct Resolved {
     Metadata meta;
 };
 
+// Exported (here and below) only so that the unit tests can reach it in a shared build: this header
+// is not installed and the functions are not API.
 // Pure function of its arguments: all per-request state lives on the call stack.
-[[nodiscard]] Resolved resolveProps(const Props &props, const ResolveContext &ctx);
+[[nodiscard]] INERTIA_CORE_EXPORT Resolved resolveProps(const Props &props,
+                                                        const ResolveContext &ctx);
 
 // Same result, but JSON leaf values and nested children are moved into the output, so `props` is
 // left moved-from.
-[[nodiscard]] Resolved resolveProps(Props &&props, const ResolveContext &ctx);
+[[nodiscard]] INERTIA_CORE_EXPORT Resolved resolveProps(Props &&props, const ResolveContext &ctx);
 
 // Reserves room for `count` members of a JSON object. ordered_json stores its members as
 // pair<const std::string, Json>, which is not nothrow-movable, so a growing object copies every
@@ -51,6 +55,7 @@ inline void reserveMembers(Json &object, std::size_t count) {
 
 // partial is true when the request is an Inertia request whose X-Inertia-Partial-Component
 // equals `component`.
-[[nodiscard]] ResolveContext makeContext(const RequestView &req, std::string_view component);
+[[nodiscard]] INERTIA_CORE_EXPORT ResolveContext makeContext(const RequestView &req,
+                                                             std::string_view component);
 
 } // namespace inertia::detail

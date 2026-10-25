@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/http_client.hpp>
 
@@ -43,7 +45,8 @@ struct SsrResult {
 /// No operation throws on failure. A failed render reports nullopt, and the caller falls back to
 /// client-side rendering. Requests are asynchronous: each callback runs exactly once, when the
 /// reply arrives or the HTTP client fails, and possibly on another thread.
-class SsrGateway {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_CORE_EXPORT SsrGateway {
   public:
     /// Creates a gateway.
     /// @param cfg SSR settings.
@@ -80,5 +83,6 @@ class SsrGateway {
     std::shared_ptr<HttpClient> http_;
     std::shared_ptr<const Vite> vite_;
 };
+INERTIA_DLL_INTERFACE_END
 
 } // namespace inertia

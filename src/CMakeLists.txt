@@ -1,4 +1,5 @@
 inertia_add_library(core
+    EXPORT_FILE inertia/core_export.hpp
     SOURCES
         disk_file_reader.cpp
         headers.cpp

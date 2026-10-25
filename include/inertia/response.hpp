@@ -1,5 +1,8 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,7 +16,8 @@ using Headers = std::vector<std::pair<std::string, std::string>>;
 
 /// An HTTP response built by the framework-neutral core. The adapter converts it to its own
 /// response type before sending it.
-struct Response {
+INERTIA_DLL_INTERFACE_BEGIN
+struct INERTIA_CORE_EXPORT Response {
     /// HTTP status code.
     int status = 200;
     /// Header name and value pairs, in order. A name may repeat, so use setHeader() to replace one.
@@ -31,5 +35,6 @@ struct Response {
     /// @param value Header value.
     void setHeader(std::string name, std::string value);
 };
+INERTIA_DLL_INTERFACE_END
 
 } // namespace inertia

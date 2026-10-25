@@ -1,5 +1,6 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
 #include <inertia/ports/file_reader.hpp>
 
 #include <string>
@@ -20,7 +21,7 @@ namespace inertia {
 /// until the next change.
 ///
 /// Relative paths are resolved against the working directory of the process, like any file open.
-class DiskFileReader final : public FileReader {
+class INERTIA_CORE_EXPORT DiskFileReader final : public FileReader {
   public:
     /// Reads the whole file.
     /// @param path File to read.

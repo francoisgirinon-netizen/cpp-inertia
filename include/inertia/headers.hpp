@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
 
 #include <optional>
 #include <string>
@@ -41,12 +42,14 @@ inline constexpr std::string_view kVary = "Vary";
 /// @param raw Header value, or nullopt when the header is absent.
 /// @return The items, trimmed of surrounding whitespace. Empty items are dropped. Empty when the
 /// header is absent.
-[[nodiscard]] std::vector<std::string> parseList(const std::optional<std::string> &raw);
+[[nodiscard]] INERTIA_CORE_EXPORT std::vector<std::string>
+parseList(const std::optional<std::string> &raw);
 
 /// Compares two strings ignoring ASCII case.
 /// @param a First string.
 /// @param b Second string.
 /// @return `true` when both strings match, ignoring ASCII case.
-[[nodiscard]] bool iequals(std::string_view a, std::string_view b) INERTIA_NONALLOCATING;
+[[nodiscard]] INERTIA_CORE_EXPORT bool iequals(std::string_view a,
+                                               std::string_view b) INERTIA_NONALLOCATING;
 
 } // namespace inertia::headers

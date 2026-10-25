@@ -13,11 +13,21 @@ if(TARGET inertia_httplib)
     list(APPEND _inertia_installed httplib)
 endif()
 
+# Components: inertia_<name> is the development part (headers, import/static library, the .so
+# name link, CMake files); a shared build adds inertia_<name>_runtime with what a program needs at
+# run time (the DLL, or the versioned shared object), so that it can be packaged on its own.
+set(INERTIA_RUNTIME_COMPONENTS)
 foreach(_component IN LISTS _inertia_installed)
     install(TARGETS inertia_${_component}
             EXPORT inertia-${_component}-targets
+            RUNTIME COMPONENT inertia_${_component}_runtime
+            LIBRARY COMPONENT inertia_${_component}_runtime
+                    NAMELINK_COMPONENT inertia_${_component}
             ARCHIVE COMPONENT inertia_${_component}
             FILE_SET HEADERS COMPONENT inertia_${_component})
+    if(BUILD_SHARED_LIBS)
+        list(APPEND INERTIA_RUNTIME_COMPONENTS inertia_${_component}_runtime)
+    endif()
     install(EXPORT inertia-${_component}-targets
             NAMESPACE inertia::
             DESTINATION ${INERTIA_INSTALL_CMAKEDIR}

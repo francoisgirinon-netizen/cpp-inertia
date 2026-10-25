@@ -37,7 +37,15 @@ USE_MDFILE_AS_MAINPAGE = docs/mainpage.md
 JAVADOC_AUTOBRIEF      = YES
 
 # Doxygen does not parse the conditional `explicit(false)` constructors, so the macro is removed
-# before parsing. Only the listed macro is expanded.
+# before parsing. The export macros (generated into the build tree, so Doxygen never sees their
+# definitions) and the brackets of an exported class are removed too. Only the listed macros are
+# expanded.
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = YES
-PREDEFINED             = "explicit(x)="
+PREDEFINED             = "explicit(x)=" \
+                         INERTIA_CORE_EXPORT= \
+                         INERTIA_FAKE_EXPORT= \
+                         INERTIA_DROGON_EXPORT= \
+                         INERTIA_HTTPLIB_EXPORT= \
+                         INERTIA_DLL_INTERFACE_BEGIN= \
+                         INERTIA_DLL_INTERFACE_END=

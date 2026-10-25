@@ -13,16 +13,22 @@ set(CPACK_PACKAGE_CONTACT "cpp-inertia maintainers")
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/README.md)
 
-# <name>-<version>-<system>-<arch>: also the name of the top directory inside the archive.
+# <name>-<version>-<system>-<arch>-<static|shared>: also the name of the top directory inside the
+# archive. The linkage is in the name so that both flavours can be released side by side.
+if(BUILD_SHARED_LIBS)
+    set(INERTIA_PACKAGE_LINKAGE shared)
+else()
+    set(INERTIA_PACKAGE_LINKAGE static)
+endif()
 set(INERTIA_PACKAGE_FILE_NAME
-    ${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR})
+    ${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}-${INERTIA_PACKAGE_LINKAGE})
 set(CPACK_PACKAGE_FILE_NAME ${INERTIA_PACKAGE_FILE_NAME})
 
 # The CPack components are the install components of InertiaInstall.cmake.
 set(CPACK_COMPONENTS_ALL inertia_core inertia_fake)
 set(CPACK_COMPONENT_INERTIA_CORE_DISPLAY_NAME "Core")
 set(CPACK_COMPONENT_INERTIA_CORE_DESCRIPTION
-    "The Inertia.js v3 protocol implementation: headers, static library, CMake package files, license")
+    "The Inertia.js v3 protocol implementation: headers, library, CMake package files, license")
 set(CPACK_COMPONENT_INERTIA_FAKE_DISPLAY_NAME "Fake adapter")
 set(CPACK_COMPONENT_INERTIA_FAKE_DESCRIPTION
     "In-memory adapter for testing applications without a web framework")
@@ -47,11 +53,32 @@ if(TARGET inertia_conformance)
     set(CPACK_COMPONENT_INERTIA_CONFORMANCE_DEPENDS inertia_core)
 endif()
 
-# TGZ: every component in a single archive.
-set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
-set(CPACK_GENERATOR TGZ)
+# The runtime components of a shared build (InertiaInstall.cmake): each belongs to, and depends on,
+# the development component of its library.
+foreach(_runtime IN LISTS INERTIA_RUNTIME_COMPONENTS)
+    string(REGEX REPLACE "_runtime$" "" _dev ${_runtime})
+    string(TOUPPER ${_runtime} _upper)
+    list(APPEND CPACK_COMPONENTS_ALL ${_runtime})
+    set(CPACK_COMPONENT_${_upper}_DISPLAY_NAME "${CPACK_COMPONENT_${_dev}_DISPLAY_NAME} (runtime)")
+    if(NOT _dev STREQUAL inertia_core)
+        set(CPACK_COMPONENT_${_upper}_DEPENDS inertia_core_runtime)
+    endif()
+endforeach()
 
-# DEB: one package per component. The libraries are static, so no shlibdeps. Drogon, cpp-httplib
+# Archive: every component in a single archive. ZIP on Windows, TGZ elsewhere.
+set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
+if(WIN32)
+    set(INERTIA_ARCHIVE_GENERATOR ZIP)
+    set(INERTIA_ARCHIVE_SUFFIX .zip)
+else()
+    set(INERTIA_ARCHIVE_GENERATOR TGZ)
+    set(INERTIA_ARCHIVE_SUFFIX .tar.gz)
+endif()
+set(CPACK_GENERATOR ${INERTIA_ARCHIVE_GENERATOR})
+
+# DEB: one package per component (a shared build also gets one runtime package per library, named
+# after the soname as Debian wants: libinertia-core0.1). No shlibdeps: the libraries depend on each
+# other and on nothing the packages can name. Drogon, cpp-httplib
 # and Catch2 have no stable Debian package names: a consumer of those components provides them
 # (vcpkg, source build); only nlohmann-json, needed by every consumer, is declared.
 find_program(INERTIA_DPKG_DEB dpkg-deb)
@@ -67,7 +94,7 @@ set(CPACK_DEBIAN_INERTIA_CORE_PACKAGE_NAME libinertia-core-dev)
 set(CPACK_DEBIAN_INERTIA_CORE_PACKAGE_DEPENDS nlohmann-json3-dev)
 set(_inertia_core_deb "libinertia-core-dev (= ${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE})")
 foreach(_component IN LISTS CPACK_COMPONENTS_ALL)
-    if(_component STREQUAL inertia_core)
+    if(_component STREQUAL inertia_core OR _component MATCHES "_runtime$")
         continue()
     endif()
     string(TOUPPER ${_component} _upper)
@@ -75,5 +102,24 @@ foreach(_component IN LISTS CPACK_COMPONENTS_ALL)
     set(CPACK_DEBIAN_${_upper}_PACKAGE_NAME libinertia-${_short}-dev)
     set(CPACK_DEBIAN_${_upper}_PACKAGE_DEPENDS "${_inertia_core_deb}")
 endforeach()
+if(BUILD_SHARED_LIBS)
+    set(_soversion ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+    set(_runtime_dependency "libinertia-core${_soversion} (= ${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE})")
+    foreach(_runtime IN LISTS INERTIA_RUNTIME_COMPONENTS)
+        string(TOUPPER ${_runtime} _upper)
+        string(REGEX REPLACE "^inertia_|_runtime$" "" _short ${_runtime})
+        set(CPACK_DEBIAN_${_upper}_PACKAGE_NAME libinertia-${_short}${_soversion})
+        set(CPACK_DEBIAN_${_upper}_PACKAGE_SECTION libs)
+        if(_short STREQUAL core)
+            set(CPACK_DEBIAN_${_upper}_PACKAGE_DEPENDS "")
+        else()
+            set(CPACK_DEBIAN_${_upper}_PACKAGE_DEPENDS "${_runtime_dependency}")
+        endif()
+        # The development package needs the shared object its name link points at.
+        string(TOUPPER inertia_${_short} _dev_upper)
+        string(APPEND CPACK_DEBIAN_${_dev_upper}_PACKAGE_DEPENDS
+               ", libinertia-${_short}${_soversion} (= ${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE})")
+    endforeach()
+endif()
 
 include(CPack)

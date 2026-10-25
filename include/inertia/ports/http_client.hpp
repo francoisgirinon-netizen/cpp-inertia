@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
+
 #include <chrono>
 #include <functional>
 #include <optional>
@@ -22,7 +24,7 @@ struct HttpResult {
 ///
 /// Needed only when `Config::ssr.enabled` is set. Implementations must be thread safe: renders run
 /// concurrently and each one may issue a request.
-class HttpClient {
+class INERTIA_CORE_EXPORT HttpClient {
   protected:
     HttpClient() = default;
     /// Copy-constructs a client in a derived class.

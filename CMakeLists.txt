@@ -10,6 +10,31 @@ if(PROJECT_IS_TOP_LEVEL)
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+# Shared libraries: the standard switch. Static is the default.
+#   cmake -DBUILD_SHARED_LIBS=ON ...   (the dev-shared and *-shared presets)
+option(BUILD_SHARED_LIBS "Build the inertia libraries as shared libraries" OFF)
+
+if(PROJECT_IS_TOP_LEVEL AND MSVC)
+    # The C runtime must be the one the vcpkg triplet built the dependencies with: x64-windows-static
+    # is /MT, the others (x64-windows, x64-windows-static-md) are /MD. A shared inertia is always
+    # /MD: its DLLs and the program share one runtime, which they need to exchange std:: objects.
+    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+        if(VCPKG_TARGET_TRIPLET MATCHES "-static$" AND NOT BUILD_SHARED_LIBS)
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        else()
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+        endif()
+    endif()
+    if(BUILD_SHARED_LIBS AND NOT CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL")
+        message(FATAL_ERROR "Shared inertia libraries need the dynamic C runtime (/MD), "
+                            "not ${CMAKE_MSVC_RUNTIME_LIBRARY}")
+    endif()
+endif()
+if(PROJECT_IS_TOP_LEVEL AND WIN32 AND BUILD_SHARED_LIBS)
+    # Windows has no RPATH: the tests find the DLLs next to themselves.
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+endif()
+
 option(INERTIA_BUILD_DROGON "Build the Drogon adapter" ON)
 option(INERTIA_BUILD_HTTPLIB "Build the cpp-httplib adapter" ON)
 option(INERTIA_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
@@ -77,6 +102,7 @@ endif()
 
 if(PROJECT_IS_TOP_LEVEL)
     include(FeatureSummary)
+    add_feature_info(shared-libs BUILD_SHARED_LIBS "inertia libraries are shared (static otherwise)")
     add_feature_info(drogon INERTIA_BUILD_DROGON "Drogon adapter (inertia::drogon)")
     add_feature_info(httplib INERTIA_BUILD_HTTPLIB "cpp-httplib adapter (inertia::httplib)")
     add_feature_info(tests INERTIA_BUILD_TESTS "Catch2 tests, conformance suites, coverage_check")

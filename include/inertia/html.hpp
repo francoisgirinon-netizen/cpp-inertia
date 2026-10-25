@@ -1,5 +1,6 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 
 #include <functional>
@@ -11,13 +12,13 @@ namespace inertia {
 /// Serializes a JSON value compactly. Invalid UTF-8 is replaced by U+FFFD, so this never throws.
 /// @param j Value to serialize.
 /// @return The compact JSON text.
-[[nodiscard]] std::string dumpJson(const Json &j);
+[[nodiscard]] INERTIA_CORE_EXPORT std::string dumpJson(const Json &j);
 
 /// Serializes a page for embedding in a `<script>` element. Besides dumpJson(), it escapes `/`,
 /// `<`, `>`, U+2028 and U+2029, so the text cannot close the element early.
 /// @param page Page object to serialize.
 /// @return The escaped JSON text.
-[[nodiscard]] std::string escapeForScript(const Json &page);
+[[nodiscard]] INERTIA_CORE_EXPORT std::string escapeForScript(const Json &page);
 
 /// Builds the body markup of a page: the page JSON in a `<script data-page>` element and an empty
 /// root element that the front end mounts on.
@@ -25,7 +26,8 @@ namespace inertia {
 /// @param rootId Id of the root element, which also names the `data-page` attribute.
 /// @return The markup, as
 /// `<script data-page="ROOT" type="application/json">JSON</script><div id="ROOT"></div>`.
-[[nodiscard]] std::string inertiaBody(const Json &page, std::string_view rootId);
+[[nodiscard]] INERTIA_CORE_EXPORT std::string inertiaBody(const Json &page,
+                                                          std::string_view rootId);
 
 /// Inputs to a RootTemplate, which builds the HTML document of a first visit.
 struct RootContext {
@@ -47,6 +49,6 @@ using RootTemplate = std::function<std::string(const RootContext &)>;
 /// in `<body>`.
 /// @param ctx Inputs of the document.
 /// @return The complete document.
-[[nodiscard]] std::string defaultRootTemplate(const RootContext &ctx);
+[[nodiscard]] INERTIA_CORE_EXPORT std::string defaultRootTemplate(const RootContext &ctx);
 
 } // namespace inertia

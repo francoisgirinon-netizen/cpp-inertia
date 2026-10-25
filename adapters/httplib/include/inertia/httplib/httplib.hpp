@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/httplib/export.hpp>
 #include <inertia/inertia.hpp>
 
 #include <httplib.h>
@@ -25,7 +27,8 @@ namespace inertia::httplib {
 ///
 /// It borrows the request: keep it alive for as long as the view is used. Not thread safe, like the
 /// request it wraps.
-class HttplibRequest final : public RequestView {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_HTTPLIB_EXPORT HttplibRequest final : public RequestView {
   public:
     /// @param req The request to view; must outlive this object.
     /// @param trustForwardedHeaders Believe X-Forwarded-Proto and X-Forwarded-Host (first value of
@@ -62,16 +65,17 @@ class HttplibRequest final : public RequestView {
     std::string method_;
     bool trustForwarded_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// Replaces the status, headers and body of `to`. Content-Length is dropped (cpp-httplib frames the
 /// body itself); several headers of one name (Set-Cookie) all survive.
 /// @param from The Inertia response to copy.
 /// @param to The cpp-httplib response to overwrite.
-void toHttplib(const Response &from, ::httplib::Response &to);
+INERTIA_HTTPLIB_EXPORT void toHttplib(const Response &from, ::httplib::Response &to);
 
 /// @param res The cpp-httplib response to copy.
 /// @return The status, headers and body of `res` as an Inertia response.
-[[nodiscard]] Response fromHttplib(const ::httplib::Response &res);
+[[nodiscard]] INERTIA_HTTPLIB_EXPORT Response fromHttplib(const ::httplib::Response &res);
 
 /// @brief The values of one session.
 ///
@@ -100,7 +104,8 @@ struct MemorySessionOptions {
 /// use another adapter when you need that. Memory is bounded by the idle TTL and by
 /// MemorySessionOptions::maxSessions (least recently used first). Expired sessions are dropped,
 /// oldest first, whenever a session is opened or rotated, so there is no sweep to schedule.
-class MemorySessionStore {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_HTTPLIB_EXPORT MemorySessionStore {
   public:
     /// @brief Result of open() and rotate().
     struct Opened {
@@ -174,12 +179,14 @@ class MemorySessionStore {
     std::unordered_map<std::string, Entry> sessions_; // guarded by mutex_
     std::list<std::string> lru_; // ids, most recently used first; guarded by mutex_
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief One request's view of a session.
 ///
 /// Safe to use while other requests of the same session run (the values are guarded by a
 /// per-session lock). Values are held as Json in memory.
-class HttplibSession final : public SessionStore {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_HTTPLIB_EXPORT HttplibSession final : public SessionStore {
   public:
     /// @param data The session values, as held by MemorySessionStore::Opened::data.
     explicit HttplibSession(std::shared_ptr<SessionData> data);
@@ -206,6 +213,7 @@ class HttplibSession final : public SessionStore {
   private:
     std::shared_ptr<SessionData> data_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief Blocking HTTP client for server-side rendering, on cpp-httplib's client.
 ///
@@ -217,7 +225,8 @@ class HttplibSession final : public SessionStore {
 /// `done` must not throw. Only http:// URLs work (the adapter is built without TLS); https reports
 /// an error. Thread safe: a fresh ::httplib::Client is created per call, so concurrent requests
 /// never share a socket.
-class HttplibHttpClient final : public HttpClient {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_HTTPLIB_EXPORT HttplibHttpClient final : public HttpClient {
   public:
     /// Sends a JSON POST and reports the answer through `done`.
     /// @param url The absolute http:// URL to post to.
@@ -233,6 +242,7 @@ class HttplibHttpClient final : public HttpClient {
     void get(std::string url, std::chrono::milliseconds timeout,
              std::function<void(HttpResult)> done) override;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief CSRF protection for unsafe methods, as a double-submit cookie.
 ///
@@ -322,8 +332,9 @@ struct Options {
 /// @param options Sessions, CSRF, hooks and logging; see Options.
 /// @throws std::logic_error when the server already has an installation.
 /// @throws std::invalid_argument when `inertia` is null.
-void install(::httplib::Server &server, const std::shared_ptr<const Inertia> &inertia,
-             Options options = {});
+INERTIA_HTTPLIB_EXPORT void install(::httplib::Server &server,
+                                    const std::shared_ptr<const Inertia> &inertia,
+                                    Options options = {});
 
 /// Renders a page into `res` with the Inertia installed on the server and the request's session.
 /// Blocks until the response is ready (SSR included). An exception thrown while resolving props is
@@ -335,8 +346,8 @@ void install(::httplib::Server &server, const std::shared_ptr<const Inertia> &in
 /// @param opts Per-render overrides of encryptHistory and preserveBigIntegers; unset fields keep
 /// the values of the Config.
 /// @throws std::logic_error when no install() ran for the server handling this request.
-void render(const ::httplib::Request &req, ::httplib::Response &res, std::string component,
-            Props props, RenderOptions opts = {});
+INERTIA_HTTPLIB_EXPORT void render(const ::httplib::Request &req, ::httplib::Response &res,
+                                   std::string component, Props props, RenderOptions opts = {});
 
 /// External redirect via the installed Inertia, written into `res`: 409 + X-Inertia-Location for
 /// Inertia requests, else a 302.
@@ -344,7 +355,8 @@ void render(const ::httplib::Request &req, ::httplib::Response &res, std::string
 /// @param res The response of that request.
 /// @param url The external URL to redirect to.
 /// @throws std::logic_error when no install() ran for the server handling this request.
-void location(const ::httplib::Request &req, ::httplib::Response &res, std::string_view url);
+INERTIA_HTTPLIB_EXPORT void location(const ::httplib::Request &req, ::httplib::Response &res,
+                                     std::string_view url);
 
 /// The Inertia session of the request being handled (the one the session cookie names). The first
 /// call of a request starts the session when the client has none (or an unknown id). Each call
@@ -352,13 +364,13 @@ void location(const ::httplib::Request &req, ::httplib::Response &res, std::stri
 /// @param res The response of the request being handled.
 /// @return A view of the request's session.
 /// @throws std::logic_error when no install() ran for the server handling this request.
-[[nodiscard]] HttplibSession session(const ::httplib::Response &res);
+[[nodiscard]] INERTIA_HTTPLIB_EXPORT HttplibSession session(const ::httplib::Response &res);
 
 /// Gives the request's session a new random id (same data, old id dead) and a new CSRF token, and
 /// emits the new cookies. Call it when privileges change, e.g. right after a successful login, so
 /// that an id planted before the login (session fixation) is worthless.
 /// @param res The response of the request being handled.
 /// @throws std::logic_error when no install() ran for the server handling this request.
-void regenerateSession(const ::httplib::Response &res);
+INERTIA_HTTPLIB_EXPORT void regenerateSession(const ::httplib::Response &res);
 
 } // namespace inertia::httplib

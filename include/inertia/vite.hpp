@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 
@@ -32,7 +34,8 @@ struct ViteConfig {
 ///
 /// While the hot file exists, the tags point at the Vite dev server. Otherwise they come from the
 /// production build listed in the Vite manifest. Files are read through the injected FileReader.
-class Vite {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_CORE_EXPORT Vite {
   public:
     /// Creates the Vite integration.
     /// @param cfg Layout of the front end.
@@ -73,11 +76,13 @@ class Vite {
     std::filesystem::path manifestPath_;
     std::shared_ptr<Cache> cache_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// Builds an asset-version callback for Config::version from a Vite integration. The version
 /// changes whenever the built assets change, so clients reload after a deployment.
 /// @param vite Vite integration to hash. Null yields an empty version.
 /// @return A callable that returns Vite::manifestHash().
-[[nodiscard]] std::function<std::string()> versionFromVite(std::shared_ptr<const Vite> vite);
+[[nodiscard]] INERTIA_CORE_EXPORT std::function<std::string()>
+versionFromVite(std::shared_ptr<const Vite> vite);
 
 } // namespace inertia

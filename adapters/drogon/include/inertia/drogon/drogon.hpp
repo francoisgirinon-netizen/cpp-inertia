@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/drogon/export.hpp>
 #include <inertia/inertia.hpp>
 
 #include <drogon/HttpClient.h>
@@ -26,7 +28,8 @@ namespace inertia::drogon {
 ///
 /// The view borrows the request it wraps, so it is valid only while that request is alive. It is
 /// not thread safe, like the request.
-class DrogonRequest final : public RequestView {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_DROGON_EXPORT DrogonRequest final : public RequestView {
   public:
     /// Creates a view of a Drogon request.
     ///
@@ -74,6 +77,7 @@ class DrogonRequest final : public RequestView {
     ::drogon::HttpRequestPtr req_;
     bool trustForwarded_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// Converts an Inertia response to a Drogon response.
 ///
@@ -83,7 +87,7 @@ class DrogonRequest final : public RequestView {
 ///
 /// @param res The Inertia response to convert.
 /// @return A new Drogon response carrying the same status, headers and body.
-[[nodiscard]] ::drogon::HttpResponsePtr toDrogon(const Response &res);
+[[nodiscard]] INERTIA_DROGON_EXPORT ::drogon::HttpResponsePtr toDrogon(const Response &res);
 
 /// Converts an Inertia response to a Drogon response, moving its body instead of copying it.
 ///
@@ -92,7 +96,7 @@ class DrogonRequest final : public RequestView {
 ///
 /// @param res The Inertia response to convert. Its body is moved from.
 /// @return A new Drogon response carrying the same status, headers and body.
-[[nodiscard]] ::drogon::HttpResponsePtr toDrogon(Response &&res);
+[[nodiscard]] INERTIA_DROGON_EXPORT ::drogon::HttpResponsePtr toDrogon(Response &&res);
 
 /// Converts a Drogon response to an Inertia response.
 ///
@@ -101,13 +105,14 @@ class DrogonRequest final : public RequestView {
 ///
 /// @param res The Drogon response to convert.
 /// @return The Inertia response with the same status, headers and body.
-[[nodiscard]] Response fromDrogon(const ::drogon::HttpResponsePtr &res);
+[[nodiscard]] INERTIA_DROGON_EXPORT Response fromDrogon(const ::drogon::HttpResponsePtr &res);
 
 /// Session store backed by a Drogon session.
 ///
 /// Each value is kept as its dumped JSON text inside the Drogon session. Drogon's session has its
 /// own lock, so each operation is atomic even while other requests of the same visitor run.
-class DrogonSession final : public SessionStore {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_DROGON_EXPORT DrogonSession final : public SessionStore {
   public:
     /// Wraps a Drogon session.
     ///
@@ -142,6 +147,7 @@ class DrogonSession final : public SessionStore {
   private:
     ::drogon::SessionPtr session_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// Server-side rendering transport built on Drogon's HTTP client.
 ///
@@ -152,7 +158,8 @@ class DrogonSession final : public SessionStore {
 /// later request queued on the same connection. After a timeout the origin's client is therefore
 /// dropped from the pool (at most once per timeout window) and the next request opens a fresh
 /// connection. The old client lives on until Drogon is done with its pending request.
-class DrogonHttpClient final : public HttpClient {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_DROGON_EXPORT DrogonHttpClient final : public HttpClient {
   public:
     /// Creates a client.
     ///
@@ -193,6 +200,7 @@ class DrogonHttpClient final : public HttpClient {
     trantor::EventLoop *loop_;
     std::shared_ptr<Pool> pool_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// CSRF protection settings for install().
 ///
@@ -244,7 +252,8 @@ struct CsrfOptions {
 /// @throws std::invalid_argument When `inertia` is null.
 /// @throws std::logic_error When install() was already called: an adapter is installed once per
 /// process.
-void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf = {});
+INERTIA_DROGON_EXPORT void install(const std::shared_ptr<const Inertia> &inertia,
+                                   CsrfOptions csrf = {});
 
 /// Renders a page for a Drogon request.
 ///
@@ -260,9 +269,10 @@ void install(const std::shared_ptr<const Inertia> &inertia, CsrfOptions csrf = {
 /// @param props Props of the page; resolved before the call returns, as in Inertia::render().
 /// @param callback Receives the finished response, exactly once. Moved into the adapter.
 /// @param opts Rendering options, such as SSR or history encryption.
-void render(const ::drogon::HttpRequestPtr &req, std::string component, Props props,
-            std::function<void(const ::drogon::HttpResponsePtr &)> &&callback,
-            RenderOptions opts = {});
+INERTIA_DROGON_EXPORT void render(const ::drogon::HttpRequestPtr &req, std::string component,
+                                  Props props,
+                                  std::function<void(const ::drogon::HttpResponsePtr &)> &&callback,
+                                  RenderOptions opts = {});
 
 /// Builds an external redirect with the installed Inertia instance.
 ///
@@ -273,6 +283,7 @@ void render(const ::drogon::HttpRequestPtr &req, std::string component, Props pr
 /// @param url Target URL of the redirect.
 /// @return The redirect response, as an Inertia response.
 /// @throws std::logic_error When install() has not been called.
-[[nodiscard]] Response location(const ::drogon::HttpRequestPtr &req, std::string_view url);
+[[nodiscard]] INERTIA_DROGON_EXPORT Response location(const ::drogon::HttpRequestPtr &req,
+                                                      std::string_view url);
 
 } // namespace inertia::drogon

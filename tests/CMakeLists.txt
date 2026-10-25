@@ -51,6 +51,26 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     set_tests_properties(flags_applied PROPERTIES LABELS meta)
 endif()
 
+# A shared library exports its public API and nothing else (no std::, no nlohmann::). Linux only:
+# the check reads the ELF dynamic symbol table.
+if(BUILD_SHARED_LIBS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_program(INERTIA_NM NAMES llvm-nm nm REQUIRED)
+    set(_exports_core "inertia::Inertia::page(|inertia::dumpJson(|inertia::headers::iequals(|inertia::Prop::Prop(|vtable for inertia::DiskFileReader|typeinfo for inertia::FileReader")
+    set(_exports_fake "inertia::fake::MemorySession::get|vtable for inertia::fake::FakeRequest|typeinfo for inertia::RequestView")
+    set(_exports_drogon "inertia::drogon::install(|vtable for inertia::drogon::DrogonRequest")
+    set(_exports_httplib "inertia::httplib::install(|vtable for inertia::httplib::HttplibRequest")
+    foreach(_library IN ITEMS core fake drogon httplib)
+        if(TARGET inertia_${_library})
+            add_test(NAME exports.${_library}
+                     COMMAND ${CMAKE_COMMAND} -DNM=${INERTIA_NM}
+                             -DLIBRARY=$<TARGET_FILE:inertia_${_library}>
+                             "-DREQUIRED=${_exports_${_library}}"
+                             -P ${PROJECT_SOURCE_DIR}/tests/shared/check_exports.cmake)
+            set_tests_properties(exports.${_library} PROPERTIES LABELS meta)
+        endif()
+    endforeach()
+endif()
+
 add_test(NAME core_has_no_adapter_frameworks
          COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${PROJECT_SOURCE_DIR}
                  -P ${PROJECT_SOURCE_DIR}/cmake/CheckCoreNoFrameworks.cmake)

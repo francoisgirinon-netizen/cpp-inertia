@@ -1,5 +1,6 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 
 #include <optional>
@@ -17,7 +18,7 @@ namespace inertia {
 ///
 /// A visitor's browser can send several requests at once, so each operation must be atomic on its
 /// own. Implementations need not support concurrent use beyond that.
-class SessionStore {
+class INERTIA_CORE_EXPORT SessionStore {
   protected:
     SessionStore() = default;
     /// Copy-constructs a store in a derived class.

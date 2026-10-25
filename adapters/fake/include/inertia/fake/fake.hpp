@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/fake/export.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/file_reader.hpp>
 #include <inertia/ports/http_client.hpp>
@@ -31,7 +33,8 @@ namespace inertia::fake {
 /// auto request = inertia::fake::FakeRequest::inertia("/users?page=2", "v1")
 ///                    .with("Accept", "application/json");
 /// @endcode
-struct FakeRequest final : RequestView {
+INERTIA_DLL_INTERFACE_BEGIN
+struct INERTIA_FAKE_EXPORT FakeRequest final : RequestView {
     /// Request method, such as "GET" or "POST".
     std::string verb = "GET";
     /// Request target: the path, with the query string if any.
@@ -68,11 +71,13 @@ struct FakeRequest final : RequestView {
     /// @return The first matching value, or std::nullopt when absent.
     [[nodiscard]] std::optional<std::string> header(std::string_view name) const override;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief Session store double backed by an ordered map.
 ///
 /// Not thread safe.
-class MemorySession final : public SessionStore {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_FAKE_EXPORT MemorySession final : public SessionStore {
   public:
     /// @param key The key to look up.
     /// @return The stored value, or std::nullopt when `key` is absent.
@@ -89,12 +94,14 @@ class MemorySession final : public SessionStore {
   private:
     std::map<std::string, Json, std::less<>> data_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief HTTP client double that replays queued replies.
 ///
 /// Replies are consumed in order; the callback is invoked synchronously. When no reply is queued,
 /// the callback receives status 0 with an error set. The timeout is ignored. Not thread safe.
-class FakeHttpClient final : public HttpClient {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_FAKE_EXPORT FakeHttpClient final : public HttpClient {
   public:
     /// Queued replies, consumed from the front by get() and post(). Push to it to script answers.
     std::deque<HttpResult> replies;
@@ -120,9 +127,11 @@ class FakeHttpClient final : public HttpClient {
   private:
     HttpResult nextReply();
 };
+INERTIA_DLL_INTERFACE_END
 
 /// @brief File reader double backed by an in-memory map.
-class MemoryFileReader final : public FileReader {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_FAKE_EXPORT MemoryFileReader final : public FileReader {
   public:
     /// Contents by path. Only exact path matches are found; paths are not normalized.
     std::map<std::filesystem::path, std::string> files;
@@ -137,5 +146,6 @@ class MemoryFileReader final : public FileReader {
     /// @return The size and a hash of the content, or std::nullopt when `path` is not in `files`.
     [[nodiscard]] std::optional<FileStamp> stamp(const std::filesystem::path &path) const override;
 };
+INERTIA_DLL_INTERFACE_END
 
 } // namespace inertia::fake

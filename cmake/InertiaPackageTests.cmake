@@ -10,6 +10,14 @@
 # ARGN: the arguments common to every consumer configure.
 function(_inertia_consumer_tests name components stage fixture consumer_src)
     set(_bin ${PROJECT_BINARY_DIR}/_package/consumer-${name})
+    # A multi-config generator (Visual Studio) builds into <bin>/<config>/ and needs --config.
+    get_property(_multi GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    set(_config_dir "")
+    set(_config_arg "")
+    if(_multi)
+        set(_config_dir "$<CONFIG>/")
+        set(_config_arg --config $<CONFIG>)
+    endif()
     set(_standard 20)
     if(name MATCHES "17$")
         set(_standard 17)
@@ -19,8 +27,8 @@ function(_inertia_consumer_tests name components stage fixture consumer_src)
                      -DCMAKE_CXX_STANDARD=${_standard} -DCMAKE_CXX_STANDARD_REQUIRED=ON
                      -DCMAKE_CXX_EXTENSIONS=OFF
                      -DCMAKE_PREFIX_PATH=${stage} -DCONSUMER_COMPONENTS=${components})
-    add_test(NAME package.${name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin})
-    add_test(NAME package.${name}.run COMMAND ${_bin}/consumer)
+    add_test(NAME package.${name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin} ${_config_arg})
+    add_test(NAME package.${name}.run COMMAND ${_bin}/${_config_dir}consumer)
     set_tests_properties(package.${name}.configure PROPERTIES
         FIXTURES_REQUIRED ${fixture} FIXTURES_SETUP package_${name}_configured)
     set_tests_properties(package.${name}.build PROPERTIES
@@ -40,6 +48,17 @@ function(inertia_add_package_tests)
         -DCMAKE_CXX_SCAN_FOR_MODULES=${CMAKE_CXX_SCAN_FOR_MODULES}
         "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
         "-DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}")
+    if(CMAKE_GENERATOR_PLATFORM)
+        list(APPEND _common_args -A ${CMAKE_GENERATOR_PLATFORM})
+    endif()
+    if(CMAKE_GENERATOR_TOOLSET)
+        list(APPEND _common_args -T ${CMAKE_GENERATOR_TOOLSET})
+    endif()
+    if(CMAKE_MSVC_RUNTIME_LIBRARY)
+        # The value holds generator expressions, which add_test would evaluate: keep them literal.
+        string(REPLACE "$<" "$<1:$><" _runtime "${CMAKE_MSVC_RUNTIME_LIBRARY}")
+        list(APPEND _common_args "-DCMAKE_MSVC_RUNTIME_LIBRARY=${_runtime}")
+    endif()
     if(CMAKE_TOOLCHAIN_FILE)
         list(APPEND _common_args
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -48,8 +67,14 @@ function(inertia_add_package_tests)
             -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET})
     endif()
 
+    get_property(_multi GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    set(_install_config "")
+    if(_multi)
+        set(_install_config --config $<CONFIG>)
+    endif()
     add_test(NAME package.install
-             COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage})
+             COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage}
+                     ${_install_config})
     set_tests_properties(package.install PROPERTIES FIXTURES_SETUP package_stage)
 
     # variant name, then the (comma separated) components the consumer requests. A name ending in
@@ -77,8 +102,16 @@ function(inertia_add_package_tests)
     # A package installed without an adapter must refuse its component, clearly.
     add_test(NAME package.core_only.install
              COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage_core}
-                     --component inertia_core)
+                     --component inertia_core ${_install_config})
     set_tests_properties(package.core_only.install PROPERTIES FIXTURES_SETUP package_stage_core)
+    if(BUILD_SHARED_LIBS)
+        # The core's targets file names its shared object, which is in the runtime component.
+        add_test(NAME package.core_only.install_runtime
+                 COMMAND ${CMAKE_COMMAND} --install ${PROJECT_BINARY_DIR} --prefix ${_stage_core}
+                         --component inertia_core_runtime ${_install_config})
+        set_tests_properties(package.core_only.install_runtime PROPERTIES
+            FIXTURES_SETUP package_stage_core LABELS package)
+    endif()
     # The adapter targets file is not part of the core component, as in a drogon-less install.
     add_test(NAME package.core_only.refuses_drogon
              COMMAND ${CMAKE_COMMAND} -S ${_consumer_src}
@@ -126,7 +159,11 @@ function(inertia_add_package_tests)
     add_test(NAME package.subproject.configure
              COMMAND ${CMAKE_COMMAND} -S ${PROJECT_SOURCE_DIR}/tests/subproject -B ${_sub}
                      ${_common_args} -DINERTIA_ROOT=${PROJECT_SOURCE_DIR})
-    add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub})
+    set(_sub_config "")
+    if(_multi)
+        set(_sub_config --config $<CONFIG>)
+    endif()
+    add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub} ${_sub_config})
     add_test(NAME package.subproject.flags
              COMMAND ${CMAKE_COMMAND} -DMODE=subproject
                      -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
@@ -158,16 +195,21 @@ function(inertia_add_package_tests)
                              package.httplib17.run PROPERTIES LABELS package)
     endif()
 
-    # CPack: the TGZ is extracted to a clean directory and consumed from there, the .deb files
+    # CPack: the archive is extracted to a clean directory and consumed from there, the .deb files
     # are inspected (never installed). The generators run on the build tree, so they need the
     # project built, as every test does.
     set(_cpack_dir ${PROJECT_BINARY_DIR}/_package/cpack)
-    add_test(NAME package.cpack.tgz
-             COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ --config ${PROJECT_BINARY_DIR}/CPackConfig.cmake
-                     -B ${_cpack_dir}/tgz)
-    set_tests_properties(package.cpack.tgz PROPERTIES FIXTURES_SETUP package_cpack_packed)
+    set(_cpack_config "")
+    if(_multi)
+        set(_cpack_config -C $<CONFIG>)
+    endif()
+    add_test(NAME package.cpack.archive
+             COMMAND ${CMAKE_CPACK_COMMAND} -G ${INERTIA_ARCHIVE_GENERATOR}
+                     --config ${PROJECT_BINARY_DIR}/CPackConfig.cmake -B ${_cpack_dir}/archive
+                     ${_cpack_config})
+    set_tests_properties(package.cpack.archive PROPERTIES FIXTURES_SETUP package_cpack_packed)
     add_test(NAME package.cpack.extract
-             COMMAND ${CMAKE_COMMAND} -DARCHIVE=${_cpack_dir}/tgz/${INERTIA_PACKAGE_FILE_NAME}.tar.gz
+             COMMAND ${CMAKE_COMMAND} -DARCHIVE=${_cpack_dir}/archive/${INERTIA_PACKAGE_FILE_NAME}${INERTIA_ARCHIVE_SUFFIX}
                      -DDEST=${_cpack_dir}/extracted -DTOP=${INERTIA_PACKAGE_FILE_NAME}
                      -P ${_consumer_src}/extract_archive.cmake)
     set_tests_properties(package.cpack.extract PROPERTIES
@@ -178,15 +220,20 @@ function(inertia_add_package_tests)
         set_tests_properties(package.${_name}.configure package.${_name}.build
                              package.${_name}.run PROPERTIES LABELS package)
     endforeach()
-    set_tests_properties(package.cpack.tgz package.cpack.extract PROPERTIES LABELS package)
+    set_tests_properties(package.cpack.archive package.cpack.extract PROPERTIES LABELS package)
 
     if(INERTIA_DPKG_DEB)
+        set(_deb_soversion "")
+        if(BUILD_SHARED_LIBS)
+            set(_deb_soversion ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+        endif()
         add_test(NAME package.cpack.deb
                  COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
                          --config ${PROJECT_BINARY_DIR}/CPackConfig.cmake -B ${_cpack_dir}/deb)
         add_test(NAME package.cpack.deb.check
                  COMMAND ${CMAKE_COMMAND} -DDEB_DIR=${_cpack_dir}/deb -DVERSION=${PROJECT_VERSION}
-                         -DDPKG_DEB=${INERTIA_DPKG_DEB} -P ${_consumer_src}/check_deb.cmake)
+                         -DDPKG_DEB=${INERTIA_DPKG_DEB} -DSOVERSION=${_deb_soversion}
+                     -P ${_consumer_src}/check_deb.cmake)
         set_tests_properties(package.cpack.deb PROPERTIES
             FIXTURES_SETUP package_cpack_deb_packed LABELS package)
         set_tests_properties(package.cpack.deb.check PROPERTIES

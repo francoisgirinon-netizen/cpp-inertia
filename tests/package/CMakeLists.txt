@@ -29,3 +29,13 @@ else()
     add_executable(consumer main_core.cpp)
     target_link_libraries(consumer PRIVATE inertia::core inertia::fake)
 endif()
+
+# Windows has no RPATH: a program finds the DLLs of the shared libraries it links (inertia's, and
+# the ones vcpkg installed) next to itself.
+if(WIN32)
+    add_custom_command(TARGET consumer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E
+                $<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:consumer>>,copy_if_different,echo>
+                $<TARGET_RUNTIME_DLLS:consumer> $<TARGET_FILE_DIR:consumer>
+        COMMAND_EXPAND_LISTS)
+endif()

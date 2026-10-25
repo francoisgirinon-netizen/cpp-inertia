@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
 #include <inertia/json.hpp>
 
 #include <chrono>
@@ -117,7 +119,8 @@ struct ScrollSpec {
 ///     {"feed", inertia::defer([] { return loadFeed(); }).merge()},
 /// };
 /// @endcode
-class Prop {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_CORE_EXPORT Prop {
   public:
     /// Which of the three forms a prop holds.
     enum class Kind : std::uint8_t {
@@ -303,11 +306,12 @@ class Prop {
     [[nodiscard]] const std::optional<ScrollSpec> &scrollSpec() const { return scrollSpec_; }
 
   private:
-    friend Prop object(Props children);
-    friend Prop optional(Resolver fn);
-    friend Prop always(Prop p);
-    friend Prop defer(Resolver fn, std::string group);
-    friend Prop scroll(Resolver fn, std::function<ScrollMetadata()> metadata, std::string wrapper);
+    friend INERTIA_CORE_EXPORT Prop object(Props children);
+    friend INERTIA_CORE_EXPORT Prop optional(Resolver fn);
+    friend INERTIA_CORE_EXPORT Prop always(Prop p);
+    friend INERTIA_CORE_EXPORT Prop defer(Resolver fn, std::string group);
+    friend INERTIA_CORE_EXPORT Prop scroll(Resolver fn, std::function<ScrollMetadata()> metadata,
+                                           std::string wrapper);
 
     MergeSpec &ensureMerge();
     OnceSpec &ensureOnce();
@@ -324,46 +328,47 @@ class Prop {
     std::optional<OnceSpec> onceSpec_;
     std::optional<ScrollSpec> scrollSpec_;
 };
+INERTIA_DLL_INTERFACE_END
 
 /// Groups nested props under one key. The children may be props themselves, so the modifiers
 /// apply at any depth.
 /// @param children Nested props.
 /// @return An object prop.
-[[nodiscard]] Prop object(Props children);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop object(Props children);
 
 /// Creates an optional prop. Full visits skip it, and it is resolved only when a partial reload
 /// selects it. Use it for data that is expensive and rarely needed.
 /// @param fn Callable that produces the value.
 /// @return The optional prop.
-[[nodiscard]] Prop optional(Resolver fn);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop optional(Resolver fn);
 
 /// Creates an always prop. The value is sent on every response, including partial reloads that
 /// do not select it.
 /// @param p Prop to mark as always.
 /// @return The modified prop.
-[[nodiscard]] Prop always(Prop p);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop always(Prop p);
 
 /// Creates a deferred prop. A full visit omits it, and the client loads it with a follow-up
 /// request for its group. Props that share a group are loaded together.
 /// @param fn Callable that produces the value.
 /// @param group Name of the group the client requests together. Defaults to `"default"`.
 /// @return The deferred prop.
-[[nodiscard]] Prop defer(Resolver fn, std::string group = "default");
+[[nodiscard]] INERTIA_CORE_EXPORT Prop defer(Resolver fn, std::string group = "default");
 
 /// Shorthand for `p.merge()`.
 /// @param p Prop to merge.
 /// @return The merged prop.
-[[nodiscard]] Prop merge(Prop p);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop merge(Prop p);
 
 /// Shorthand for `p.deepMerge()`.
 /// @param p Prop to deep-merge.
 /// @return The deep-merged prop.
-[[nodiscard]] Prop deepMerge(Prop p);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop deepMerge(Prop p);
 
 /// Creates a once prop. Shorthand for `Prop(fn).once()`.
 /// @param fn Callable that produces the value.
 /// @return The once prop.
-[[nodiscard]] Prop once(Resolver fn);
+[[nodiscard]] INERTIA_CORE_EXPORT Prop once(Resolver fn);
 
 /// Creates an infinite-scroll prop. Each response carries one page of items. The client appends
 /// them to its list, or prepends them when the request sends the merge-intent header `prepend`.
@@ -371,7 +376,7 @@ class Prop {
 /// @param metadata Callable that produces the paging state for the response.
 /// @param wrapper Key, inside the value of `fn`, that holds the items.
 /// @return The scroll prop.
-[[nodiscard]] Prop scroll(Resolver fn, std::function<ScrollMetadata()> metadata,
-                          std::string wrapper = "data");
+[[nodiscard]] INERTIA_CORE_EXPORT Prop scroll(Resolver fn, std::function<ScrollMetadata()> metadata,
+                                              std::string wrapper = "data");
 
 } // namespace inertia

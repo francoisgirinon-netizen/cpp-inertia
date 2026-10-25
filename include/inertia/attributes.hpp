@@ -17,3 +17,17 @@
 #ifndef INERTIA_NONALLOCATING
 #define INERTIA_NONALLOCATING
 #endif
+
+// Brackets an exported class whose data members are standard library types. MSVC warns (C4251)
+// that those types are not part of the DLL interface. The members are private (or plain data) and
+// both sides of the boundary must use the same standard library and the same C runtime anyway,
+// which the install documents, so the warning does not apply. Expands to nothing elsewhere.
+#if defined(_MSC_VER)
+/// Starts a class exported from a DLL (see INERTIA_CORE_EXPORT).
+#define INERTIA_DLL_INTERFACE_BEGIN __pragma(warning(push)) __pragma(warning(disable : 4251))
+/// Ends what INERTIA_DLL_INTERFACE_BEGIN started.
+#define INERTIA_DLL_INTERFACE_END __pragma(warning(pop))
+#else
+#define INERTIA_DLL_INTERFACE_BEGIN
+#define INERTIA_DLL_INTERFACE_END
+#endif

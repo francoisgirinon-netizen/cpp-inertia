@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/core_export.hpp>
+
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -32,7 +34,7 @@ struct FileStamp {
 ///
 /// Inertia never touches the file system itself: it reads through this port, so the adapter decides
 /// how files are accessed. Implementations must be callable from several threads at once.
-class FileReader {
+class INERTIA_CORE_EXPORT FileReader {
   protected:
     FileReader() = default;
     /// Copy-constructs a reader in a derived class.

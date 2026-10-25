@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/attributes.hpp>
+#include <inertia/core_export.hpp>
 #include <inertia/html.hpp>
 #include <inertia/json.hpp>
 #include <inertia/ports/http_client.hpp>
@@ -68,7 +70,8 @@ struct Config {
 /// A request is served with page() (the JSON object) or render() (the full response), and the
 /// response is then passed through finalize(). handleVersion() and location() cover the cases that
 /// do not render a page.
-class Inertia {
+INERTIA_DLL_INTERFACE_BEGIN
+class INERTIA_CORE_EXPORT Inertia {
   public:
     /// Creates an instance from its settings.
     /// @param config Settings, copied into the instance.
@@ -186,5 +189,6 @@ class Inertia {
     Props shared_;
     std::vector<std::function<Props(const RequestView &, SessionStore &)>> perRequest_;
 };
+INERTIA_DLL_INTERFACE_END
 
 } // namespace inertia
