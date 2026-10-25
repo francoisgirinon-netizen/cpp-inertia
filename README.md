@@ -479,18 +479,24 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pushes to `main` and `feat/**` and on pull requests; a newer run on the same ref cancels the older one. Each job builds the dev image with a BuildKit cache and runs the same `scripts/dev` commands as above, with the vcpkg binary cache persisted by `actions/cache`:
+`.github/workflows/ci.yml` runs on pushes to `main` and `feat/**` and on pull requests; a newer run on the same ref cancels the older one, and no matrix cell cancels its siblings (`fail-fast: false`). Third-party actions are pinned to a full commit SHA, tools to a version.
 
-| Job | What it runs |
-| --- | --- |
-| `test` | `cmake --workflow --preset dev` |
-| `asan` | `cmake --workflow --preset asan` |
-| `e2e` | matrix `server: [drogon, httplib]`: builds the example servers and the front end, then runs the Playwright suite against that adapter, in client mode and with `INERTIA_SSR=1` |
-| `coverage` | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under the minimum line coverage, 96% lines). The HTML report is the `coverage-html` artifact of the run. |
-| `lint` | configures `build/dev` (examples and IWYU on), rewrites its compile database for the runner (`tools/host-compile-commands.py`), then builds the tree with `INERTIA_IWYU=ON` (include-what-you-use, no tests), then builds the `docs` target with `INERTIA_BUILD_DOCS=ON` (Doxygen with warnings as errors, so an undocumented public API fails the job), then `pre-commit run --all-files` (clang-format, clang-tidy, hadolint, dclint, actionlint) |
-| `commits` | every commit message of the push or pull request range against Conventional Commits |
+| Job | Runner | What it runs |
+| --- | --- | --- |
+| `linux` | ubuntu-26.04, Docker dev image | matrix `preset: [dev, dev-shared, gcc, asan, core-only, package, package-shared]`: `cmake --workflow --preset <preset>` through `scripts/dev` (`package*` also build and test the TGZ and `.deb`) |
+| `e2e` | ubuntu-26.04, Docker | matrix `server: [drogon, httplib]`: builds the example servers and the front end, then runs the Playwright suite against that adapter, in client mode and with `INERTIA_SSR=1` |
+| `coverage` | ubuntu-26.04, Docker | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under 96% lines). The HTML report is the `coverage-html` artifact. |
+| `lint` | ubuntu-26.04, Docker | the only job with static analysis: IWYU build, Doxygen (warnings are errors), clang-tidy on the whole tree and the other pre-commit hooks (below) |
+| `macos` | macos-26 (arm64), Apple Clang, vcpkg | matrix of the workflow presets `macos-static-debug`, `macos-shared-debug`, `package-macos-static`, `package-macos-shared` (the last two run the release preset, then the TGZ). Prints the Apple Clang version and whether it accepts `-Wfunction-effects` (not enabled yet). |
+| `windows` | windows-2022, MSVC 2022, vcpkg | matrix of `windows-msvc-static-debug`, `windows-msvc-shared-debug`, `package-windows-msvc-static`, `package-windows-msvc-shared` (Release, then the ZIP). Shared cells run `ctest -R package.runtime_mismatch`; every cell runs `tools/check-runtime-guard.sh` (`dumpbin`: the core DLL exports exactly one `inertia_core_requires_runtime_*`, MD for Release and MDd for Debug; a static build has none). |
+| `windows-vs2019-consumer` | windows-2022 | installs the shared ZIP built above and builds a C++17 consumer with the v142 toolset (cl 19.29, VS 2019 16.11), from the VS 2022 component, since windows-2019 images are retired. Shared only: an older linker cannot link static libraries built by a newer toolset. |
+| `commits` | ubuntu-26.04 | every commit message of the push or pull request range against Conventional Commits |
 
-Third-party actions are pinned to a full commit SHA.
+macOS and Windows only build and test, with warnings as errors (`-Werror`, `/W4 /WX`).
+
+Caches: the Docker jobs persist the vcpkg binary cache (`actions/cache`) and use sccache's GitHub backend; macOS does the same (vcpkg at the manifest baseline, files backend). Windows persists the vcpkg binary cache only: the Visual Studio generator ignores compiler launchers, so sccache would need the Ninja generator and `/Z7` debug info instead of the presets' `/Zi`.
+
+The `lint` job runs clang-tidy on the whole tree through the pre-commit hook, behind [ctcache](https://github.com/matus-chochlik/ctcache) (pinned): `tools/lint-clang-tidy.sh` (run in the dev container) puts `clang-tidy-cache` in front of the hook's clang-tidy. A file is skipped when its preprocessed text (so any header it includes), flags and `.clang-tidy` configuration match a passing run; the cache directory is restored and saved with `actions/cache`. Diagnostics become annotations through the problem matchers in `.github/problem-matchers/`, and the job summary shows the diagnostics count and the ctcache hits and misses. Locally: `scripts/dev tools/lint-clang-tidy.sh` after configuring `build/dev`.
 
 ## Known limitations
 

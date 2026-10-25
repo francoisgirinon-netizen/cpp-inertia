@@ -13,26 +13,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-24.04
+  # Every Linux preset of the Docker dev image. package and package-shared also run the release
+  # build and its tests, then build the TGZ and .deb packages and test them.
+  linux:
+    name: linux (${{ matrix.preset }})
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [dev, dev-shared, gcc, asan, core-only, package, package-shared]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
-      - name: Configure, build and test (dev)
+        with:
+          key: ${{ matrix.preset }}
+      - name: Configure, build and test (${{ matrix.preset }})
+        env:
+          PRESET: ${{ matrix.preset }}
         run: |
-          scripts/dev sh -c 'status=0; cmake --workflow --preset dev || status=$?; sccache --show-stats; exit "$status"'
-
-  asan:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/dev-env
-      - name: Configure, build and test (asan, ubsan)
-        run: |
-          scripts/dev sh -c 'status=0; cmake --workflow --preset asan || status=$?; sccache --show-stats; exit "$status"'
+          scripts/dev sh -c 'status=0; cmake --workflow --preset "$1" || status=$?; sccache --show-stats; exit "$status"' sh "$PRESET"
 
   e2e:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +58,7 @@ jobs:
         run: scripts/dev sh -c 'cd e2e && bunx playwright test'
 
   coverage:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
@@ -73,30 +75,243 @@ jobs:
           path: build/coverage/html
           if-no-files-found: error
 
+  # The only job that runs static analysis (clang-tidy, include-what-you-use, Doxygen, pre-commit).
+  # The macOS and Windows jobs only build and test, with warnings as errors.
   lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/dev-env
       - name: Configure the dev tree with the examples (compile database for clang-tidy)
         run: scripts/dev cmake --preset dev -DINERTIA_BUILD_EXAMPLES=ON -DINERTIA_IWYU=ON
-      - name: Rewrite the compile database for the runner
-        run: python3 tools/host-compile-commands.py
       - name: Build with include-what-you-use (no tests)
         run: scripts/dev sh -c 'status=0; cmake --build --preset dev || status=$?; sccache --show-stats; exit "$status"'
       - name: Build the API docs (Doxygen warnings fail the build)
         run: scripts/dev sh -c 'cmake --preset dev -DINERTIA_BUILD_DOCS=ON && cmake --build --preset dev --target docs'
+      # clang-tidy runs on the whole tree, through the pre-commit hook, behind a result cache: ctcache
+      # skips a file when its preprocessed text (so, any header it includes), its flags and its
+      # .clang-tidy configuration are those of a run that passed. See tools/lint-clang-tidy.sh.
+      - name: Check out ctcache
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: matus-chochlik/ctcache
+          ref: e33c063ca6e52b48bcefbc45d46d8c150ffa81ca # 1.2.0
+          path: build/ctcache
+          persist-credentials: false
+      # The key changes on every run, so that each run saves what it added; the prefix restores the
+      # newest cache. Changing the hook's configuration (clang-tidy version, flags) starts a new one.
+      - name: Restore the ctcache results
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ctcache-data
+          key: ctcache-${{ hashFiles('.pre-commit-config.yaml') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ctcache-${{ hashFiles('.pre-commit-config.yaml') }}-
+      - name: Register the clang-tidy problem matcher
+        run: echo "::add-matcher::.github/problem-matchers/clang-tidy.json"
+      - name: Run clang-tidy on the whole tree (ctcache)
+        run: scripts/dev tools/lint-clang-tidy.sh
+      - name: Report the clang-tidy run in the job summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f build/clang-tidy-summary.md ]; then
+            cat build/clang-tidy-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Remove the clang-tidy problem matcher
+        if: ${{ always() }}
+        run: echo "::remove-matcher owner=clang-tidy::"
+      # Saved even when a file failed: the files that passed are cached.
+      - name: Save the ctcache results
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ctcache-data
+          key: ctcache-${{ hashFiles('.pre-commit-config.yaml') }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Install pre-commit
         run: pipx install pre-commit==4.7.0
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - name: Run every hook on the whole tree
+      - name: Run the other hooks on the whole tree
+        env:
+          SKIP: clang-tidy
         run: pre-commit run --all-files --show-diff-on-failure
 
+  # Apple Clang on Apple silicon (macos-latest), vcpkg, Ninja, no Docker. The release cells run the
+  # package workflows: they configure, build and test the release preset, then build the TGZ and
+  # test the extracted archive.
+  macos:
+    name: macos (${{ matrix.name }})
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: static-debug, workflow: macos-static-debug, triplet: arm64-osx }
+          - { name: shared-debug, workflow: macos-shared-debug, triplet: arm64-osx-dynamic }
+          - { name: static-release, workflow: package-macos-static, triplet: arm64-osx }
+          - { name: shared-release, workflow: package-macos-shared, triplet: arm64-osx-dynamic }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/native-env
+        with:
+          key: macos-${{ matrix.triplet }}
+          sccache: "true"
+      # Read the Apple Clang version needed for cmake/Warnings.cmake from this log: the first version
+      # that accepts -Wfunction-effects (not enabled by the build).
+      - name: Report the Apple Clang version and -Wfunction-effects support
+        run: |
+          xcodebuild -version
+          clang++ --version
+          if clang++ -Werror -Wfunction-effects -fsyntax-only -x c++ /dev/null; then
+            echo "::notice title=Apple Clang::-Wfunction-effects is accepted by $(clang++ --version | head -n 1)"
+          else
+            echo "::notice title=Apple Clang::-Wfunction-effects is NOT accepted by $(clang++ --version | head -n 1)"
+          fi
+      - name: Register the compiler problem matcher
+        run: echo "::add-matcher::.github/problem-matchers/clang-tidy.json"
+      - name: Configure, build and test (${{ matrix.workflow }})
+        env:
+          WORKFLOW: ${{ matrix.workflow }}
+        run: |
+          status=0
+          cmake --workflow --preset "$WORKFLOW" || status=$?
+          sccache --show-stats
+          exit "$status"
+      - name: Remove the compiler problem matcher
+        if: ${{ always() }}
+        run: echo "::remove-matcher owner=clang-tidy::"
+
+  # MSVC 2022 (the library needs 19.40) through the Visual Studio 17 2022 generator, vcpkg. The
+  # release cells run the package workflows (configure, build and test Release, then the ZIP). No
+  # sccache: the Visual Studio generators ignore CMAKE_CXX_COMPILER_LAUNCHER, and the Ninja route
+  # would need /Z7 instead of the /Zi the presets use. vcpkg's binary cache is what saves time.
+  windows:
+    name: windows (${{ matrix.name }})
+    runs-on: windows-2022
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: static-debug, workflow: windows-msvc-static-debug, test: windows-msvc-static-debug, build: windows-msvc-static, config: Debug, linkage: static, triplet: x64-windows-static }
+          - { name: shared-debug, workflow: windows-msvc-shared-debug, test: windows-msvc-shared-debug, build: windows-msvc-shared, config: Debug, linkage: shared, triplet: x64-windows }
+          - { name: static-release, workflow: package-windows-msvc-static, test: windows-msvc-static-release, build: windows-msvc-static, config: Release, linkage: static, triplet: x64-windows-static }
+          - { name: shared-release, workflow: package-windows-msvc-shared, test: windows-msvc-shared-release, build: windows-msvc-shared, config: Release, linkage: shared, triplet: x64-windows }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/native-env
+        with:
+          key: windows-${{ matrix.triplet }}
+      - name: Register the compiler problem matcher
+        run: echo "::add-matcher::.github/problem-matchers/msvc.json"
+      - name: Configure, build and test (${{ matrix.workflow }})
+        env:
+          WORKFLOW: ${{ matrix.workflow }}
+        run: cmake --workflow --preset "$WORKFLOW"
+      - name: Remove the compiler problem matcher
+        if: ${{ always() }}
+        run: echo "::remove-matcher owner=msvc::"
+      # The runtime guard of <inertia/attributes.hpp>: a consumer built with another C runtime than
+      # the shared core must not link. The workflow ran the test already; this names it and fails if
+      # it is ever not registered (the test presets error out on a selection that matches nothing).
+      - name: Run the runtime mismatch test (shared)
+        if: ${{ matrix.linkage == 'shared' }}
+        env:
+          TEST_PRESET: ${{ matrix.test }}
+        run: ctest --preset "$TEST_PRESET" -R 'package\.runtime_mismatch' --output-on-failure
+      # Exactly one inertia_core_requires_runtime_* in the core DLL (MD for Release, MDd for Debug);
+      # none anywhere in a static build.
+      - name: Check the runtime guard symbols (dumpbin)
+        env:
+          BUILD_DIR: build/${{ matrix.build }}
+        run: tools/check-runtime-guard.sh "$BUILD_DIR" "${{ matrix.config }}" "${{ matrix.linkage }}"
+      - name: Upload the shared Release package
+        if: ${{ matrix.name == 'shared-release' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-windows-msvc-shared
+          path: build/windows-msvc-shared/inertia-*-shared.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  # A Visual Studio 2019 user: the package the MSVC 2022 job built is installed and a C++17 consumer
+  # is built with the v142 toolset (cl 19.29, VS 2019 16.11). windows-2019 is retired, so this uses
+  # the v142 toolset component of the Visual Studio 2022 on windows-2022 (installed here when the
+  # image lacks it). Only the shared package: Microsoft supports linking libraries of an older
+  # toolset into a newer one, not the reverse, so a static library built by 19.4x cannot be linked
+  # by the 19.29 linker. A shared build only exposes headers (compiled by v142) and an import
+  # library.
+  windows-vs2019-consumer:
+    name: windows (VS 2019 consumer, v142, C++17)
+    needs: windows
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/native-env
+        with:
+          key: windows-consumer-x64-windows
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package-windows-msvc-shared
+          path: package
+      - name: Install the MSVC v142 toolset when the image lacks it
+        shell: pwsh
+        run: |
+          $component = 'Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64'
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $path = & $vswhere -latest -products '*' -requires $component -property installationPath
+          if ($path) {
+            Write-Host "The v142 toolset is installed: $path"
+          } else {
+            $path = & $vswhere -latest -products '*' -property installationPath
+            Write-Host "Adding $component to $path"
+            $setup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+            $process = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
+              'modify', '--installPath', "`"$path`"", '--add', $component, '--quiet', '--norestart', '--nocache')
+            if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) { throw "setup.exe exited with $($process.ExitCode)" }
+          }
+      - name: Install nlohmann-json (the package's one dependency)
+        run: '"$VCPKG_ROOT/vcpkg" install nlohmann-json:x64-windows'
+      - name: Extract the package
+        working-directory: package
+        run: cmake -E tar xf inertia-*-shared.zip
+      - name: Register the compiler problem matcher
+        run: echo "::add-matcher::.github/problem-matchers/msvc.json"
+      - name: Configure the consumer with v142 as C++17
+        run: |
+          package=$(echo "$PWD"/package/inertia-*-shared)
+          cmake -S tests/package -B build/consumer-vs2019 -G "Visual Studio 17 2022" -A x64 -T v142 \
+            -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF \
+            -DCMAKE_PREFIX_PATH="$package" -DCONSUMER_COMPONENTS=core,fake \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_MANIFEST_MODE=OFF -DVCPKG_TARGET_TRIPLET=x64-windows
+      - name: Check that the compiler is the VS 2019 one
+        run: |
+          grep -h 'CMAKE_CXX_COMPILER_VERSION' build/consumer-vs2019/CMakeFiles/*/CMakeCXXCompiler.cmake
+          grep -q 'CMAKE_CXX_COMPILER_VERSION "19\.29\.' build/consumer-vs2019/CMakeFiles/*/CMakeCXXCompiler.cmake
+      - name: Build and run the consumer
+        run: |
+          cmake --build build/consumer-vs2019 --config Release
+          build/consumer-vs2019/Release/consumer.exe
+      - name: Remove the compiler problem matcher
+        if: ${{ always() }}
+        run: echo "::remove-matcher owner=msvc::"
+
   commits:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
