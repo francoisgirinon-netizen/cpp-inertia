@@ -1,6 +1,12 @@
 name: Dev environment
 description: Build the cpp-inertia-dev image (BuildKit GitHub cache) and persist the vcpkg binary cache
 
+inputs:
+  key:
+    description: Distinguishes the vcpkg binary cache of the jobs of a matrix (the job id is not enough)
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
@@ -37,6 +43,6 @@ runs:
     - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.temp }}/vcpkg-cache
-        key: vcpkg-${{ github.job }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/**') }}
+        key: vcpkg-${{ github.job }}-${{ inputs.key }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/**') }}
         restore-keys: |
-          vcpkg-${{ github.job }}-
+          vcpkg-${{ github.job }}-${{ inputs.key }}-
