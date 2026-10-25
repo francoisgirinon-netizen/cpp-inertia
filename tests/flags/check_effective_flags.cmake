@@ -1,15 +1,21 @@
-# Checks the compile lines of a compile_commands.json against the warning flags the build is
-# supposed to apply (cmake/Warnings.cmake builds the list: INERTIA_EXPECTED_WARNING_FLAGS).
+# Checks the compile flags of a build tree against the warning flags the build is supposed to apply
+# (cmake/Warnings.cmake builds the list: INERTIA_EXPECTED_WARNING_FLAGS). It reads the CMake file API
+# reply (codemodel-v2: the compileCommandFragments of each target's compile groups), which every
+# generator writes, the Visual Studio ones included. The build tree asks for it with cmake_file_api()
+# when it is configured.
 #
-#   cmake -DMODE=<project|subproject> -DCOMPILE_COMMANDS=<compile_commands.json>
+#   cmake -DMODE=<project|subproject> -DBUILD_DIR=<build tree> [-DCONFIG=<configuration>]
 #         -DEXPECTED=<flags, separated by '|'> -DWERROR=<ON|OFF> -DWERROR_FLAG=<flag>
 #         -DROOT=<source directory of inertia> -P check_effective_flags.cmake
+#
+# CONFIG selects the configuration of a multi-config generator (Debug, Release...). Without it the
+# first configuration of the reply is read.
 #
 # project:    the library sources (src/, adapters/*/src/) carry every expected flag, and -Werror
 #             when INERTIA_WARNINGS_AS_ERRORS is on.
 # subproject: the library sources carry every expected flag but never -Werror, and the consumer
 #             (tests/package/main_core.cpp) carries none of them and no -Werror.
-foreach(_var MODE COMPILE_COMMANDS EXPECTED ROOT WERROR_FLAG)
+foreach(_var MODE BUILD_DIR EXPECTED ROOT WERROR_FLAG)
     if(NOT DEFINED ${_var})
         message(FATAL_ERROR "${_var} is not set")
     endif()
@@ -19,9 +25,79 @@ if(NOT _expected)
     message(FATAL_ERROR "no expected warning flag: the flag table is empty for this compiler")
 endif()
 
-file(READ "${COMPILE_COMMANDS}" _json)
-string(JSON _count LENGTH "${_json}")
+# --- The file API reply: one (source file, flags) entry for every source of every target
+file(GLOB _indexes "${BUILD_DIR}/.cmake/api/v1/reply/index-*.json")
+list(SORT _indexes)
+if(NOT _indexes)
+    message(FATAL_ERROR "no file API reply in ${BUILD_DIR}/.cmake/api/v1/reply (cmake_file_api)")
+endif()
+list(POP_BACK _indexes _index_file)
+set(_reply_dir "${BUILD_DIR}/.cmake/api/v1/reply")
+file(READ "${_index_file}" _index)
+string(JSON _count LENGTH "${_index}" objects)
+set(_codemodel_file "")
 math(EXPR _last "${_count} - 1")
+foreach(_i RANGE 0 ${_last})
+    string(JSON _kind GET "${_index}" objects ${_i} kind)
+    if(_kind STREQUAL "codemodel")
+        string(JSON _codemodel_file GET "${_index}" objects ${_i} jsonFile)
+    endif()
+endforeach()
+if(NOT _codemodel_file)
+    message(FATAL_ERROR "the file API reply of ${BUILD_DIR} has no codemodel")
+endif()
+file(READ "${_reply_dir}/${_codemodel_file}" _codemodel)
+string(JSON _top_source GET "${_codemodel}" paths source)
+
+string(JSON _config_count LENGTH "${_codemodel}" configurations)
+set(_config_index "")
+math(EXPR _config_last "${_config_count} - 1")
+foreach(_c RANGE 0 ${_config_last})
+    string(JSON _name GET "${_codemodel}" configurations ${_c} name)
+    if(NOT DEFINED CONFIG OR _name STREQUAL CONFIG)
+        set(_config_index ${_c})
+        break()
+    endif()
+endforeach()
+if(_config_index STREQUAL "")
+    message(FATAL_ERROR "configuration '${CONFIG}' is not in the file API reply of ${BUILD_DIR}")
+endif()
+
+# _entries: a list of "<absolute source path>|<flags>" (flags joined with spaces)
+set(_entries)
+string(JSON _target_count LENGTH "${_codemodel}" configurations ${_config_index} targets)
+if(_target_count GREATER 0)
+    math(EXPR _target_last "${_target_count} - 1")
+    foreach(_t RANGE 0 ${_target_last})
+        string(JSON _target_file GET "${_codemodel}" configurations ${_config_index} targets ${_t} jsonFile)
+        file(READ "${_reply_dir}/${_target_file}" _target)
+        string(JSON _groups ERROR_VARIABLE _no_groups GET "${_target}" compileGroups)
+        if(_no_groups)
+            continue()
+        endif()
+        string(JSON _group_count LENGTH "${_target}" compileGroups)
+        math(EXPR _group_last "${_group_count} - 1")
+        foreach(_g RANGE 0 ${_group_last})
+            set(_flags "")
+            string(JSON _fragment_count LENGTH "${_target}" compileGroups ${_g} compileCommandFragments)
+            if(_fragment_count GREATER 0)
+                math(EXPR _fragment_last "${_fragment_count} - 1")
+                foreach(_f RANGE 0 ${_fragment_last})
+                    string(JSON _fragment GET "${_target}" compileGroups ${_g} compileCommandFragments ${_f} fragment)
+                    string(APPEND _flags " ${_fragment}")
+                endforeach()
+            endif()
+            string(JSON _source_count LENGTH "${_target}" compileGroups ${_g} sourceIndexes)
+            math(EXPR _source_last "${_source_count} - 1")
+            foreach(_s RANGE 0 ${_source_last})
+                string(JSON _source_index GET "${_target}" compileGroups ${_g} sourceIndexes ${_s})
+                string(JSON _path GET "${_target}" sources ${_source_index} path)
+                cmake_path(ABSOLUTE_PATH _path BASE_DIRECTORY "${_top_source}" NORMALIZE)
+                list(APPEND _entries "${_path}|${_flags} ")
+            endforeach()
+        endforeach()
+    endforeach()
+endif()
 
 function(has_flag command flag out)
     string(REGEX REPLACE "([][+.*^$()?|\\\\])" "\\\\\\1" _quoted "${flag}")
@@ -34,9 +110,11 @@ endfunction()
 
 set(_library_checked 0)
 set(_consumer_checked 0)
-foreach(_i RANGE 0 ${_last})
-    string(JSON _file GET "${_json}" ${_i} file)
-    string(JSON _command GET "${_json}" ${_i} command)
+foreach(_entry IN LISTS _entries)
+    string(FIND "${_entry}" "|" _bar)
+    string(SUBSTRING "${_entry}" 0 ${_bar} _file)
+    math(EXPR _bar "${_bar} + 1")
+    string(SUBSTRING "${_entry}" ${_bar} -1 _command)
     if(_file MATCHES "^${ROOT}/(src/|adapters/[^/]+/src/)")
         set(_role library)
     elseif(_file MATCHES "^${ROOT}/tests/package/" AND MODE STREQUAL "subproject")
@@ -71,9 +149,9 @@ foreach(_i RANGE 0 ${_last})
 endforeach()
 
 if(_library_checked EQUAL 0)
-    message(FATAL_ERROR "no library source found in ${COMPILE_COMMANDS}")
+    message(FATAL_ERROR "no library source found in ${BUILD_DIR}")
 endif()
 if(MODE STREQUAL "subproject" AND _consumer_checked EQUAL 0)
-    message(FATAL_ERROR "no consumer source found in ${COMPILE_COMMANDS}")
+    message(FATAL_ERROR "no consumer source found in ${BUILD_DIR}")
 endif()
 message(STATUS "${_library_checked} library and ${_consumer_checked} consumer compile lines checked")

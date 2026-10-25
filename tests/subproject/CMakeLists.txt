@@ -5,7 +5,9 @@ project(inertia_subproject_consumer LANGUAGES CXX)
 
 set(INERTIA_BUILD_DROGON OFF CACHE BOOL "" FORCE) # the core + fake path needs no adapter framework
 set(INERTIA_BUILD_HTTPLIB OFF CACHE BOOL "" FORCE)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(COMMAND cmake_file_api)
+    cmake_file_api(QUERY API_VERSION 1 CODEMODEL 2.0) # read by package.subproject.flags
+endif()
 add_subdirectory(${INERTIA_ROOT} inertia)
 
 foreach(_option IN ITEMS INERTIA_BUILD_TESTS INERTIA_BUILD_EXAMPLES INERTIA_INSTALL

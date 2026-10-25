@@ -194,13 +194,14 @@ function(inertia_add_package_tests)
         set(_sub_config --config $<CONFIG>)
     endif()
     add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub} ${_sub_config})
-    # Reads the compile database, which Visual Studio generators do not write.
+    # Reads the file API reply the subproject asked for (tests/subproject/CMakeLists.txt). Without
+    # cmake_file_api() (older CMake) there is no reply, so no test.
     set(_sub_flags_test "")
-    if(CMAKE_GENERATOR MATCHES "Ninja|Makefiles")
+    if(COMMAND cmake_file_api)
         set(_sub_flags_test package.subproject.flags)
         add_test(NAME package.subproject.flags
-                 COMMAND ${CMAKE_COMMAND} -DMODE=subproject
-                         -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
+                 COMMAND ${CMAKE_COMMAND} -DMODE=subproject -DBUILD_DIR=${_sub}
+                         -DCONFIG=$<CONFIG>
                          "-DEXPECTED=${_expected_flags}" -DWERROR_FLAG=${INERTIA_WERROR_FLAG}
                          -DROOT=${PROJECT_SOURCE_DIR}
                          -P ${PROJECT_SOURCE_DIR}/tests/flags/check_effective_flags.cmake)
