@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <memory>
@@ -30,6 +31,22 @@ namespace {
 std::atomic<bool> &versionBroken() {
     static std::atomic<bool> value{false};
     return value;
+}
+
+} // namespace
+
+namespace {
+
+constexpr std::size_t kBigBodySize = 65536;
+
+std::atomic<const char *> &bodyBefore() {
+    static std::atomic<const char *> pointer{nullptr};
+    return pointer;
+}
+
+std::atomic<const char *> &bodyAfter() {
+    static std::atomic<const char *> pointer{nullptr};
+    return pointer;
 }
 
 } // namespace
@@ -147,6 +164,28 @@ void configureApp() {
             std::move(done)(text("submitted"));
         },
         {::drogon::Post, ::drogon::Put, ::drogon::Patch, ::drogon::Delete, ::drogon::Get});
+    // GET /big answers 200 with a large body. Finalize must leave it alone, not even copy it: the
+    // handler and an advice registered after the adapter's compare the body buffers.
+    app.registerHandler("/big",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            auto res = text(std::string(kBigBodySize, 'b'));
+                            bodyBefore().store(std::to_address(res->body().begin()));
+                            std::move(done)(res);
+                        },
+                        {::drogon::Get});
+    app.registerPostHandlingAdvice(
+        [](const ::drogon::HttpRequestPtr &req, const ::drogon::HttpResponsePtr &res) {
+            if (req->path() == "/big") {
+                bodyAfter().store(std::to_address(res->body().begin()));
+            }
+        });
+    app.registerHandler("/big/same-buffer",
+                        [text](const ::drogon::HttpRequestPtr &, Callback &&done) {
+                            const bool same = bodyBefore().load() != nullptr &&
+                                              bodyBefore().load() == bodyAfter().load();
+                            std::move(done)(text(same ? "same" : "different"));
+                        },
+                        {::drogon::Get});
     app.registerHandler("/empty",
                         [](const ::drogon::HttpRequestPtr &, Callback &&done) {
                             std::move(done)(::drogon::HttpResponse::newHttpResponse());

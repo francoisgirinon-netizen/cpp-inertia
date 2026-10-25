@@ -8,13 +8,16 @@
 
 namespace inertia {
 
+/// Header name and value pairs, in order. A name may repeat.
+using Headers = std::vector<std::pair<std::string, std::string>>;
+
 /// An HTTP response built by the framework-neutral core. The adapter converts it to its own
 /// response type before sending it.
 struct Response {
     /// HTTP status code.
     int status = 200;
     /// Header name and value pairs, in order. A name may repeat, so use setHeader() to replace one.
-    std::vector<std::pair<std::string, std::string>> headers;
+    Headers headers;
     /// Response body. Empty by default.
     std::string body;
 

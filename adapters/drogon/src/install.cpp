@@ -156,33 +156,30 @@ bool isManagedElsewhere(std::string_view name) {
     return headers::iequals(name, "Content-Type") || headers::iequals(name, "Set-Cookie");
 }
 
-// Runs Inertia::finalize on the response and writes its edits (status, body, headers) back.
+// Runs Inertia::finalize on the response and writes its edits (status, body, headers) back. Only
+// the head is converted: the body can be hundreds of kilobytes and finalize never reads it.
 void finalizeResponse(const Inertia &inertia, const ::drogon::HttpRequestPtr &req,
                       const ::drogon::HttpResponsePtr &res) {
-    Response meta = detail::responseHead(res);
-    const int status = meta.status;
-    // Inertia::finalize only asks whether the body is empty, and may clear it. A one-byte stand-in
-    // answers that without copying a body that can be hundreds of kilobytes.
-    const bool hadBody = !res->body().empty();
-    if (hadBody) {
-        meta.body = " ";
-    }
-    const Response before{.status = status, .headers = meta.headers, .body = {}};
+    const Response before = detail::responseHead(res);
+    int status = before.status;
+    Headers edited = before.headers;
 
-    inertia.finalize(DrogonRequest{req, trustForwarded().load()}, meta);
+    const auto outcome = inertia.finalizeHead(DrogonRequest{req, trustForwarded().load()}, status,
+                                              edited, res->body().empty());
 
-    if (meta.status != status) {
-        res->setStatusCode(static_cast<::drogon::HttpStatusCode>(meta.status));
+    if (status != before.status) {
+        res->setStatusCode(static_cast<::drogon::HttpStatusCode>(status));
     }
-    if (hadBody && meta.body.empty()) {
+    if (outcome.clearBody) {
         res->setBody(std::string{});
     }
+    const Response after{.status = status, .headers = std::move(edited), .body = {}};
     for (const auto &[name, value] : before.headers) {
-        if (!isManagedElsewhere(name) && !meta.header(name)) {
+        if (!isManagedElsewhere(name) && !after.header(name)) {
             res->removeHeader(name);
         }
     }
-    for (const auto &[name, value] : meta.headers) {
+    for (const auto &[name, value] : after.headers) {
         if (!isManagedElsewhere(name) && before.header(name) != value) {
             res->removeHeader(name);
             res->addHeader(name, value);

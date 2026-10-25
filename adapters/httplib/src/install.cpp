@@ -220,15 +220,21 @@ HeaderGroups groupByName(const Response &res) {
 // Runs Inertia::finalize on the response and writes its edits (status, body, headers) back.
 void finalizeResponse(const Inertia &inertia, const HttplibRequest &view,
                       ::httplib::Response &res) {
-    Response edited = fromHttplib(res);
-    const Response before = edited;
-    inertia.finalize(view, edited);
+    // Only the head is converted: the body can be large and finalize never reads it.
+    Response before;
+    before.status = res.status;
+    for (const auto &[name, value] : res.headers) {
+        before.headers.emplace_back(name, value);
+    }
+    Response edited = before;
+    const auto outcome =
+        inertia.finalizeHead(view, edited.status, edited.headers, res.body.empty());
 
     if (edited.status != before.status) {
         res.status = edited.status;
     }
-    if (edited.body != before.body) {
-        res.body = edited.body;
+    if (outcome.clearBody) {
+        res.body.clear();
     }
     const auto old = groupByName(before);
     const auto now = groupByName(edited);

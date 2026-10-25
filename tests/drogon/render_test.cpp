@@ -122,3 +122,12 @@ TEST_CASE("finalize edits to status and headers reach the wire", "[drogon]") {
     // The same route is untouched for a plain request.
     CHECK(client.get("/empty").status == 200);
 }
+
+TEST_CASE("a 200 body is neither changed nor copied by finalize", "[drogon]") {
+    Client client;
+    const auto reply = client.send(inertiaGet("/big"));
+    CHECK(reply.status == 200);
+    CHECK(reply.body == std::string(65536, 'b'));
+    CHECK(reply.header("Vary").find("X-Inertia") != std::string::npos);
+    CHECK(client.get("/big/same-buffer").body == "same");
+}

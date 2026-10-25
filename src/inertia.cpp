@@ -256,7 +256,8 @@ void Inertia::render(const RequestView &req, SessionStore &session, std::string 
         return;
     }
     // The SSR reply may arrive after render() has returned, so the continuation owns the page.
-    // It runs exactly once, so it moves what it holds.
+    // SsrGateway runs it exactly once (its `fired` flag in dispatch() drops a second reply), so it
+    // moves what it holds.
     const auto owned = std::make_shared<const Json>(std::move(page));
     std::function<void(std::optional<SsrResult>)> finish =
         [rootId = config_.rootId, rootTemplate = config_.rootTemplate, owned, base = std::move(res),
@@ -301,9 +302,14 @@ Response Inertia::location(const RequestView &req, std::string_view url) const {
     return res;
 }
 
-void Inertia::finalize(const RequestView &req, Response &res) const {
+namespace {
+
+// The rules of Inertia::finalize on a response whose body is not at hand: `res.body` is ignored,
+// `bodyEmpty` stands for it. Returns true when the body must be cleared.
+bool finalizeResponse(const RequestView &req, Response &res, bool bodyEmpty) {
+    bool clearBody = false;
     // An empty 200 has nothing to show, so the client is sent back to where it came from.
-    if (isInertia(req) && res.status == 200 && res.body.empty()) {
+    if (isInertia(req) && res.status == 200 && bodyEmpty) {
         res.status = 302;
         res.setHeader("Location", req.header("Referer").value_or("/"));
     }
@@ -323,11 +329,11 @@ void Inertia::finalize(const RequestView &req, Response &res) const {
         });
         res.setHeader(std::string(headers::kRedirect), *location);
         res.status = 409;
-        res.body.clear();
+        clearBody = true;
     }
     const auto existing = headers::parseList(res.header(headers::kVary));
     if (std::ranges::find(existing, "*") != existing.end()) {
-        return; // Vary: * already covers every request header
+        return clearBody; // Vary: * already covers every request header
     }
     std::vector<std::string> items;
     const auto add = [&items](std::string_view token) {
@@ -348,6 +354,24 @@ void Inertia::finalize(const RequestView &req, Response &res) const {
         joined += item;
     }
     res.setHeader(std::string(headers::kVary), std::move(joined));
+    return clearBody;
+}
+
+} // namespace
+
+void Inertia::finalize(const RequestView &req, Response &res) const {
+    if (finalizeResponse(req, res, res.body.empty())) {
+        res.body.clear();
+    }
+}
+
+Inertia::FinalizeOutcome Inertia::finalizeHead(const RequestView &req, int &status,
+                                               Headers &headers, bool bodyEmpty) const {
+    Response head{.status = status, .headers = std::move(headers), .body = {}};
+    const bool clearBody = finalizeResponse(req, head, bodyEmpty);
+    status = head.status;
+    headers = std::move(head.headers);
+    return Inertia::FinalizeOutcome{.clearBody = clearBody};
 }
 
 } // namespace inertia

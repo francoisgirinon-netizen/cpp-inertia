@@ -290,3 +290,43 @@ TEST_CASE("a location 409 keeps its status through finalize and gains Vary",
     REQUIRE(res.header("X-Inertia-Location").value_or("") == "https://x.test");
     REQUIRE(res.header("Vary").value_or("") == "X-Inertia");
 }
+
+TEST_CASE(
+    "finalizeHead edits the status and headers like finalize and asks to clear a fragment body",
+    "[middleware]") {
+    const Inertia app{Config{}};
+    auto req = FakeRequest::inertia("/a");
+    req.verb = "POST";
+    const Response source = redirect("/a#b");
+
+    Response whole = source;
+    whole.body = "not empty";
+    app.finalize(req, whole);
+
+    int status = source.status;
+    Headers headers = source.headers;
+    const auto outcome = app.finalizeHead(req, status, headers, false);
+    REQUIRE(outcome.clearBody);
+    REQUIRE(status == whole.status);
+    REQUIRE(headers == whole.headers);
+    REQUIRE(whole.body.empty());
+}
+
+TEST_CASE("finalizeHead leaves a non-empty body alone and treats an empty one as empty",
+          "[middleware]") {
+    const Inertia app{Config{}};
+    const auto req = FakeRequest::inertia("/a").with("Referer", "http://localhost/prev");
+
+    int status = 200;
+    Headers headers;
+    REQUIRE_FALSE(app.finalizeHead(req, status, headers, false).clearBody);
+    REQUIRE(status == 200);
+    REQUIRE(Response{.status = status, .headers = headers, .body = {}}.header("Vary") ==
+            "X-Inertia");
+
+    // An empty body on an Inertia 200 is sent back to the Referer.
+    status = 200;
+    headers.clear();
+    REQUIRE_FALSE(app.finalizeHead(req, status, headers, true).clearBody);
+    REQUIRE(status == 302);
+}

@@ -157,6 +157,24 @@ class Inertia {
     /// @param res Response to adjust.
     void finalize(const RequestView &req, Response &res) const;
 
+    /// What finalizeHead() asks the caller to do to the response body.
+    struct FinalizeOutcome {
+        /// `true` when the body must be emptied: a fragment redirect carries no body.
+        bool clearBody = false;
+    };
+
+    /// Same rules as finalize(), for a caller that holds the response in its own type and does not
+    /// want to copy the body (it can be hundreds of kilobytes) into a Response. finalize() only
+    /// ever needs to know whether the body is empty, and it can only ask for it to be cleared:
+    /// that is the whole contract, and it will not grow a need to read or replace the body.
+    /// @param req Request that produced the response.
+    /// @param status Status of the response, adjusted in place.
+    /// @param headers Headers of the response, adjusted in place.
+    /// @param bodyEmpty Whether the response body is empty.
+    /// @return What to do to the body.
+    [[nodiscard]] FinalizeOutcome finalizeHead(const RequestView &req, int &status,
+                                               Headers &headers, bool bodyEmpty) const;
+
   private:
     /// Builds the page object shared by page() and render().
     [[nodiscard]] Json buildPage(const RequestView &req, SessionStore &session,
