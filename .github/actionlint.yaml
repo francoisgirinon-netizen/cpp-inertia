@@ -1,0 +1,6 @@
+# actionlint 1.7.12 predates the ubuntu-26.04 GitHub-hosted runner image (actions/runner-images), so
+# it does not know the label. It is declared here, as actionlint documents for labels it cannot
+# know; every other check stays on. Remove once the pinned actionlint knows the label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
