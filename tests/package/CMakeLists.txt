@@ -17,6 +17,8 @@ foreach(_target IN LISTS CONSUMER_COMPONENTS)
 endforeach()
 
 if("drogon" IN_LIST CONSUMER_COMPONENTS)
+    include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/InertiaJsoncppConfig.cmake)
+    inertia_select_jsoncpp_per_config()
     add_executable(consumer main_drogon.cpp)
     target_link_libraries(consumer PRIVATE inertia::drogon)
 elseif("conformance" IN_LIST CONSUMER_COMPONENTS)
