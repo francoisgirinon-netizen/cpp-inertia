@@ -78,10 +78,10 @@ The root `.clangd` points clangd at `build/dev/host`. Re-run the script after a 
   | --- | --- | --- |
   | Clang (Linux) | 18 | `-Wfunction-effects` from Clang 20. **Tested: Clang 23.1.4 with libstdc++ 15** |
   | GCC | 13 | **Tested: GCC 15.2 with libstdc++ 15** (the `gcc` preset) |
-  | Apple Clang (macOS) | 16 (Xcode 16, LLVM 17) | same flags as Clang, without `-Wfunction-effects`; **not tested yet** |
+  | Apple Clang (macOS) | 16 (Xcode 16, LLVM 17) | same flags as Clang, `-Wfunction-effects` from Apple Clang 21. **Tested: Apple Clang 21.0.0 (Xcode 26.6)** |
   | MSVC (Windows) | 19.40 (Visual Studio 2022 17.10) | `/W4 /WX /permissive- /utf-8 /Zc:__cplusplus`; **not tested yet** |
 
-  The `flags_applied` test reads the compile database and fails when a library source loses one of the flags the table gives the compiler in use, or when a consumer of the library receives any of them.
+  The `flags_applied` test reads the CMake file API reply of the build tree (so it works with every generator, Visual Studio included) and fails when a library source loses one of the flags the table gives the compiler in use, or when a consumer of the library receives any of them.
 - CMake 3.31 or later, and nlohmann_json. The adapters need Drogon or cpp-httplib, the conformance kit needs Catch2.
 
 ### Static and shared libraries
@@ -491,7 +491,7 @@ Every preset compiles through [sccache](https://github.com/mozilla/sccache) (`CM
 | `e2e` | ubuntu-26.04, Docker | matrix `server: [drogon, httplib]`: builds the example servers and the front end, then runs the Playwright suite against that adapter, in client mode and with `INERTIA_SSR=1` |
 | `coverage` | ubuntu-26.04, Docker | `cmake --workflow --preset coverage`, then `tools/coverage-report.sh` (fails under 96% lines). The HTML report is the `coverage-html` artifact. |
 | `lint` | ubuntu-26.04, Docker | the only job with static analysis: IWYU build, Doxygen (warnings are errors), clang-tidy on the whole tree and the other pre-commit hooks (below) |
-| `macos` | macos-26 (arm64), Apple Clang, vcpkg | matrix of the workflow presets `macos-static-debug`, `macos-shared-debug`, `package-macos-static`, `package-macos-shared` (the last two run the release preset, then the TGZ). Prints the Apple Clang version and whether it accepts `-Wfunction-effects` (not enabled yet). |
+| `macos` | macos-26 (arm64), Apple Clang, vcpkg | matrix of the workflow presets `macos-static-debug`, `macos-shared-debug`, `package-macos-static`, `package-macos-shared` (the last two run the release preset, then the TGZ). Prints the Apple Clang version. |
 | `windows` | windows-2022, MSVC 2022, vcpkg | matrix of `windows-msvc-static-debug`, `windows-msvc-shared-debug`, `package-windows-msvc-static`, `package-windows-msvc-shared` (Release, then the ZIP). Shared cells run `ctest -R package.runtime_mismatch`; every cell runs `tools/check-runtime-guard.sh` (`dumpbin`: the core DLL exports exactly one `inertia_core_requires_runtime_*`, MD for Release and MDd for Debug; a static build has none). |
 | `windows-vs2019-consumer` | windows-2022 | installs the shared ZIP built above and builds a C++17 consumer with the v142 toolset (cl 19.29, VS 2019 16.11), from the VS 2022 component, since windows-2019 images are retired. Shared only: an older linker cannot link static libraries built by a newer toolset. |
 | `commits` | ubuntu-26.04 | every commit message of the push or pull request range against Conventional Commits |

@@ -167,17 +167,10 @@ jobs:
         with:
           key: macos-${{ matrix.triplet }}
           sccache: "true"
-      # Read the Apple Clang version needed for cmake/Warnings.cmake from this log: the first version
-      # that accepts -Wfunction-effects (not enabled by the build).
-      - name: Report the Apple Clang version and -Wfunction-effects support
+      - name: Report the Apple Clang version
         run: |
           xcodebuild -version
           clang++ --version
-          if clang++ -Werror -Wfunction-effects -fsyntax-only -x c++ /dev/null; then
-            echo "::notice title=Apple Clang::-Wfunction-effects is accepted by $(clang++ --version | head -n 1)"
-          else
-            echo "::notice title=Apple Clang::-Wfunction-effects is NOT accepted by $(clang++ --version | head -n 1)"
-          fi
       - name: Register the compiler problem matcher
         run: echo "::add-matcher::.github/problem-matchers/clang-tidy.json"
       - name: Configure, build and test (${{ matrix.workflow }})
@@ -221,17 +214,6 @@ jobs:
       - name: Remove the compiler problem matcher
         if: ${{ always() }}
         run: echo "::remove-matcher owner=msvc::"
-      # When the Drogon package consumer fails (it once hung), run it by hand with a limit: its
-      # exit code and the DLLs next to it say whether a library was missing or the exit blocked.
-      - name: Diagnose the Drogon package consumer
-        if: ${{ failure() }}
-        env:
-          CONSUMER_DIR: build/${{ matrix.build }}/_package/consumer-drogon/${{ matrix.config }}
-        run: |
-          ls -l "$CONSUMER_DIR" || true
-          status=0
-          timeout 30 "$CONSUMER_DIR/consumer.exe" || status=$?
-          echo "consumer.exe exit code: $status"
       # The runtime guard of <inertia/attributes.hpp>: a consumer built with another C runtime than
       # the shared core must not link. The workflow ran the test already; this names it and fails if
       # it is ever not registered (the test presets error out on a selection that matches nothing).

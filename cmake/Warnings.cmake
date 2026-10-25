@@ -6,7 +6,7 @@
 # nothing is probed with try_compile, so a flag cannot silently drop out because a probe failed.
 # The same table fills INERTIA_EXPECTED_WARNING_FLAGS, the flags the current compiler must receive,
 # which the CTest `flags` (tests/flags/check_effective_flags.cmake) checks against the compile
-# database.
+# flags the CMake file API reports for each library source.
 add_library(inertia_warnings INTERFACE)
 
 # --- Supported compilers
@@ -79,11 +79,11 @@ set(_inertia_clang_common
 # Function effects ([[clang::nonallocating]]) arrived in Clang 20 (LLVM 20 release notes).
 # INERTIA_NONALLOCATING expands to nothing without them.
 _inertia_warnings(Clang ${_inertia_clang_common} ${_inertia_common} -Wfunction-effects@20)
-# Apple Clang: the same flags, except -Wfunction-effects. Apple Clang 17 (Xcode 26) is based on
-# LLVM 19, and the first Apple release based on LLVM 20 is not known yet: an unknown -W option
-# would be an error under -Werror, so the flag is left out until a release that has it is
-# confirmed on the CI (then add it here with that version).
-_inertia_warnings(AppleClang ${_inertia_clang_common} ${_inertia_common})
+# Apple Clang: the same flags. Its releases are numbered on their own scale (Apple Clang 17, Xcode
+# 26, is based on LLVM 19). The first one confirmed to accept -Wfunction-effects is Apple Clang
+# 21.0.0 (Xcode 26.6, the macos CI job's probe); an unknown -W option is an error under -Werror,
+# so the flag starts at that version.
+_inertia_warnings(AppleClang ${_inertia_clang_common} ${_inertia_common} -Wfunction-effects@21)
 
 # GCC-only: -Wlogical-op (4.3), -Wduplicated-cond (6), -Wduplicated-branches (7),
 # -Wuseless-cast (4.8).
