@@ -12,20 +12,22 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <inertia/disk_file_reader.hpp>
 #include <inertia/fake/fake.hpp>
 #include <inertia/html.hpp>
 #include <inertia/inertia.hpp>
 #include <inertia/json.hpp>
-#include <inertia/ports/file_reader.hpp>
 #include <inertia/props.hpp>
 #include <inertia/response.hpp>
 #include <inertia/vite.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
 #include <memory>
-#include <optional>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -42,45 +44,36 @@ void measureWithProps(Catch::Benchmark::Chronometer &meter, const Props &base, C
     meter.measure([&](int run) { return call(std::move(copies[static_cast<std::size_t>(run)])); });
 }
 
-// A manifest in memory whose stamp costs what a stat call does: it is a constant. Reads count as
-// real work (a copy of the content), like a read from the page cache.
-class StatLikeReader final : public FileReader {
-  public:
-    explicit StatLikeReader(std::string manifest) : manifest_(std::move(manifest)) {}
-
-    [[nodiscard]] std::optional<std::string>
-    read(const std::filesystem::path &path) const override {
-        if (path.filename() != "manifest.json") {
-            return std::nullopt;
-        }
-        return manifest_;
-    }
-    [[nodiscard]] std::optional<FileStamp> stamp(const std::filesystem::path &path) const override {
-        if (path.filename() != "manifest.json") {
-            return std::nullopt;
-        }
-        return FileStamp{.size = manifest_.size(), .modified = 1};
-    }
-
-  private:
-    std::string manifest_;
-};
-
 // An Inertia instance configured like an application: shared props, and a Vite integration over
 // an in-memory manifest, whose hash is the asset version.
 struct App {
+    std::filesystem::path publicDir =
+        std::filesystem::temp_directory_path() /
+        ("inertia-bench-" +
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::shared_ptr<const Vite> vite;
     std::unique_ptr<Inertia> inertia;
     fake::MemorySession session;
 
     App() {
-        vite = std::make_shared<const Vite>(
-            ViteConfig{}, std::make_shared<StatLikeReader>(bench::manifestText()));
+        // The manifest is on disk and read through DiskFileReader, like in an application.
+        std::filesystem::create_directories(publicDir / "build" / ".vite");
+        std::ofstream{publicDir / "build" / ".vite" / "manifest.json"} << bench::manifestText();
+        vite = std::make_shared<const Vite>(ViteConfig{.publicDir = publicDir},
+                                            std::make_shared<DiskFileReader>());
         Config config;
         config.vite = vite;
         config.version = versionFromVite(vite);
         inertia = std::make_unique<Inertia>(std::move(config));
         bench::shareTypical(*inertia);
+    }
+    App(const App &) = delete;
+    App &operator=(const App &) = delete;
+    App(App &&) = delete;
+    App &operator=(App &&) = delete;
+    ~App() {
+        std::error_code ignored;
+        std::filesystem::remove_all(publicDir, ignored);
     }
 
     // Renders and returns the size of the response body.

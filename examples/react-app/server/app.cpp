@@ -1,60 +1,20 @@
 #include "app.hpp"
 
+#include <inertia/disk_file_reader.hpp>
 #include <inertia/inertia.hpp>
-#include <inertia/ports/file_reader.hpp>
 #include <inertia/ports/http_client.hpp>
 #include <inertia/ssr.hpp>
 #include <inertia/vite.hpp>
 
-#include <chrono>
 #include <cstdlib>
-#include <filesystem>
-#include <fstream>
 #include <functional>
 #include <memory>
-#include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <utility>
 #include <vector>
 
 namespace example {
-
-namespace {
-
-// Reads the Vite manifest and the dev-server hot file from disk. The stamp (size and modification
-// time) lets Vite keep the parsed manifest until `bun run build` rewrites it.
-class DiskFileReader final : public inertia::FileReader {
-  public:
-    [[nodiscard]] std::optional<inertia::FileStamp>
-    stamp(const std::filesystem::path &path) const override {
-        std::error_code error;
-        const auto size = std::filesystem::file_size(path, error);
-        if (error) {
-            return std::nullopt;
-        }
-        const auto modified = std::filesystem::last_write_time(path, error);
-        if (error) {
-            return std::nullopt;
-        }
-        return inertia::FileStamp{.size = size, .modified = modified.time_since_epoch().count()};
-    }
-
-    [[nodiscard]] std::optional<std::string>
-    read(const std::filesystem::path &path) const override {
-        std::ifstream in{path, std::ios::binary};
-        if (!in) {
-            return std::nullopt;
-        }
-        std::ostringstream content;
-        content << in.rdbuf();
-        return content.str();
-    }
-};
-
-} // namespace
 
 const std::string &publicDir() {
     static const std::string dir = INERTIA_EXAMPLE_PUBLIC_DIR;
@@ -72,7 +32,7 @@ std::shared_ptr<inertia::Inertia> makeInertia(std::shared_ptr<inertia::HttpClien
                                                                   .buildDir = "build",
                                                                   .hotFile = "hot",
                                                                   .entries = {"src/app.tsx"}},
-                                              std::make_shared<DiskFileReader>());
+                                              std::make_shared<inertia::DiskFileReader>());
 
     inertia::Config config;
     // The asset version is the hash of the Vite manifest, recomputed when the manifest file

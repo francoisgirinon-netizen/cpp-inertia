@@ -89,12 +89,18 @@ serves the client-side page.
 `nullopt` when it cannot be read. `Vite` uses it for the manifest and the hot file; `Inertia` never
 touches the file system itself. It must be callable from several threads (it is `const`).
 
+`inertia::DiskFileReader` (`<inertia/disk_file_reader.hpp>`, `std::filesystem` only) implements both
+functions for the local file system, and most adapters just hand it to `Vite`. Write your own reader
+only to read files from somewhere else.
+
 `std::optional<FileStamp> stamp(const std::filesystem::path &)` is optional: a cheap fingerprint of
-a file (its size and modification time, one `stat`). `Vite` keeps the parsed manifest, its tags and
-its hash until the stamp changes, so with a stamp an unchanged manifest costs one `stat` per
-request. The default returns `nullopt` ("unknown"), and then the manifest is read on every use and
-compared with the previous content, which is still correct but costs a read. A stamp must differ
-whenever the content does: pair the modification time with the size.
+a file, one `stat`. `Vite` keeps the parsed manifest, its tags and its hash until the stamp changes,
+and a hit never re-reads the content: an unchanged manifest costs one `stat` per request. The
+default returns `nullopt` ("unknown"), and then the manifest is read on every use and compared with
+the previous content, which is still correct but costs a read. A stamp must differ whenever the
+content does: use the size and the modification time at nanosecond resolution, as `DiskFileReader`
+does. A same-size edit within one tick of the file system's clock after the previous one is not
+detected; a build output is not rewritten like that.
 
 ## The request pipeline
 

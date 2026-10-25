@@ -1,5 +1,6 @@
 inertia_add_library(core
     SOURCES
+        disk_file_reader.cpp
         headers.cpp
         html.cpp
         inertia.cpp
@@ -12,6 +13,7 @@ inertia_add_library(core
     BASE_DIR ${PROJECT_SOURCE_DIR}/include
     HEADERS
         ${PROJECT_SOURCE_DIR}/include/inertia/attributes.hpp
+        ${PROJECT_SOURCE_DIR}/include/inertia/disk_file_reader.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/headers.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/html.hpp
         ${PROJECT_SOURCE_DIR}/include/inertia/inertia.hpp

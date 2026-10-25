@@ -237,10 +237,12 @@ callback(inertia::drogon::toDrogon(res));
 auto vite = std::make_shared<const inertia::Vite>(
     inertia::ViteConfig{.publicDir = "public", .buildDir = "build", .hotFile = "hot",
                         .entries = {"src/app.tsx"}},
-    std::make_shared<MyFileReader>());           // implement inertia::FileReader (read a file)
+    std::make_shared<inertia::DiskFileReader>()); // reads the files; <inertia/disk_file_reader.hpp>
 config.version = inertia::versionFromVite(vite); // hash of the manifest: a new build triggers a 409 reload
 config.vite = vite;                              // first-visit HTML gets the script/link tags
 ```
+
+`DiskFileReader` (std::filesystem only) stamps the manifest with its size and nanosecond modification time, so the manifest is read, parsed and hashed once and again only after a new build: an unchanged manifest costs one `stat` per request, and the asset version is computed once per manifest content. A stamp cannot see a same-size edit made within one clock tick of the previous one; that does not happen for a build output. To read files another way, implement `inertia::FileReader` (`read`, and `stamp` if you can make it cheap).
 
 While `public/hot` exists (the Vite dev server writes it, see `examples/react-app/frontend/vite.config.ts`) the dev-server tags are emitted; otherwise the tags come from `public/build/.vite/manifest.json`. For SSR build the server bundle (`vite build --ssr src/ssr.tsx`), run it (`bun dist/ssr/ssr.js`, port 13714) and enable it:
 
