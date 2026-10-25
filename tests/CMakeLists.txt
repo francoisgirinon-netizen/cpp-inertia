@@ -38,6 +38,19 @@ if(INERTIA_INSTALL)
     inertia_add_package_tests()
 endif()
 
+# The warning flags of cmake/Warnings.cmake reach the library's own compile lines. It reads the
+# compile database, which the generators other than Makefile and Ninja do not write.
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    string(REPLACE ";" "|" _expected_flags "${INERTIA_EXPECTED_WARNING_FLAGS}")
+    add_test(NAME flags_applied
+             COMMAND ${CMAKE_COMMAND} -DMODE=project
+                     -DCOMPILE_COMMANDS=${CMAKE_BINARY_DIR}/compile_commands.json
+                     "-DEXPECTED=${_expected_flags}" -DWERROR=${INERTIA_WARNINGS_AS_ERRORS}
+                     -DWERROR_FLAG=${INERTIA_WERROR_FLAG} -DROOT=${PROJECT_SOURCE_DIR}
+                     -P ${PROJECT_SOURCE_DIR}/tests/flags/check_effective_flags.cmake)
+    set_tests_properties(flags_applied PROPERTIES LABELS meta)
+endif()
+
 add_test(NAME core_has_no_adapter_frameworks
          COMMAND ${CMAKE_COMMAND} -DINERTIA_SOURCE_DIR=${PROJECT_SOURCE_DIR}
                  -P ${PROJECT_SOURCE_DIR}/cmake/CheckCoreNoFrameworks.cmake)
@@ -76,7 +89,7 @@ set_target_properties(inertia_headers_cxx17 PROPERTIES CXX_STANDARD 17 CXX_STAND
                                                        CXX_EXTENSIONS OFF
                                                        EXPORT_COMPILE_COMMANDS OFF)
 target_link_libraries(inertia_headers_cxx17 PRIVATE inertia::core inertia::fake inertia_warnings)
-target_compile_options(inertia_headers_cxx17 PRIVATE -Werror)
+target_compile_options(inertia_headers_cxx17 PRIVATE ${INERTIA_WERROR_FLAG})
 foreach(_adapter IN ITEMS drogon httplib conformance)
     if(TARGET inertia::${_adapter})
         target_link_libraries(inertia_headers_cxx17 PRIVATE inertia::${_adapter})

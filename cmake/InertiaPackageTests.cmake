@@ -122,13 +122,17 @@ function(inertia_add_package_tests)
 
     # add_subdirectory consumption: tests, examples, install rules and -Werror stay off.
     set(_sub ${PROJECT_BINARY_DIR}/_package/consumer-subproject)
+    string(REPLACE ";" "|" _expected_flags "${INERTIA_EXPECTED_WARNING_FLAGS}")
     add_test(NAME package.subproject.configure
              COMMAND ${CMAKE_COMMAND} -S ${PROJECT_SOURCE_DIR}/tests/subproject -B ${_sub}
                      ${_common_args} -DINERTIA_ROOT=${PROJECT_SOURCE_DIR})
     add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub})
     add_test(NAME package.subproject.flags
-             COMMAND ${CMAKE_COMMAND} -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
-                     -P ${PROJECT_SOURCE_DIR}/tests/subproject/check_flags.cmake)
+             COMMAND ${CMAKE_COMMAND} -DMODE=subproject
+                     -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
+                     "-DEXPECTED=${_expected_flags}" -DWERROR_FLAG=${INERTIA_WERROR_FLAG}
+                     -DROOT=${PROJECT_SOURCE_DIR}
+                     -P ${PROJECT_SOURCE_DIR}/tests/flags/check_effective_flags.cmake)
     set_tests_properties(package.subproject.configure PROPERTIES
         FIXTURES_SETUP package_subproject_configured)
     set_tests_properties(package.subproject.build PROPERTIES
