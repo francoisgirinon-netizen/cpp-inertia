@@ -39,8 +39,8 @@ if(INERTIA_INSTALL)
 endif()
 
 # The warning flags of cmake/Warnings.cmake reach the library's own compile lines. It reads the
-# compile database, which the generators other than Makefile and Ninja do not write.
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
+# compile database, which the generators other than Makefile and Ninja (Visual Studio) do not write.
+if(CMAKE_EXPORT_COMPILE_COMMANDS AND CMAKE_GENERATOR MATCHES "Ninja|Makefiles")
     string(REPLACE ";" "|" _expected_flags "${INERTIA_EXPECTED_WARNING_FLAGS}")
     add_test(NAME flags_applied
              COMMAND ${CMAKE_COMMAND} -DMODE=project
@@ -77,8 +77,14 @@ add_test(NAME core_has_no_adapter_frameworks
 set_tests_properties(core_has_no_adapter_frameworks PROPERTIES LABELS meta)
 
 # Every public header must compile on its own (the verify targets are not part of `all`).
+# A multi-config generator (Visual Studio) builds the configuration the test runs with.
+get_property(_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+set(_build_config "")
+if(_multi_config)
+    set(_build_config --config $<CONFIG>)
+endif()
 add_test(NAME headers_self_contained
-         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} ${_build_config}
                  --target all_verify_interface_header_sets)
 set_tests_properties(headers_self_contained PROPERTIES LABELS meta)
 
@@ -118,5 +124,6 @@ set_target_properties(inertia_headers_cxx17 PROPERTIES CXX_STANDARD 17 CXX_STAND
 target_link_libraries(inertia_headers_cxx17 PRIVATE ${_cxx17_targets} inertia_warnings)
 target_compile_options(inertia_headers_cxx17 PRIVATE ${INERTIA_WERROR_FLAG})
 add_test(NAME headers_cxx17
-         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target inertia_headers_cxx17)
+         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} ${_build_config}
+                 --target inertia_headers_cxx17)
 set_tests_properties(headers_cxx17 PROPERTIES LABELS meta)

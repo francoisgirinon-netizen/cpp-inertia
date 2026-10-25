@@ -29,6 +29,13 @@ function(_inertia_consumer_tests name components stage fixture consumer_src)
                      -DCMAKE_PREFIX_PATH=${stage} -DCONSUMER_COMPONENTS=${components})
     add_test(NAME package.${name}.build COMMAND ${CMAKE_COMMAND} --build ${_bin} ${_config_arg})
     add_test(NAME package.${name}.run COMMAND ${_bin}/${_config_dir}consumer)
+    if(WIN32 AND _VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+        # The consumer finds the DLLs of the packages it links in the vcpkg directory of its
+        # configuration (the copy next to it only holds those CMake knows as imported targets).
+        set(_vcpkg_root ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
+        set_tests_properties(package.${name}.run PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<IF:$<CONFIG:Debug>,${_vcpkg_root}/debug/bin,${_vcpkg_root}/bin>")
+    endif()
     set_tests_properties(package.${name}.configure PROPERTIES
         FIXTURES_REQUIRED ${fixture} FIXTURES_SETUP package_${name}_configured)
     set_tests_properties(package.${name}.build PROPERTIES
@@ -187,21 +194,28 @@ function(inertia_add_package_tests)
         set(_sub_config --config $<CONFIG>)
     endif()
     add_test(NAME package.subproject.build COMMAND ${CMAKE_COMMAND} --build ${_sub} ${_sub_config})
-    add_test(NAME package.subproject.flags
-             COMMAND ${CMAKE_COMMAND} -DMODE=subproject
-                     -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
-                     "-DEXPECTED=${_expected_flags}" -DWERROR_FLAG=${INERTIA_WERROR_FLAG}
-                     -DROOT=${PROJECT_SOURCE_DIR}
-                     -P ${PROJECT_SOURCE_DIR}/tests/flags/check_effective_flags.cmake)
+    # Reads the compile database, which Visual Studio generators do not write.
+    set(_sub_flags_test "")
+    if(CMAKE_GENERATOR MATCHES "Ninja|Makefiles")
+        set(_sub_flags_test package.subproject.flags)
+        add_test(NAME package.subproject.flags
+                 COMMAND ${CMAKE_COMMAND} -DMODE=subproject
+                         -DCOMPILE_COMMANDS=${_sub}/compile_commands.json
+                         "-DEXPECTED=${_expected_flags}" -DWERROR_FLAG=${INERTIA_WERROR_FLAG}
+                         -DROOT=${PROJECT_SOURCE_DIR}
+                         -P ${PROJECT_SOURCE_DIR}/tests/flags/check_effective_flags.cmake)
+    endif()
     set_tests_properties(package.subproject.configure PROPERTIES
         FIXTURES_SETUP package_subproject_configured)
     set_tests_properties(package.subproject.build PROPERTIES
         FIXTURES_REQUIRED package_subproject_configured FIXTURES_SETUP package_subproject_built)
-    set_tests_properties(package.subproject.flags PROPERTIES
-        FIXTURES_REQUIRED package_subproject_built)
+    if(_sub_flags_test)
+        set_tests_properties(package.subproject.flags PROPERTIES
+            FIXTURES_REQUIRED package_subproject_built)
+    endif()
 
     set_tests_properties(
-        package.subproject.configure package.subproject.build package.subproject.flags
+        package.subproject.configure package.subproject.build ${_sub_flags_test}
         package.install package.core.configure package.core.build package.core.run
         package.core17.configure package.core17.build package.core17.run
         package.core_only.install package.core_only.refuses_drogon
