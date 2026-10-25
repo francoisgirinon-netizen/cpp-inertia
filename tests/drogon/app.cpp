@@ -14,7 +14,6 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <exception>
 #include <functional>
 #include <memory>
 #include <optional>
