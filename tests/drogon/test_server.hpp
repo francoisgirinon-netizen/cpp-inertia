@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/json.hpp>
+
 #include <drogon/HttpClient.h>
 #include <trantor/net/EventLoopThread.h>
 
@@ -17,6 +19,11 @@ namespace inertia::drogon_test {
 // Implemented by each test executable: enables sessions, installs the adapter and registers the
 // handlers. Called once, on the main thread, before the server starts.
 void configureApp();
+
+// Throw from a translation unit of their own: inlined into a prop closure, a throwing body makes
+// MSVC warn (C4702) about the code after the call in <inertia/props.hpp>.
+[[nodiscard]] Json failingProp();
+[[nodiscard]] Json failingPropNonStd();
 
 // How long GET /slow takes to answer.
 inline constexpr std::chrono::milliseconds kSlowDelay{1000};

@@ -85,13 +85,9 @@ void configureApp() {
     };
 
     registerPage("/page", "Page", [] { return Props{{"title", "Home"}, {"count", 1}}; });
-    registerPage("/throws", "Boom", []() -> Props {
-        return {{"ok", 1}, {"boom", []() -> Json { throw std::runtime_error("prop failed"); }}};
-    });
+    registerPage("/throws", "Boom", []() -> Props { return {{"ok", 1}, {"boom", failingProp}}; });
     // A value that is not a std::exception: the adapter must still answer 500.
-    registerPage("/throws-value", "Boom", []() -> Props {
-        return {{"boom", []() -> Json { std::rethrow_exception(std::make_exception_ptr(42)); }}};
-    });
+    registerPage("/throws-value", "Boom", []() -> Props { return {{"boom", failingPropNonStd}}; });
     // A 302 to a URL with a fragment: Inertia asks the client to visit it itself.
     app.registerHandler("/fragment",
                         [](const ::drogon::HttpRequestPtr &, Callback &&done) {

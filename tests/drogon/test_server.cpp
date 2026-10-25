@@ -17,12 +17,17 @@
 #include <chrono>
 #include <compare>
 #include <cstdint>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
 
 namespace inertia::drogon_test {
+
+Json failingProp() { throw std::runtime_error("prop failed"); }
+
+Json failingPropNonStd() { std::rethrow_exception(std::make_exception_ptr(42)); }
 
 namespace {
 

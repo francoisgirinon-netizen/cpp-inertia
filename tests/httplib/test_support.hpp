@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inertia/json.hpp>
+
 #include <httplib.h>
 
 #include <cstdint>
@@ -13,6 +15,10 @@
 // Support shared by the adapter tests and the conformance harness: a cpp-httplib server on an
 // ephemeral loopback port running in a background thread, and a blocking client with a cookie jar.
 namespace inertia::httplib_test {
+
+// Throw from a translation unit of their own: inlined into a prop closure, a throwing body makes
+// MSVC warn (C4702) about the code after the call in <inertia/props.hpp>.
+[[nodiscard]] Json failingProp();
 
 // Owns a ::httplib::Server. Register routes (and call inertia::httplib::install) on server()
 // before start(); the destructor stops the server and joins its thread.

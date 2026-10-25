@@ -13,6 +13,8 @@
 
 namespace inertia::httplib_test {
 
+Json failingProp() { throw std::runtime_error("prop failed"); }
+
 TestServer::TestServer() = default;
 
 TestServer::~TestServer() {

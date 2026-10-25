@@ -49,9 +49,7 @@ App::App(inertia::httplib::Options options) {
         inertia::httplib::render(req, res, "Page", Props{{"title", "Home"}, {"count", 1}});
     });
     raw.Get("/throws", [](const Req &req, Res &res) {
-        inertia::httplib::render(
-            req, res, "Boom",
-            Props{{"ok", 1}, {"boom", []() -> Json { throw std::runtime_error("prop failed"); }}});
+        inertia::httplib::render(req, res, "Boom", Props{{"ok", 1}, {"boom", failingProp}});
     });
     raw.Get("/external", [](const Req &req, Res &res) {
         inertia::httplib::location(req, res, "https://example.com/away");
