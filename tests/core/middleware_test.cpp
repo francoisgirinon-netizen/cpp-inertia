@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace inertia;
 using namespace inertia::fake;

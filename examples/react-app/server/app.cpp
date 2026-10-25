@@ -7,6 +7,7 @@
 #include <inertia/vite.hpp>
 
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
