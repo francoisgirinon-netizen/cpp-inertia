@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <ratio>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -37,9 +38,12 @@ std::optional<FileStamp> DiskFileReader::stamp(const std::filesystem::path &path
     if (error) {
         return std::nullopt;
     }
+    // Counted in an exactly 64-bit integer, so no cast: the representation of std::chrono::
+    // nanoseconds is some signed integer of at least 64 bits, a different type on each library.
     const auto nanoseconds =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(modified.time_since_epoch());
-    return FileStamp{.size = size, .modified = static_cast<std::int64_t>(nanoseconds.count())};
+        std::chrono::duration_cast<std::chrono::duration<std::int64_t, std::nano>>(
+            modified.time_since_epoch());
+    return FileStamp{.size = size, .modified = nanoseconds.count()};
 }
 
 } // namespace inertia

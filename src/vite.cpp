@@ -104,7 +104,9 @@ std::optional<Json> parseManifest(const std::optional<std::string> &content) {
     if (manifest.is_discarded() || !manifest.is_object()) {
         return std::nullopt;
     }
-    return manifest;
+    // In place: converting a Json to an optional<Json> is ambiguous with nlohmann's conversion
+    // operator for GCC.
+    return std::optional<Json>{std::in_place, std::move(manifest)};
 }
 
 } // namespace

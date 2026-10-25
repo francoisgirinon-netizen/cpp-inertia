@@ -21,7 +21,9 @@ std::optional<Json> parse(const std::string &text) {
     if (json.is_discarded()) {
         return std::nullopt;
     }
-    return json;
+    // In place: converting a Json to an optional<Json> is ambiguous with nlohmann's conversion
+    // operator for GCC.
+    return std::optional<Json>{std::in_place, std::move(json)};
 }
 
 } // namespace
